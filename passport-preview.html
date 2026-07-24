@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Ryan Members English Passport</title>
+  <style>
+    :root{
+      --navy:#132d3d; --navy2:#0b1e2a; --gold:#c9a84e; --paper:#f7f1df;
+      --ink:#20303a; --burgundy:#7b2c36; --green:#1f5a45;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; min-height:100vh; font-family:Inter, Pretendard, system-ui, sans-serif;
+      color:#fff; background:
+      radial-gradient(circle at 20% 20%,rgba(201,168,78,.16),transparent 28%),
+      linear-gradient(145deg,#07131d,#153547 60%,#07131d);
+      overflow-x:hidden;
+    }
+    button,input,select,textarea{font:inherit}
+    .app{min-height:100vh;display:grid;place-items:center;padding:24px}
+    .stage{width:min(960px,100%);position:relative}
+    .passport-shell{perspective:1800px}
+    .cover{
+      width:min(390px,92vw); aspect-ratio:0.72; margin:auto;
+      border:2px solid var(--gold); border-radius:18px;
+      background:linear-gradient(145deg,#18394b,#0e2634);
+      box-shadow:0 30px 80px rgba(0,0,0,.5),inset 0 0 0 7px rgba(201,168,78,.12);
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      text-align:center; padding:34px; transform-origin:left center;
+      transition:transform 1s cubic-bezier(.2,.7,.2,1),opacity .45s;
+    }
+    .cover.open{transform:rotateY(-105deg) translateX(-2%);opacity:.18;pointer-events:none}
+    .brand-logo{display:block;height:auto;object-fit:contain}
+    .cover-logo{width:min(306px,79vw);margin:0 auto 34px;filter:drop-shadow(0 8px 18px rgba(0,0,0,.35))}
+    .book-brand{display:flex;justify-content:center;margin:-8px 0 22px;position:relative;z-index:2}
+    .book-logo{width:min(300px,78vw)}
+    .cover h1{font-family:Georgia,serif;letter-spacing:.15em;font-size:24px;margin:0;color:#f1d98c}
+    .cover p{color:#e5dcbf;line-height:1.7}
+    .gold-btn,.next-btn{
+      border:1px solid var(--gold);background:var(--gold);color:#172733;
+      border-radius:999px;padding:15px 24px;font-weight:800;cursor:pointer;
+      box-shadow:0 12px 28px rgba(201,168,78,.22)
+    }
+    .book{
+      display:none;background:var(--paper);color:var(--ink);
+      border-radius:22px;padding:clamp(22px,5vw,50px);min-height:620px;
+      box-shadow:0 28px 90px rgba(0,0,0,.48);
+      border:1px solid #dacb9f; position:relative; overflow:hidden;
+    }
+    .book.visible{display:block;animation:bookIn .7s ease both}
+    @keyframes bookIn{from{opacity:0;transform:scale(.92) rotateX(8deg)}to{opacity:1;transform:none}}
+    .book:after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.13;
+      background-image:repeating-linear-gradient(0deg,transparent 0 3px,rgba(70,50,20,.08) 4px)}
+    .topline{display:flex;justify-content:space-between;gap:12px;color:#6e6244;font-size:13px;letter-spacing:.1em;text-transform:uppercase}
+    .page{display:none;position:relative;z-index:2}
+    .page.active{display:block;animation:pageIn .42s ease}
+    @keyframes pageIn{from{opacity:0;transform:translateX(18px)}to{opacity:1;transform:none}}
+    h2{font-family:Georgia,serif;font-size:clamp(30px,5vw,54px);margin:36px 0 10px;color:var(--navy)}
+    .prompt-en{font-family:Georgia,serif;font-style:italic;color:var(--burgundy);font-size:18px}
+    .field{margin:22px 0}
+    label{display:block;font-weight:800;margin-bottom:9px}
+    input,select,textarea{
+      width:100%;border:1px solid #cdbf93;border-radius:13px;background:rgba(255,255,255,.68);
+      padding:15px;color:var(--ink);outline:none
+    }
+    input:focus,select:focus,textarea:focus{border-color:var(--gold);box-shadow:0 0 0 4px rgba(201,168,78,.15)}
+    .choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .choice{border:1px solid #cdbf93;background:#fffaf0;border-radius:14px;padding:14px;cursor:pointer;text-align:left}
+    .choice.selected{border-color:var(--green);background:#eaf5ef;box-shadow:inset 0 0 0 2px var(--green)}
+    .nav{display:flex;justify-content:space-between;gap:12px;margin-top:32px}
+    .ghost{border:1px solid #b9aa80;background:transparent;border-radius:999px;padding:14px 20px;color:var(--ink);cursor:pointer}
+    .summary{border:1px dashed #9e8d5d;padding:22px;border-radius:18px;background:rgba(255,255,255,.45)}
+    .summary div{padding:9px 0;border-bottom:1px solid rgba(100,80,30,.12)}
+    .consent{display:flex;gap:10px;align-items:flex-start}
+    .consent input{width:auto;margin-top:4px}
+    .error{color:#9f2432;font-weight:700;min-height:24px;margin-top:14px}
+    .loading{opacity:.6;pointer-events:none}
+    .stamp{
+      width:210px;height:210px;border:8px double var(--burgundy);border-radius:50%;
+      display:grid;place-items:center;text-align:center;margin:22px auto;color:var(--burgundy);
+      font-weight:900;letter-spacing:.08em;transform:rotate(-12deg) scale(3);opacity:0;
+    }
+    .stamp.hit{animation:stampHit .8s cubic-bezier(.1,.8,.2,1) forwards}
+    @keyframes stampHit{
+      0%{transform:rotate(-12deg) scale(3);opacity:0}
+      55%{transform:rotate(-12deg) scale(.88);opacity:1}
+      70%{transform:rotate(-12deg) scale(1.08)}
+      100%{transform:rotate(-12deg) scale(1);opacity:1}
+    }
+    .approved{text-align:center}
+    .approved h2{margin:12px 0 16px;font-size:clamp(30px,5vw,48px)}
+    .approval-copy{font-size:20px;line-height:1.85;margin:0 auto 14px;max-width:640px}
+    .approval-copy strong{display:inline-block;margin-top:4px;color:var(--burgundy);font-size:1.08em}
+    .approval-copy em{display:inline-block;margin-top:10px;color:#8b7040;font-family:Georgia,serif}
+    .approval-meta{margin:16px auto 12px;padding:12px 16px;border-top:1px solid rgba(158,141,93,.35);border-bottom:1px solid rgba(158,141,93,.35);max-width:520px;color:#5d543f}
+    .confetti{position:fixed;inset:0;pointer-events:none}
+    .small{font-size:13px;color:#6a604b;line-height:1.6}
+    @media(max-width:600px){
+      .choices{grid-template-columns:1fr}
+      .book{min-height:720px}
+      h2{margin-top:24px}
+    }
+    @media(prefers-reduced-motion:reduce){
+      *,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+    }
+  </style>
+</head>
+<body><div id="rmPreviewNotice" style="position:fixed;left:50%;top:max(8px,env(safe-area-inset-top));transform:translateX(-50%);z-index:2147483647;background:rgba(8,24,34,.92);color:#f5e4ad;border:1px solid rgba(201,168,78,.7);border-radius:999px;padding:8px 14px;font:700 12px/1.2 system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.28);white-space:nowrap">운영 전 미리보기 · 입력 내용은 저장되지 않습니다</div>
+<a href="https://www.ryanmembers.com/" aria-label="미리보기 닫기" style="position:fixed;right:12px;top:max(10px,env(safe-area-inset-top));z-index:2147483647;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.92);color:#132d3d;text-decoration:none;font:800 22px/1 system-ui;box-shadow:0 8px 24px rgba(0,0,0,.25)">×</a>
+
+<div class="app">
+  <main class="stage">
+    <section id="cover" class="cover" aria-label="영어 학습 여권 표지">
+      <div style="font-family:Georgia,serif;font-size:34px;color:#f1d98c;font-weight:700;font-style:italic;margin-bottom:3px">Ryan<span style="font-family:Arial,sans-serif;font-style:normal;font-size:23px;letter-spacing:.03em">MEMBERS</span></div>
+      <div style="font-size:12px;letter-spacing:.32em;color:#f1d98c;margin-bottom:36px">HAEUNDAE</div>
+      <h1>ENGLISH LEARNING<br>PASSPORT</h1>
+      <p>Passport to a Bigger World<br>용감한 영어 학습 여행을 시작합니다.</p>
+      <button class="gold-btn" id="openBtn">여권 열기</button>
+    </section>
+
+    <section id="book" class="book" aria-live="polite">
+      <div class="book-brand"><div style="font-family:Georgia,serif;font-size:28px;color:#101820;font-weight:700;font-style:italic">Ryan<span style="font-family:Arial,sans-serif;font-style:normal;font-size:19px;letter-spacing:.03em">MEMBERS</span><div style="text-align:center;font-size:9px;letter-spacing:.28em;font-family:Arial,sans-serif;font-style:normal;margin-top:2px">HAEUNDAE</div></div></div>
+      <div class="topline"><span>English Learning Immigration Office</span><span id="progress">1 / 4</span></div>
+
+      <form id="passportForm">
+        <div class="page active" data-page="1">
+          <h2>State your name, traveler.</h2>
+          <div class="prompt-en">여행자의 신원을 확인합니다.</div>
+          <div class="field"><label>학생명</label><input name="studentName" autocomplete="name" required placeholder="홍길동"></div>
+          <div class="field"><label>휴대전화번호</label><input name="phone" inputmode="numeric" autocomplete="tel" required placeholder="010-1234-5678"></div>
+          <div class="nav"><span></span><button type="button" class="next-btn" data-next>다음 심사</button></div>
+        </div>
+
+        <div class="page" data-page="2">
+          <h2>Declare your journey.</h2>
+          <div class="prompt-en">어떤 영어 여정을 시작합니까?</div>
+          <div class="field"><label>등록 구분</label><div class="choices" data-name="registrationType">
+            <button type="button" class="choice" data-value="신규등록">신규등록</button>
+            <button type="button" class="choice" data-value="재등록">재등록</button>
+            <button type="button" class="choice" data-value="추가등록">추가등록</button>
+          </div></div>
+          <div class="field"><label>신청 회차</label><div class="choices" data-name="lessonCount">
+            <button type="button" class="choice" data-value="8">8회</button>
+            <button type="button" class="choice" data-value="16">16회</button>
+            <button type="button" class="choice" data-value="24">24회</button>
+            <button type="button" class="choice" data-value="32">32회</button>
+            <button type="button" class="choice" data-value="48">48회</button>
+          </div></div>
+          <div class="nav"><button type="button" class="ghost" data-prev>이전</button><button type="button" class="next-btn" data-next>다음 심사</button></div>
+        </div>
+
+        <div class="page" data-page="3">
+          <h2>What is your purpose?</h2>
+          <div class="prompt-en">영어 여행의 목적을 신고하세요.</div>
+          <div class="field"><label>수업 유형</label>
+            <select name="courseType" required>
+              <option value="">선택하세요</option>
+              <option>스몰톡 영어회화</option><option>비즈니스 영어</option><option>여행영어</option>
+              <option>시험·인터뷰</option><option>기타</option>
+            </select>
+          </div>
+          <div class="field"><label>담당 강사 <span class="small">(선택)</span></label><input name="teacher" placeholder="예: Matthew"></div>
+          <div class="field"><label>학습 목표</label><div class="choices" data-name="learningGoal">
+            <button type="button" class="choice" data-value="해외여행에서 현지인과 대화">✈️ 해외여행과 현지인 대화</button>
+            <button type="button" class="choice" data-value="커리어와 비즈니스 성장">💼 커리어와 비즈니스</button>
+            <button type="button" class="choice" data-value="자신감 있는 스피킹">🎤 자신감 있는 스피킹</button>
+            <button type="button" class="choice" data-value="자녀 영어교육 지원">👨‍👩‍👧 자녀 영어교육</button>
+            <button type="button" class="choice" data-value="시험 목표 달성">🏆 시험 목표</button>
+          </div></div>
+          <div class="nav"><button type="button" class="ghost" data-prev>이전</button><button type="button" class="next-btn" data-next>비자 확인</button></div>
+        </div>
+
+        <div class="page" data-page="4">
+          <h2>Final visa inspection.</h2>
+          <div class="prompt-en">출발 허가 전 최종 확인입니다.</div>
+          <div id="summary" class="summary"></div>
+          <div class="field consent">
+            <input id="privacy" type="checkbox" name="privacyConsent">
+            <label for="privacy" style="font-weight:600">등록 처리와 수업 안내를 위한 개인정보 수집·이용에 동의합니다.</label>
+          </div>
+          <div class="error" id="error"></div>
+          <div class="nav"><button type="button" class="ghost" data-prev>수정하기</button><button type="submit" class="next-btn" id="submitBtn">출발 심사 요청</button></div>
+        </div>
+
+        <div class="page approved" data-page="5">
+          <div id="stamp" class="stamp">APPROVED<br>CLEARED FOR<br>DEPARTURE</div>
+          <h2>영어로 여는<br>새로운 세계.</h2>
+          <p id="approvalText" class="approval-copy"></p>
+          <p id="approvalMeta" class="approval-meta"></p>
+          <p class="small">정식 오픈 전 내부 미리보기입니다. 시트 연결 후 실제 접수를 시작합니다.</p>
+        </div>
+      </form>
+    </section>
+  </main>
+</div>
+
+<script>
+if (!window.google) {
+  const runner = {
+    _success: null, _failure: null,
+    withSuccessHandler(fn){ this._success = fn; return this; },
+    withFailureHandler(fn){ this._failure = fn; return this; },
+    submitPassport(payload){
+      setTimeout(() => this._success && this._success({
+        ok:true, submissionId:'PREVIEW-DEMO', studentName:payload.studentName,
+        lessonCount:payload.lessonCount, learningGoal:payload.learningGoal
+      }), 700);
+    }
+  };
+  window.google = { script: { run: runner } };
+}
+</script>
+<script>
+(() => {
+  let page = 1;
+  const data = {};
+  const cover = document.querySelector('#cover');
+  const book = document.querySelector('#book');
+  const form = document.querySelector('#passportForm');
+  const progress = document.querySelector('#progress');
+  const errorBox = document.querySelector('#error');
+
+  document.querySelector('#openBtn').addEventListener('click', () => {
+    cover.classList.add('open');
+    setTimeout(() => { cover.style.display='none'; book.classList.add('visible'); }, 520);
+  });
+
+  document.querySelectorAll('.choices').forEach(group => {
+    group.querySelectorAll('.choice').forEach(btn => {
+      btn.addEventListener('click', () => {
+        group.querySelectorAll('.choice').forEach(x => x.classList.remove('selected'));
+        btn.classList.add('selected');
+        data[group.dataset.name] = btn.dataset.value;
+      });
+    });
+  });
+
+  document.querySelectorAll('[data-next]').forEach(btn => btn.addEventListener('click', () => {
+    if (!validatePage(page)) return;
+    if (page === 3) renderSummary();
+    showPage(page + 1);
+  }));
+  document.querySelectorAll('[data-prev]').forEach(btn => btn.addEventListener('click', () => showPage(page - 1)));
+
+  function showPage(n) {
+    page = n;
+    document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', Number(p.dataset.page) === n));
+    progress.textContent = n <= 4 ? `${n} / 4` : 'APPROVED';
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+
+  function validatePage(n) {
+    errorBox.textContent = '';
+    const fd = new FormData(form);
+    if (n === 1) {
+      const name = fd.get('studentName').trim();
+      const phone = fd.get('phone').replace(/\D/g,'');
+      if (!name) return alert('학생명을 입력해 주세요.'), false;
+      if (!/^010\d{8}$/.test(phone)) return alert('휴대전화번호를 정확히 입력해 주세요.'), false;
+    }
+    if (n === 2 && (!data.registrationType || !data.lessonCount)) {
+      alert('등록 구분과 신청 회차를 선택해 주세요.'); return false;
+    }
+    if (n === 3 && (!fd.get('courseType') || !data.learningGoal)) {
+      alert('수업 유형과 학습 목표를 선택해 주세요.'); return false;
+    }
+    return true;
+  }
+
+  function collect() {
+    const fd = new FormData(form);
+    return {
+      studentName: fd.get('studentName').trim(),
+      phone: fd.get('phone').trim(),
+      registrationType: data.registrationType,
+      lessonCount: data.lessonCount,
+      courseType: fd.get('courseType'),
+      teacher: fd.get('teacher').trim(),
+      learningGoal: data.learningGoal,
+      privacyConsent: document.querySelector('#privacy').checked,
+      userAgent: navigator.userAgent
+    };
+  }
+
+  function renderSummary() {
+    const d = collect();
+    document.querySelector('#summary').innerHTML = `
+      <div><strong>학생명</strong>　${escapeHtml(d.studentName)}</div>
+      <div><strong>전화번호</strong>　${escapeHtml(d.phone)}</div>
+      <div><strong>등록</strong>　${escapeHtml(d.registrationType)} · ${escapeHtml(d.lessonCount)}회</div>
+      <div><strong>수업</strong>　${escapeHtml(d.courseType)}</div>
+      <div><strong>목표</strong>　${escapeHtml(d.learningGoal)}</div>
+    `;
+  }
+
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const payload = collect();
+    if (!payload.privacyConsent) {
+      errorBox.textContent = '개인정보 수집·이용 동의가 필요합니다.';
+      return;
+    }
+    const submit = document.querySelector('#submitBtn');
+    submit.disabled = true; form.classList.add('loading'); errorBox.textContent = '심사 중입니다…';
+
+    google.script.run
+      .withSuccessHandler(result => {
+        form.classList.remove('loading');
+        showPage(5);
+        document.querySelector('#approvalText').innerHTML =
+          `당신은 용감한 여행자입니다.<br><strong>자, 이제 출발을 허가합니다.</strong><br><em>Welcome to a Bigger World.</em>`;
+        document.querySelector('#approvalMeta').innerHTML =
+          `<strong>${escapeHtml(result.studentName)}</strong> · ${escapeHtml(result.lessonCount)}회 · ${escapeHtml(result.learningGoal)}`;
+        setTimeout(() => document.querySelector('#stamp').classList.add('hit'), 180);
+        if (navigator.vibrate) navigator.vibrate([40,25,80]);
+      })
+      .withFailureHandler(err => {
+        form.classList.remove('loading');
+        submit.disabled = false;
+        errorBox.textContent = err && err.message ? err.message : '제출에 실패했습니다. 다시 시도해 주세요.';
+      })
+      .submitPassport(payload);
+  });
+
+  function escapeHtml(s) {
+    return String(s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+  }
+})();
+</script>
+</body>
+</html>

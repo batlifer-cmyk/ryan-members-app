@@ -3,7 +3,7 @@ const RM_PASSPORT_CONFIG = Object.freeze({
   REGISTRATION_SHEET: '_DB_등록신청',
   CONTACT_SHEET: '학생연락처',
   DAILY_TALK_CONSENT_VERSION: '2026-07-25-v2',
-  KAKAO_CHANNEL_URL: 'https://pf.kakao.com/_gSkJV'
+  KAKAO_CHANNEL_URL: 'https://pf.kakao.com/_xkFxexfX'
 });
 
 /**
@@ -24,7 +24,7 @@ function submitPassport(input) {
     const submissionId = Utilities.getUuid();
 
     const optIn = payload.dailyTalkOptIn === true;
-    const track = classifyDailyTalkTrack_(payload.courseType);
+    const track = resolveDailyTalkTrack_(payload.dailyTalkTrack, payload.courseType);
     const consentAt = optIn ? now : '';
     const consentVersion = optIn ? RM_PASSPORT_CONFIG.DAILY_TALK_CONSENT_VERSION : '';
     const dailyTalkStatus = optIn ? 'ACTIVE' : 'INACTIVE';
@@ -197,7 +197,7 @@ function sanitizePassportPayload_(input) {
     learningGoal: String(input.learningGoal || '').trim(),
     privacyConsent: toBoolean_(input.privacyConsent),
     dailyTalkOptIn: optIn,
-    dailyTalkTrack: classifyDailyTalkTrack_(courseType),
+    dailyTalkTrack: resolveDailyTalkTrack_(input.dailyTalkTrack, courseType),
     dailyTalkConsentAt: optIn ? String(input.dailyTalkConsentAt || '') : '',
     dailyTalkConsentVersion: optIn ? RM_PASSPORT_CONFIG.DAILY_TALK_CONSENT_VERSION : '',
     kakaoChannelAdded: false,
@@ -216,6 +216,9 @@ function validatePassportPayload_(payload) {
   if (!payload.courseType) throw new Error('등록 과목을 입력해 주세요.');
   if (!payload.learningGoal) throw new Error('학습 목표를 선택해 주세요.');
   if (!payload.privacyConsent) throw new Error('개인정보 수집·이용 동의가 필요합니다.');
+  if (payload.dailyTalkOptIn && !['SMALL_TALK', 'BUSINESS', 'BOTH'].includes(payload.dailyTalkTrack)) {
+    throw new Error('받을 Daily Talk를 선택해 주세요.');
+  }
 }
 
 function upsertPassportContact_(sheet, data) {
@@ -254,6 +257,13 @@ function findContactRowByPhone_(sheet, phone) {
     if (candidates.includes(phone)) return index + 2;
   }
   return 0;
+}
+
+function resolveDailyTalkTrack_(requestedTrack, courseType) {
+  const track = String(requestedTrack || '').trim().toUpperCase();
+  return ['SMALL_TALK', 'BUSINESS', 'BOTH'].includes(track)
+    ? track
+    : classifyDailyTalkTrack_(courseType);
 }
 
 function classifyDailyTalkTrack_(courseType) {

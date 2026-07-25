@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Ryan Members English Passport</title>
+  <style>
+    html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#07131d}
+    #passportFrame{display:block;width:100%;height:100dvh;border:0;background:#07131d}
+  </style>
+</head>
+<body>
+<iframe id="passportFrame" title="Ryan Members English Passport" src="https://rawcdn.githack.com/batlifer-cmyk/ryan-members-app/84d55474e4b0c28ac48cc7596d4bec1e4540fc4e/passport-v3-loader.html"></iframe>
+<script>
+(() => {
+  'use strict';
+  const CONSENT_VERSION = '2026-07-25-v2';
+  const KAKAO_CHANNEL_URL = 'https://pf.kakao.com/_xkFxexfX';
+  const ALLOWED_TRACKS = ['SMALL_TALK', 'BUSINESS', 'BOTH'];
+  const TRACK_LABELS = {
+    SMALL_TALK: 'Daily Small Talk',
+    BUSINESS: 'Daily Business Talk',
+    BOTH: '두 콘텐츠 모두'
+  };
+  const frame = document.getElementById('passportFrame');
+  let installed = false;
+  let submissionId = '';
+  let submittedPhone = '';
+
+  frame.addEventListener('load', waitForPassport);
+
+  function waitForPassport() {
+    const timer = setInterval(() => {
+      try {
+        const doc = frame.contentDocument;
+        if (!doc || !doc.querySelector('#passportForm')) return;
+        clearInterval(timer);
+        if (!installed) installDailyTalk(doc, frame.contentWindow);
+      } catch (error) {
+        clearInterval(timer);
+        console.error('Ryan Daily Talk integration failed:', error);
+      }
+    }, 120);
+    setTimeout(() => clearInterval(timer), 15000);
+  }
+
+  function installDailyTalk(doc, win) {
+    installed = true;
+    addStyles(doc);
+    injectConsent(doc);
+    injectCompletionButton(doc);
+    interceptSubmission(doc, win);
+  }
+
+  function addStyles(doc) {
+    const style = doc.createElement('style');
+    style.textContent = `
+      .daily-talk-consent{margin:18px 0 4px;padding:17px;border:1px solid #c9a84e;border-radius:15px;background:rgba(255,250,235,.72)}
+      .daily-talk-consent .daily-title{font-family:Georgia,serif;font-size:18px;font-weight:800;color:#132d3d;margin-bottom:9px}
+      .daily-talk-check{display:flex;align-items:flex-start;gap:11px;cursor:pointer;font-weight:600;line-height:1.65}
+      .daily-talk-check input{width:20px;height:20px;min-width:20px;margin-top:3px;accent-color:#1f5a45}
+      .daily-talk-note{margin:8px 0 0 31px;color:#6a604b;font-size:12px;line-height:1.55}
+      .daily-track-section{display:none;margin:15px 0 0 31px;padding-top:14px;border-top:1px solid rgba(158,141,93,.3)}
+      .daily-track-section.visible{display:block;animation:pageIn .3s ease}
+      .daily-track-heading{font-weight:900;color:#132d3d;margin-bottom:4px}
+      .daily-track-recommendation{font-size:12px;color:#1f5a45;font-weight:800;margin-bottom:10px}
+      .daily-track-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+      .daily-track-option{position:relative;display:block;cursor:pointer}
+      .daily-track-option input{position:absolute;opacity:0;pointer-events:none}
+      .daily-track-card{display:flex;align-items:center;justify-content:center;min-height:62px;padding:10px 8px;border:1px solid #cdbf93;border-radius:12px;background:#fffaf0;text-align:center;font-size:13px;font-weight:800;line-height:1.35;transition:.18s ease}
+      .daily-track-option input:checked + .daily-track-card{border-color:#1f5a45;background:#eaf5ef;box-shadow:inset 0 0 0 2px #1f5a45;color:#174735}
+      .daily-track-option.recommended .daily-track-card:after{content:'추천';position:absolute;right:6px;top:-7px;padding:2px 6px;border-radius:999px;background:#c9a84e;color:#172733;font-size:9px;font-weight:900}
+      .kakao-channel-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;margin:18px auto 8px;padding:14px 22px;border-radius:999px;background:#fee500;color:#191919!important;text-decoration:none!important;font-weight:900;box-shadow:0 10px 24px rgba(0,0,0,.16)}
+      .kakao-channel-btn:hover{transform:translateY(-1px)}
+      .kakao-channel-note{max-width:520px;margin:5px auto 12px;color:#6a604b;font-size:12px;line-height:1.55}
+      @media(max-width:600px){.daily-track-options{grid-template-columns:1fr}.daily-track-card{min-height:48px}}
+    `;
+    doc.head.appendChild(style);
+  }
+
+  function injectConsent(doc) {
+    const page4 = doc.querySelector('.page[data-page="4"]');
+    const errorBox = doc.querySelector('#error');
+    if (!page4 || !errorBox || doc.querySelector('#dailyTalkOptIn')) return;
+
+    const block = doc.createElement('div');
+    block.className = 'daily-talk-consent';
+    block.innerHTML = `
+      <div class="daily-title">Ryan Daily Talk</div>
+      <label class="daily-talk-check" for="dailyTalkOptIn">
+        <input id="dailyTalkOptIn" name="dailyTalkOptIn" type="checkbox" value="true">
+        <span>영어여권 발급 후 라이언멤버스의 평일 영어 학습 콘텐츠를 카카오톡으로 받겠습니다. 광고성 정보 수신에 동의하며, 카카오톡 채널 차단을 통해 언제든 중단할 수 있습니다.</span>
+      </label>
+      <div class="daily-talk-note">선택 동의입니다. 체크하지 않아도 영어여권 등록은 정상 처리됩니다.</div>
+      <div id="dailyTrackSection" class="daily-track-section">
+        <div class="daily-track-heading">받을 Daily Talk를 선택하세요.</div>
+        <div id="dailyTrackRecommendation" class="daily-track-recommendation"></div>
+        <div class="daily-track-options" role="radiogroup" aria-label="Ryan Daily Talk 콘텐츠 선택">
+          <label class="daily-track-option" data-track-option="SMALL_TALK">
+            <input type="radio" name="dailyTalkTrackChoice" value="SMALL_TALK">
+            <span class="daily-track-card">Daily Small Talk</span>
+          </label>
+          <label class="daily-track-option" data-track-option="BUSINESS">
+            <input type="radio" name="dailyTalkTrackChoice" value="BUSINESS">
+            <span class="daily-track-card">Daily Business Talk</span>
+          </label>
+          <label class="daily-track-option" data-track-option="BOTH">
+            <input type="radio" name="dailyTalkTrackChoice" value="BOTH">
+            <span class="daily-track-card">두 콘텐츠 모두</span>
+          </label>
+        </div>
+      </div>
+    `;
+    page4.insertBefore(block, errorBox);
+
+    const checkbox = block.querySelector('#dailyTalkOptIn');
+    checkbox.checked = false;
+    checkbox.addEventListener('change', () => updateTrackChoices(doc));
+  }
+
+  function injectCompletionButton(doc) {
+    const page5 = doc.querySelector('.page[data-page="5"]');
+    const small = page5 && page5.querySelector('.small');
+    if (!page5 || doc.querySelector('#kakaoChannelBtn')) return;
+
+    const wrap = doc.createElement('div');
+    wrap.id = 'kakaoChannelWrap';
+    wrap.innerHTML = `
+      <a id="kakaoChannelBtn" class="kakao-channel-btn" href="${KAKAO_CHANNEL_URL}" target="_blank" rel="noopener noreferrer">라이언멤버스 카카오톡 채널 추가</a>
+      <div class="kakao-channel-note">채널을 추가하면 Ryan Daily Talk와 수업 안내를 카카오톡에서 안정적으로 받을 수 있습니다.</div>
+    `;
+    page5.insertBefore(wrap, small || null);
+
+    wrap.querySelector('#kakaoChannelBtn').addEventListener('click', () => {
+      markChannelButtonClicked(doc.defaultView);
+      wrap.querySelector('#kakaoChannelBtn').textContent = '카카오톡 채널 추가 화면을 열었습니다';
+    });
+  }
+
+  function updateTrackChoices(doc) {
+    const checkbox = doc.querySelector('#dailyTalkOptIn');
+    const section = doc.querySelector('#dailyTrackSection');
+    if (!checkbox || !section) return;
+
+    section.classList.toggle('visible', checkbox.checked);
+    if (!checkbox.checked) return;
+
+    const recommendedTrack = classifyTrack(resolveCourse(doc));
+    const recommendation = doc.querySelector('#dailyTrackRecommendation');
+    if (recommendation) recommendation.textContent = `등록 과목 기준 추천: ${TRACK_LABELS[recommendedTrack]}`;
+
+    doc.querySelectorAll('[data-track-option]').forEach(option => {
+      option.classList.toggle('recommended', option.dataset.trackOption === recommendedTrack);
+    });
+
+    const selected = doc.querySelector('[name="dailyTalkTrackChoice"]:checked');
+    if (!selected) {
+      const recommendedRadio = doc.querySelector(`[name="dailyTalkTrackChoice"][value="${recommendedTrack}"]`);
+      if (recommendedRadio) recommendedRadio.checked = true;
+    }
+  }
+
+  function interceptSubmission(doc, win) {
+    const form = doc.querySelector('#passportForm');
+    if (!form || form.dataset.dailyTalkIntegrated === 'true') return;
+    form.dataset.dailyTalkIntegrated = 'true';
+
+    form.addEventListener('submit', event => {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      const payload = collectPayload(doc);
+      const errorBox = doc.querySelector('#error');
+      const submitButton = doc.querySelector('#submitBtn');
+
+      if (!payload.privacyConsent) {
+        errorBox.textContent = '개인정보 수집·이용 동의가 필요합니다.';
+        return;
+      }
+      if (payload.dailyTalkOptIn && !ALLOWED_TRACKS.includes(payload.dailyTalkTrack)) {
+        errorBox.textContent = '받을 Daily Talk를 선택해 주세요.';
+        return;
+      }
+
+      submitButton.disabled = true;
+      form.classList.add('loading');
+      errorBox.textContent = '심사 중입니다…';
+
+      const runner = win.google && win.google.script && win.google.script.run;
+      if (!runner || typeof runner.withSuccessHandler !== 'function') {
+        submissionSucceeded(doc, payload, {
+          ok: true,
+          submissionId: 'PREVIEW-' + Date.now(),
+          studentName: payload.studentName,
+          lessonCount: payload.lessonCount,
+          learningGoal: payload.learningGoal,
+          dailyTalkTrack: payload.dailyTalkTrack
+        });
+        return;
+      }
+
+      runner
+        .withSuccessHandler(result => submissionSucceeded(doc, payload, result))
+        .withFailureHandler(error => {
+          form.classList.remove('loading');
+          submitButton.disabled = false;
+          errorBox.textContent = error && error.message ? error.message : '제출에 실패했습니다. 다시 시도해 주세요.';
+        })
+        .submitPassport(payload);
+    }, true);
+  }
+
+  function collectPayload(doc) {
+    const studentName = value(doc, '[name="studentName"]');
+    const phone = value(doc, '[name="phone"]');
+    const registrationType = selectedValue(doc, '[data-name="registrationType"]');
+    const lessonSelected = selectedValue(doc, '[data-name="lessonCount"]');
+    const lessonCount = lessonSelected === '직접 입력' ? value(doc, '#customLessonCount') : lessonSelected;
+    const courseType = resolveCourse(doc);
+    const teacher = value(doc, '[name="teacher"]');
+    const learningGoal = selectedValue(doc, '[data-name="learningGoal"]');
+    const privacyConsent = !!doc.querySelector('#privacy')?.checked;
+    const dailyTalkOptIn = !!doc.querySelector('#dailyTalkOptIn')?.checked;
+    const selectedTrack = doc.querySelector('[name="dailyTalkTrackChoice"]:checked')?.value || '';
+    const dailyTalkTrack = ALLOWED_TRACKS.includes(selectedTrack) ? selectedTrack : classifyTrack(courseType);
+    const now = new Date().toISOString();
+
+    return {
+      studentName,
+      phone,
+      registrationType,
+      lessonCount,
+      courseType,
+      teacher,
+      learningGoal,
+      privacyConsent,
+      userAgent: navigator.userAgent,
+      dailyTalkOptIn,
+      dailyTalkTrack,
+      dailyTalkConsentAt: dailyTalkOptIn ? now : '',
+      dailyTalkConsentVersion: dailyTalkOptIn ? CONSENT_VERSION : '',
+      kakaoChannelAdded: false,
+      dailyTalkStatus: dailyTalkOptIn ? 'ACTIVE' : 'INACTIVE',
+      lastDailyTalkSentAt: ''
+    };
+  }
+
+  function classifyTrack(course) {
+    const text = String(course || '').toLowerCase().replace(/\s+/g, ' ');
+    const smallKeywords = ['일상회화', '여행영어', '여행 영어', '왕초보', '스몰톡', '사교영어'];
+    const businessKeywords = ['비즈니스 영어', '비즈니스', '직장인 영어', '직장인'];
+    const hasSmall = smallKeywords.some(keyword => text.includes(keyword));
+    const hasBusiness = businessKeywords.some(keyword => text.includes(keyword));
+    if (hasSmall && hasBusiness) return 'BOTH';
+    if (hasBusiness) return 'BUSINESS';
+    return 'SMALL_TALK';
+  }
+
+  function resolveCourse(doc) {
+    const select = doc.querySelector('#courseType, [name="courseType"]');
+    if (!select) return '';
+    return select.value === '직접 입력' ? value(doc, '#courseTypeCustom') : select.value;
+  }
+
+  function selectedValue(doc, groupSelector) {
+    return doc.querySelector(`${groupSelector} .choice.selected`)?.dataset.value || '';
+  }
+
+  function value(doc, selector) {
+    return String(doc.querySelector(selector)?.value || '').trim();
+  }
+
+  function submissionSucceeded(doc, payload, result) {
+    const form = doc.querySelector('#passportForm');
+    form.classList.remove('loading');
+    submissionId = result.submissionId || '';
+    submittedPhone = payload.phone;
+
+    doc.querySelectorAll('.page').forEach(page => {
+      page.classList.toggle('active', page.dataset.page === '5');
+    });
+    const progress = doc.querySelector('#progress');
+    if (progress) progress.textContent = 'APPROVED';
+
+    const approvalText = doc.querySelector('#approvalText');
+    const approvalMeta = doc.querySelector('#approvalMeta');
+    if (approvalText) {
+      approvalText.innerHTML = '당신은 용감한 여행자입니다.<br><strong>자, 이제 출발을 허가합니다.</strong><br><em>Welcome to a Bigger World.</em>';
+    }
+    if (approvalMeta) {
+      const track = result.dailyTalkTrack || payload.dailyTalkTrack;
+      const daily = payload.dailyTalkOptIn ? ` · Ryan Daily Talk: ${TRACK_LABELS[track] || track}` : '';
+      approvalMeta.innerHTML = `<strong>${escapeHtml(result.studentName || payload.studentName)}</strong> · ${escapeHtml(result.lessonCount || payload.lessonCount)}회 · ${escapeHtml(result.learningGoal || payload.learningGoal)}${escapeHtml(daily)}`;
+    }
+
+    const stamp = doc.querySelector('#stamp');
+    setTimeout(() => stamp && stamp.classList.add('hit'), 180);
+    if (navigator.vibrate) navigator.vibrate([40,25,80]);
+    doc.defaultView.scrollTo({top: 0, behavior: 'smooth'});
+  }
+
+  function markChannelButtonClicked(win) {
+    if (!submissionId && !submittedPhone) return;
+    const runner = win.google && win.google.script && win.google.script.run;
+    if (!runner || typeof runner.withSuccessHandler !== 'function' || typeof runner.markKakaoChannelAdded !== 'function') return;
+    runner
+      .withSuccessHandler(() => {})
+      .withFailureHandler(error => console.warn('Channel click log failed:', error))
+      .markKakaoChannelAdded(submissionId, submittedPhone);
+  }
+
+  function escapeHtml(value) {
+    return String(value || '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[char]));
+  }
+})();
+</script>
+</body>
+</html>

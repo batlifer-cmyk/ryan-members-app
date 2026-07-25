@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Ryan Members English Passport</title>
+  <style>
+    html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#07131d}
+    #passportFrame{display:block;width:100%;height:100dvh;border:0;background:#07131d}
+  </style>
+</head>
+<body>
+<iframe id="passportFrame" title="Ryan Members English Passport" src="https://rawcdn.githack.com/batlifer-cmyk/ryan-members-app/a67ae9f8618cc05242eee4af7f939f574a2f2c84/passport-v5-dailytalk-choice.html"></iframe>
+<script>
+(() => {
+  'use strict';
+  const DIRECT_FRIEND_URL = 'https://pf.kakao.com/_xkFxexfX/friend';
+  const outerFrame = document.getElementById('passportFrame');
+
+  function applyDirectFriendLink() {
+    try {
+      const outerDoc = outerFrame.contentDocument;
+      const innerFrame = outerDoc && outerDoc.getElementById('passportFrame');
+      const innerDoc = innerFrame && innerFrame.contentDocument;
+      const button = innerDoc && innerDoc.getElementById('kakaoChannelBtn');
+      if (!button) return false;
+      button.href = DIRECT_FRIEND_URL;
+      button.setAttribute('target', '_blank');
+      button.setAttribute('rel', 'noopener noreferrer');
+      return true;
+    } catch (error) {
+      console.warn('Kakao friend link update pending:', error);
+      return false;
+    }
+  }
+
+  outerFrame.addEventListener('load', () => {
+    let attempts = 0;
+    const timer = setInterval(() => {
+      attempts += 1;
+      if (applyDirectFriendLink() || attempts >= 150) clearInterval(timer);
+    }, 100);
+  });
+})();
+</script>
+</body>
+</html>

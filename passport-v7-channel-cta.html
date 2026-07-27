@@ -70,7 +70,7 @@
           <div class="rm-kakao-steps">
             1. 휴대폰 카메라로 QR 스캔<br>
             2. 카카오톡 화면에서 <b>‘채널 추가’</b> 선택<br>
-            3. 영어여권 화면으로 돌아와 등록 완료
+            3. 영어여권 화면으로 돌아오기
           </div>
           <div class="rm-kakao-modal-actions">
             <a class="rm-kakao-primary" href="${DIRECT_FRIEND_URL}" target="_blank" rel="noopener noreferrer">PC 카카오 페이지도 열기</a>
@@ -107,21 +107,25 @@
       button.removeAttribute('target');
       button.removeAttribute('rel');
 
+      const interceptClick = event => {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        if (isMobileDevice(innerWin)) {
+          innerWin.location.href = DIRECT_FRIEND_URL;
+          return;
+        }
+        renderQr();
+        modal.classList.add('visible');
+      };
+      button.addEventListener('click', interceptClick, true);
+
       if (isMobileDevice(innerWin)) {
         button.textContent = '카카오톡 앱에서 바로 채널 추가';
-        button.addEventListener('click', event => {
-          event.preventDefault();
-          innerWin.location.href = DIRECT_FRIEND_URL;
-        });
       } else {
         button.textContent = '휴대폰으로 카카오톡 채널 추가';
         const note = innerDoc.querySelector('#kakaoChannelWrap .kakao-channel-note');
         if (note) note.textContent = 'PC에서는 버튼을 누르면 큰 QR과 단계별 안내가 표시됩니다.';
-        button.addEventListener('click', event => {
-          event.preventDefault();
-          renderQr();
-          modal.classList.add('visible');
-        });
       }
       return true;
     } catch (error) {

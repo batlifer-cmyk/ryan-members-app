@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Ryan Members English Passport</title>
+  <style>
+    html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#07131d}
+    #passportFrame{display:block;width:100%;height:100dvh;border:0;background:#07131d}
+  </style>
+</head>
+<body>
+<iframe id="passportFrame" title="Ryan Members English Passport" src="https://rawcdn.githack.com/batlifer-cmyk/ryan-members-app/a67ae9f8618cc05242eee4af7f939f574a2f2c84/passport-v5-dailytalk-choice.html"></iframe>
+<script>
+(() => {
+  'use strict';
+  const DIRECT_FRIEND_URL = 'https://pf.kakao.com/_xkFxexfX/friend';
+  const outerFrame = document.getElementById('passportFrame');
+
+  function isMobileDevice(win) {
+    return /Android|iPhone|iPad|iPod|Mobile/i.test(win.navigator.userAgent) ||
+      (win.matchMedia && win.matchMedia('(max-width: 767px)').matches);
+  }
+
+  function installChannelExperience() {
+    try {
+      const outerDoc = outerFrame.contentDocument;
+      const innerFrame = outerDoc && outerDoc.getElementById('passportFrame');
+      const innerDoc = innerFrame && innerFrame.contentDocument;
+      const innerWin = innerFrame && innerFrame.contentWindow;
+      const button = innerDoc && innerDoc.getElementById('kakaoChannelBtn');
+      if (!innerDoc || !innerWin || !button) return false;
+      if (button.dataset.desktopCtaInstalled === 'true') return true;
+      button.dataset.desktopCtaInstalled = 'true';
+
+      const style = innerDoc.createElement('style');
+      style.textContent = `
+        .rm-kakao-modal-backdrop{position:fixed;inset:0;z-index:2147483647;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(3,14,22,.84);backdrop-filter:blur(6px)}
+        .rm-kakao-modal-backdrop.visible{display:flex}
+        .rm-kakao-modal{width:min(520px,94vw);max-height:92vh;overflow:auto;border-radius:24px;background:#fffaf0;color:#20303a;padding:30px 26px;text-align:center;box-shadow:0 28px 90px rgba(0,0,0,.48);border:2px solid #c9a84e}
+        .rm-kakao-modal h3{margin:0 0 8px;font-family:Georgia,serif;font-size:28px;color:#132d3d}
+        .rm-kakao-modal .lead{margin:0 auto 18px;max-width:410px;font-size:16px;line-height:1.65;font-weight:750}
+        .rm-kakao-qr-wrap{display:inline-block;padding:13px;border-radius:18px;background:#fff;border:1px solid #dfd2aa;box-shadow:0 10px 28px rgba(0,0,0,.12)}
+        .rm-kakao-qr-wrap canvas{display:block;width:220px;height:220px}
+        .rm-kakao-steps{margin:18px auto 14px;max-width:390px;padding:16px 18px;border-radius:15px;background:#fff2a8;text-align:left;line-height:1.65;font-weight:800}
+        .rm-kakao-steps b{color:#7b2c36}
+        .rm-kakao-modal-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:16px}
+        .rm-kakao-primary,.rm-kakao-secondary{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:12px 18px;border-radius:999px;font-weight:900;text-decoration:none!important;cursor:pointer}
+        .rm-kakao-primary{background:#fee500;color:#191919!important;border:0}
+        .rm-kakao-secondary{background:transparent;color:#20303a!important;border:1px solid #b9aa80}
+        .rm-kakao-close{position:absolute;right:18px;top:14px;width:38px;height:38px;border-radius:50%;border:0;background:#ece5d1;color:#20303a;font-size:22px;font-weight:900;cursor:pointer}
+        .rm-kakao-modal-card{position:relative}
+        .rm-kakao-note{margin:14px auto 0;max-width:420px;color:#6a604b;font-size:12px;line-height:1.55}
+        @media(max-width:600px){.rm-kakao-modal{padding:26px 18px}.rm-kakao-qr-wrap canvas{width:190px;height:190px}}
+      `;
+      innerDoc.head.appendChild(style);
+
+      const modal = innerDoc.createElement('div');
+      modal.id = 'rmKakaoModal';
+      modal.className = 'rm-kakao-modal-backdrop';
+      modal.setAttribute('role', 'dialog');
+      modal.setAttribute('aria-modal', 'true');
+      modal.setAttribute('aria-labelledby', 'rmKakaoModalTitle');
+      modal.innerHTML = `
+        <div class="rm-kakao-modal rm-kakao-modal-card">
+          <button type="button" class="rm-kakao-close" aria-label="닫기">×</button>
+          <h3 id="rmKakaoModalTitle">휴대폰으로 채널을 추가하세요</h3>
+          <p class="lead">PC 화면에서는 친구추가 버튼이 작게 보여 놓치기 쉽습니다. 아래 QR을 휴대폰으로 스캔하면 라이언멤버스 친구추가 화면으로 바로 이동합니다.</p>
+          <div class="rm-kakao-qr-wrap"><canvas id="rmKakaoQr" width="220" height="220"></canvas></div>
+          <div class="rm-kakao-steps">
+            1. 휴대폰 카메라로 QR 스캔<br>
+            2. 카카오톡 화면에서 <b>‘채널 추가’</b> 선택<br>
+            3. 영어여권 화면으로 돌아와 등록 완료
+          </div>
+          <div class="rm-kakao-modal-actions">
+            <a class="rm-kakao-primary" href="${DIRECT_FRIEND_URL}" target="_blank" rel="noopener noreferrer">PC 카카오 페이지도 열기</a>
+            <button type="button" class="rm-kakao-secondary">나중에 추가하기</button>
+          </div>
+          <div class="rm-kakao-note">Ryan Daily Talk 수신동의를 했더라도 카카오톡 채널 추가가 완료되어야 메시지를 안정적으로 받을 수 있습니다.</div>
+        </div>
+      `;
+      innerDoc.body.appendChild(modal);
+
+      const closeModal = () => modal.classList.remove('visible');
+      modal.querySelector('.rm-kakao-close').addEventListener('click', closeModal);
+      modal.querySelector('.rm-kakao-secondary').addEventListener('click', closeModal);
+      modal.addEventListener('click', event => { if (event.target === modal) closeModal(); });
+      innerDoc.addEventListener('keydown', event => { if (event.key === 'Escape') closeModal(); });
+
+      function renderQr() {
+        const existing = innerDoc.getElementById('rmKakaoQr');
+        if (!existing || existing.dataset.rendered === 'true') return;
+        existing.dataset.rendered = 'true';
+        const script = innerDoc.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js';
+        script.onload = () => {
+          try {
+            new innerWin.QRious({element: existing, value: DIRECT_FRIEND_URL, size: 220, level: 'H'});
+          } catch (error) {
+            console.warn('QR rendering failed:', error);
+          }
+        };
+        innerDoc.head.appendChild(script);
+      }
+
+      button.href = DIRECT_FRIEND_URL;
+      button.removeAttribute('target');
+      button.removeAttribute('rel');
+
+      if (isMobileDevice(innerWin)) {
+        button.textContent = '카카오톡 앱에서 바로 채널 추가';
+        button.addEventListener('click', event => {
+          event.preventDefault();
+          innerWin.location.href = DIRECT_FRIEND_URL;
+        });
+      } else {
+        button.textContent = '휴대폰으로 카카오톡 채널 추가';
+        const note = innerDoc.querySelector('#kakaoChannelWrap .kakao-channel-note');
+        if (note) note.textContent = 'PC에서는 버튼을 누르면 큰 QR과 단계별 안내가 표시됩니다.';
+        button.addEventListener('click', event => {
+          event.preventDefault();
+          renderQr();
+          modal.classList.add('visible');
+        });
+      }
+      return true;
+    } catch (error) {
+      console.warn('Kakao channel CTA update pending:', error);
+      return false;
+    }
+  }
+
+  outerFrame.addEventListener('load', () => {
+    let attempts = 0;
+    const timer = setInterval(() => {
+      attempts += 1;
+      if (installChannelExperience() || attempts >= 180) clearInterval(timer);
+    }, 100);
+  });
+})();
+</script>
+</body>
+</html>

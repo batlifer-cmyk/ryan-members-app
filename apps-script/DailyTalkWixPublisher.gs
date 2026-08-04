@@ -5,6 +5,8 @@ const RM_DAILY_TALK_CONFIG = Object.freeze({
   LOG_SHEET: '발송로그',
   QUEUE_HEADER_ROW: 3,
   WIX_SITE_ID: '77af5a69-40e6-48a1-a727-03aee59a6da4',
+  WIX_CONTENT_COLLECTION_ID: 'RyanDailyTalkContent',
+  WIX_MAGAZINE_BASE_URL: 'https://www.ryanmembers.com/rm-magazine',
   WIX_CATEGORY_ID: '736b3232-2c06-4ff8-bf2d-970a5d838cba',
   WIX_MEMBER_ID: '13661272-2b5b-f6ec-d5dc-e8caa85bc8a6',
   WIX_CATEGORY_URL: 'https://www.ryanmembers.com/blog/categories/daily-talk',
@@ -13,8 +15,8 @@ const RM_DAILY_TALK_CONFIG = Object.freeze({
 
 /**
  * Main weekday pipeline:
- * 1. Publish APPROVED queue rows to the Ryan Daily Talk Wix Blog category.
- * 2. Send the published Wix URL to ACTIVE English Passport recipients by Kakao Brand Message.
+ * 1. Publish APPROVED queue rows to the RM Magazine CMS collection.
+ * 2. Send the RM Magazine URL to ACTIVE English Passport recipients by Kakao Brand Message.
  *
  * Required Script Properties:
  * - WIX_API_KEY
@@ -66,71 +68,81 @@ function publishDailyTalkToWix_(item, settings) {
   const apiKey = PropertiesService.getScriptProperties().getProperty('WIX_API_KEY');
   if (!apiKey) throw new Error('Script Properties에 WIX_API_KEY가 없습니다.');
 
-  const title = `[Ryan Daily Talk] ${item.topicKo || item.topicEn || item.contentId}`;
-  const richContent = buildDailyTalkRichContent_(item);
-  const requestBody = {
-    draftPost: {
-      title,
-      excerpt: String(item.snackKo || item.snackEn || '').slice(0, 250),
-      featured: false,
-      categoryIds: [settings.WIX_BLOG_CATEGORY_ID || RM_DAILY_TALK_CONFIG.WIX_CATEGORY_ID],
-      memberId: RM_DAILY_TALK_CONFIG.WIX_MEMBER_ID,
-      hashtags: ['RyanDailyTalk', item.track === 'BUSINESS' ? '비즈니스영어' : '영어회화'],
-      commentingEnabled: false,
-      language: 'ko',
-      richContent
-    },
-    publish: true,
-    fieldsets: ['URL', 'RICH_CONTENT']
-  };
+  const collectionId = String(settings.WIX_CMS_COLLECTION_ID || RM_DAILY_TALK_CONFIG.WIX_CONTENT_COLLECTION_ID).trim();
+  const slug = makeDailyTalkSlug_(item);
+  const url = buildMagazineUrl_(slug, settings);
+  const title = `[${item.track === 'BUSINESS' ? 'Business Talk' : 'Small Talk'}] ${item.topicKo || item.topicEn || item.contentId}`;
+  const data = buildDailyTalkCmsData_(item, title, slug, url);
+  const existing = findWixDataItemBySlug_(apiKey, settings, collectionId, slug);
+  const saved = existing
+    ? updateWixDataItem_(apiKey, settings, collectionId, existing.id, data)
+    : insertWixDataItem_(apiKey, settings, collectionId, data);
 
-  const response = UrlFetchApp.fetch('https://www.wixapis.com/blog/v3/draft-posts', {
-    method: 'post',
-    contentType: 'application/json',
-    headers: {
-      Authorization: apiKey,
-      'wix-site-id': settings.WIX_SITE_ID || RM_DAILY_TALK_CONFIG.WIX_SITE_ID
-    },
-    payload: JSON.stringify(requestBody),
-    muteHttpExceptions: true
-  });
-
-  const status = response.getResponseCode();
-  const text = response.getContentText();
-  if (status < 200 || status >= 300) {
-    throw new Error(`Wix 게시 실패 (${status}): ${text.slice(0, 500)}`);
-  }
-
-  const parsed = JSON.parse(text);
-  const draftPost = parsed.draftPost || {};
-  const url = resolveWixPostUrl_(draftPost.url) || settings.WIX_BLOG_CATEGORY_URL || RM_DAILY_TALK_CONFIG.WIX_CATEGORY_URL;
   return {
-    postId: draftPost.id || '',
+    postId: saved.id || '',
     url,
     publishedAt: new Date()
   };
 }
 
-function buildDailyTalkRichContent_(item) {
-  const nodes = [];
-  if (item.topicEn) nodes.push(headingNode_(item.topicEn, 2));
-  if (item.topicKo) nodes.push(paragraphNode_(item.topicKo));
-  if (item.snackEn) nodes.push(headingNode_('Today’s Language Snack', 3), paragraphNode_(item.snackEn));
-  if (item.snackKo) nodes.push(paragraphNode_(item.snackKo));
+function buildDailyTalkCmsData_(item, title, slug, magazineUrl) {
+  return {
+    contentId: String(item.contentId || ''),
+    title,
+    slug,
+    track: String(item.track || 'SMALL_TALK'),
+    level: String(item.level || 'BASIC'),
+    publishDate: formatDateForWix_(item.sendDate || new Date()),
+    status: 'PUBLISHED',
+    topicEn: String(item.topicEn || ''),
+    topicKo: String(item.topicKo || ''),
+    snackEn: String(item.snackEn || ''),
+    snackKo: String(item.snackKo || ''),
+    chunksJson: String(item.chunksJson || ''),
+    modelAnswerEn: String(item.modelEn || ''),
+    modelAnswerKo: String(item.modelKo || ''),
+    yourTurnEn: String(item.yourTurnEn || ''),
+    yourTurnKo: String(item.yourTurnKo || ''),
+    sourceUrls: parseSourceUrls_(item.sources),
+    blogPostId: '',
+    blogUrl: '',
+    magazineUrl,
+    contentHtml: buildDailyTalkContentHtml_(item),
+    kakaoText: buildDailyTalkKakaoText_({...item, wixContentUrl: magazineUrl}),
+    generatedByAi: true
+  };
+}
 
+function buildDailyTalkContentHtml_(item) {
+  const parts = [];
+  if (item.topicEn) parts.push(`<h2>${escapeHtml_(item.topicEn)}</h2>`);
+  if (item.topicKo) parts.push(`<p class="topic-ko">${escapeHtml_(item.topicKo)}</p>`);
+  if (item.snackEn || item.snackKo) parts.push('<h3>Today&rsquo;s Language Snack</h3>');
+  if (item.snackEn) parts.push(`<p>${escapeHtml_(item.snackEn)}</p>`);
+  if (item.snackKo) parts.push(`<p>${escapeHtml_(item.snackKo)}</p>`);
   const chunks = parseChunks_(item.chunksJson);
   if (chunks.length) {
-    nodes.push(headingNode_('Useful Chunks', 3));
-    chunks.forEach(chunk => nodes.push(paragraphNode_(typeof chunk === 'string' ? chunk : JSON.stringify(chunk))));
+    parts.push('<h3>Useful Chunks</h3>');
+    parts.push('<ul>');
+    chunks.forEach(chunk => {
+      if (typeof chunk === 'string') {
+        parts.push(`<li>${escapeHtml_(chunk)}</li>`);
+      } else {
+        const en = escapeHtml_(chunk.en || chunk.expression || JSON.stringify(chunk));
+        const ko = chunk.ko ? ` <span>${escapeHtml_(chunk.ko)}</span>` : '';
+        parts.push(`<li><strong>${en}</strong>${ko}</li>`);
+      }
+    });
+    parts.push('</ul>');
   }
-
-  if (item.modelEn) nodes.push(headingNode_('Model Answer', 3), paragraphNode_(item.modelEn));
-  if (item.modelKo) nodes.push(paragraphNode_(item.modelKo));
-  if (item.yourTurnEn) nodes.push(headingNode_('Your Turn', 3), paragraphNode_(item.yourTurnEn));
-  if (item.yourTurnKo) nodes.push(paragraphNode_(item.yourTurnKo));
-  nodes.push(paragraphNode_('Ryan Members · English Opens a New World.'));
-
-  return {nodes};
+  if (item.modelEn || item.modelKo) parts.push('<h3>Model Answer</h3>');
+  if (item.modelEn) parts.push(`<p>${escapeHtml_(item.modelEn)}</p>`);
+  if (item.modelKo) parts.push(`<p>${escapeHtml_(item.modelKo)}</p>`);
+  if (item.yourTurnEn || item.yourTurnKo) parts.push('<h3>Your Turn</h3>');
+  if (item.yourTurnEn) parts.push(`<p>${escapeHtml_(item.yourTurnEn)}</p>`);
+  if (item.yourTurnKo) parts.push(`<p>${escapeHtml_(item.yourTurnKo)}</p>`);
+  parts.push('<p class="rm-signature">Ryan Members · English Opens a New World.</p>');
+  return parts.join('\\n');
 }
 
 function sendDailyTalkWixLink_(item, settings) {
@@ -140,7 +152,21 @@ function sendDailyTalkWixLink_(item, settings) {
   });
 
   const maxRecipients = Number(settings.MAX_RECIPIENTS_PER_RUN || 300);
-  const targets = recipients.slice(0, maxRecipients);
+  let targets = recipients.slice(0, maxRecipients);
+  if (toDailyTalkBoolean_(settings.TEST_MODE)) {
+    const testPhone = normalizeDailyTalkPhone_(settings.TEST_PHONE);
+    if (!/^010-\d{4}-\d{4}$/.test(testPhone)) {
+      throw new Error('TEST_MODE=TRUE이면 설정 시트의 TEST_PHONE에 010-0000-0000 형식의 테스트 번호가 필요합니다.');
+    }
+    const matched = recipients.find(recipient => normalizeDailyTalkPhone_(recipient.phone) === testPhone);
+    targets = [{
+      sourceRow: matched ? matched.sourceRow : '',
+      studentName: matched ? matched.studentName : 'TEST_RECIPIENT',
+      phone: testPhone,
+      track: matched ? matched.track : (item.track === 'BUSINESS' ? 'BUSINESS' : 'SMALL_TALK'),
+      lastDailyTalkSentAt: matched ? matched.lastDailyTalkSentAt : ''
+    }];
+  }
   if (!targets.length) {
     return {sentCount: 0, failedCount: 0, sentAt: new Date(), reason: 'NO_ACTIVE_RECIPIENTS'};
   }
@@ -263,6 +289,7 @@ function readQueueRows_(sheet) {
     modelKo: cell_(row, headerMap, 'MODEL_KO'),
     yourTurnEn: cell_(row, headerMap, 'YOUR_TURN_EN'),
     yourTurnKo: cell_(row, headerMap, 'YOUR_TURN_KO'),
+    sources: cell_(row, headerMap, 'SOURCES'),
     wixContentUrl: cell_(row, headerMap, 'WIX_CONTENT_URL'),
     wixPostId: cell_(row, headerMap, 'WIX_POST_ID'),
     wixPublishedAt: cell_(row, headerMap, 'WIX_PUBLISHED_AT'),
@@ -327,12 +354,6 @@ function appendDailyTalkSendLogs_(recipients, item, result, sentAt) {
   });
 }
 
-function resolveWixPostUrl_(urlObject) {
-  if (!urlObject) return '';
-  if (typeof urlObject === 'string') return urlObject;
-  return String(urlObject.base || '') + String(urlObject.path || '');
-}
-
 function parseChunks_(value) {
   if (!value) return [];
   if (Array.isArray(value)) return value;
@@ -344,31 +365,107 @@ function parseChunks_(value) {
   }
 }
 
-function headingNode_(text, level) {
-  return {
-    type: 'HEADING',
-    id: Utilities.getUuid(),
-    nodes: [textNode_(text)],
-    headingData: {level: level || 2}
-  };
+function parseSourceUrls_(value) {
+  if (!value) return [];
+  if (Array.isArray(value)) return value.filter(Boolean).map(String);
+  return String(value)
+    .split(/[\n,]+/)
+    .map(item => item.trim())
+    .filter(item => /^https?:\/\//i.test(item));
 }
 
-function paragraphNode_(text) {
-  return {
-    type: 'PARAGRAPH',
-    id: Utilities.getUuid(),
-    nodes: [textNode_(text)],
-    paragraphData: {}
-  };
+function toDailyTalkBoolean_(value) {
+  return value === true || ['true', 'TRUE', '1', 'yes', 'YES', 'y', 'Y'].includes(String(value || '').trim());
 }
 
-function textNode_(text) {
-  return {
-    type: 'TEXT',
-    id: Utilities.getUuid(),
-    nodes: [],
-    textData: {text: String(text || ''), decorations: []}
-  };
+function normalizeDailyTalkPhone_(value) {
+  const digits = String(value || '').replace(/\D/g, '');
+  if (digits.length === 11 && digits.indexOf('010') === 0) {
+    return digits.slice(0, 3) + '-' + digits.slice(3, 7) + '-' + digits.slice(7);
+  }
+  return String(value || '').trim();
+}
+
+function findWixDataItemBySlug_(apiKey, settings, collectionId, slug) {
+  const response = callWixDataApi_(apiKey, settings, 'https://www.wixapis.com/wix-data/v2/items/query', 'post', {
+    dataCollectionId: collectionId,
+    query: {
+      filter: {slug: {$eq: slug}},
+      paging: {limit: 1, offset: 0}
+    }
+  });
+  const items = response.dataItems || [];
+  return items.length ? items[0] : null;
+}
+
+function insertWixDataItem_(apiKey, settings, collectionId, data) {
+  const response = callWixDataApi_(apiKey, settings, 'https://www.wixapis.com/wix-data/v2/items', 'post', {
+    dataCollectionId: collectionId,
+    dataItem: {data}
+  });
+  return response.dataItem || {};
+}
+
+function updateWixDataItem_(apiKey, settings, collectionId, itemId, data) {
+  const response = callWixDataApi_(apiKey, settings, `https://www.wixapis.com/wix-data/v2/items/${encodeURIComponent(itemId)}`, 'put', {
+    dataCollectionId: collectionId,
+    dataItem: {data}
+  });
+  return response.dataItem || {};
+}
+
+function callWixDataApi_(apiKey, settings, url, method, body) {
+  const response = UrlFetchApp.fetch(url, {
+    method,
+    contentType: 'application/json',
+    headers: {
+      Authorization: apiKey,
+      'wix-site-id': settings.WIX_SITE_ID || RM_DAILY_TALK_CONFIG.WIX_SITE_ID
+    },
+    payload: JSON.stringify(body),
+    muteHttpExceptions: true
+  });
+  const status = response.getResponseCode();
+  const text = response.getContentText();
+  if (status < 200 || status >= 300) {
+    throw new Error(`Wix CMS 저장 실패 (${status}): ${text.slice(0, 700)}`);
+  }
+  return text ? JSON.parse(text) : {};
+}
+
+function makeDailyTalkSlug_(item) {
+  const track = String(item.track || 'SMALL_TALK').toLowerCase().replace(/_/g, '-');
+  const date = formatDateForWix_(item.sendDate || new Date());
+  const raw = String(item.topicEn || item.topicKo || item.contentId || 'daily-talk').toLowerCase();
+  const topic = raw
+    .replace(/[^a-z0-9가-힣]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 48) || String(item.contentId || 'daily-talk').toLowerCase();
+  return `${track}-${date}-${topic}`;
+}
+
+function buildMagazineUrl_(slug, settings) {
+  const base = String(settings.WIX_MAGAZINE_BASE_URL || RM_DAILY_TALK_CONFIG.WIX_MAGAZINE_BASE_URL).replace(/\/+$/, '');
+  return `${base}/${slug}`;
+}
+
+function formatDateForWix_(value) {
+  if (Object.prototype.toString.call(value) === '[object Date]' && !isNaN(value.getTime())) {
+    return Utilities.formatDate(value, Session.getScriptTimeZone() || 'Asia/Seoul', 'yyyy-MM-dd');
+  }
+  const text = String(value || '').trim();
+  const match = text.match(/^\\d{4}-\\d{2}-\\d{2}/);
+  if (match) return match[0];
+  return Utilities.formatDate(new Date(), Session.getScriptTimeZone() || 'Asia/Seoul', 'yyyy-MM-dd');
+}
+
+function escapeHtml_(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function cell_(row, headerMap, header) {

@@ -34,6 +34,7 @@ Added fields:
 contentId     TEXT
 magazineUrl   URL
 contentHtml   RICH_TEXT
+contentRich   RICH_CONTENT
 ```
 
 Existing fields such as `title`, `slug`, `track`, `publishDate`, `status`, `topicEn`, `topicKo`, `snackEn`, `snackKo`, `chunksJson`, `modelAnswerEn`, `modelAnswerKo`, `yourTurnEn`, `yourTurnKo`, `sourceUrls`, and `kakaoText` are reused.
@@ -83,6 +84,7 @@ Paste `wix/rm-magazine-item-page.js` into the item page code.
 ## Apps Script Change
 
 `apps-script/DailyTalkWixPublisher.gs` now stores generated content in Wix CMS instead of creating Wix Blog posts.
+It writes both `contentHtml` and `contentRich`; use `contentRich` for a Wix Rich Content Viewer on the dynamic item page when possible.
 
 The function name `publishDailyTalkToWix_()` is preserved to avoid changing the outer pipeline, but it now:
 

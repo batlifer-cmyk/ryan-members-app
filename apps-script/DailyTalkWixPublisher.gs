@@ -108,6 +108,7 @@ function buildDailyTalkCmsData_(item, title, slug, magazineUrl) {
     blogUrl: '',
     magazineUrl,
     contentHtml: buildDailyTalkContentHtml_(item),
+    contentRich: buildDailyTalkContentRich_(item),
     kakaoText: buildDailyTalkKakaoText_({...item, wixContentUrl: magazineUrl}),
     generatedByAi: true
   };
@@ -143,6 +144,83 @@ function buildDailyTalkContentHtml_(item) {
   if (item.yourTurnKo) parts.push(`<p>${escapeHtml_(item.yourTurnKo)}</p>`);
   parts.push('<p class="rm-signature">Ryan Members · English Opens a New World.</p>');
   return parts.join('\\n');
+}
+
+function buildDailyTalkContentRich_(item) {
+  const nodes = [];
+  addRicosHeading_(nodes, item.topicEn, 2);
+  addRicosParagraph_(nodes, item.topicKo);
+
+  if (item.snackEn || item.snackKo) addRicosHeading_(nodes, 'Today\u2019s Language Snack', 3);
+  addRicosParagraph_(nodes, item.snackEn);
+  addRicosParagraph_(nodes, item.snackKo);
+
+  const chunks = parseChunks_(item.chunksJson);
+  if (chunks.length) {
+    addRicosHeading_(nodes, 'Useful Chunks', 3);
+    nodes.push({
+      type: 'BULLETED_LIST',
+      nodes: chunks.map(chunk => {
+        const text = typeof chunk === 'string'
+          ? chunk
+          : `${chunk.en || chunk.expression || JSON.stringify(chunk)}${chunk.ko ? ': ' + chunk.ko : ''}`;
+        return {
+          type: 'LIST_ITEM',
+          nodes: [{
+            type: 'PARAGRAPH',
+            nodes: [buildRicosText_(text)]
+          }]
+        };
+      }),
+      bulletedListData: {indentation: 0}
+    });
+  }
+
+  if (item.modelEn || item.modelKo) addRicosHeading_(nodes, 'Model Answer', 3);
+  addRicosParagraph_(nodes, item.modelEn);
+  addRicosParagraph_(nodes, item.modelKo);
+
+  if (item.yourTurnEn || item.yourTurnKo) addRicosHeading_(nodes, 'Your Turn', 3);
+  addRicosParagraph_(nodes, item.yourTurnEn);
+  addRicosParagraph_(nodes, item.yourTurnKo);
+  addRicosParagraph_(nodes, 'Ryan Members - English Opens a New World.');
+
+  return {nodes};
+}
+
+function addRicosHeading_(nodes, value, level) {
+  const text = String(value || '').trim();
+  if (!text) return;
+  nodes.push({
+    type: 'HEADING',
+    nodes: [buildRicosText_(text)],
+    headingData: {
+      level,
+      textStyle: {textAlignment: 'AUTO'}
+    }
+  });
+}
+
+function addRicosParagraph_(nodes, value) {
+  const text = String(value || '').trim();
+  if (!text) return;
+  nodes.push({
+    type: 'PARAGRAPH',
+    nodes: [buildRicosText_(text)],
+    paragraphData: {
+      textStyle: {textAlignment: 'AUTO'}
+    }
+  });
+}
+
+function buildRicosText_(text) {
+  return {
+    type: 'TEXT',
+    textData: {
+      text: String(text || '').replace(/\s*\n+\s*/g, ' '),
+      decorations: []
+    }
+  };
 }
 
 function sendDailyTalkWixLink_(item, settings) {

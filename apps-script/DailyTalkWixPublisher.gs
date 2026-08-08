@@ -238,6 +238,63 @@ function createSolapiAuthHeader_(apiKey, apiSecret) {
   return `HMAC-SHA256 apiKey=${apiKey}, date=${dateTime}, salt=${salt}, signature=${signature}`;
 }
 
+/**
+ * Manual one-off test send to the operator's own phone via SOLAPI Kakao.
+ * Does not touch the content queue, student contacts, or send logs — safe
+ * to run without affecting the production Daily Talk pipeline.
+ *
+ * Required Script Property:
+ * - TEST_OWNER_PHONE (010-XXXX-XXXX or digits-only; not read from anywhere else)
+ *
+ * Reuses the operational Settings sheet's SOLAPI_PF_ID (same value the
+ * production pipeline uses) and the existing callSolapi_ / auth helpers.
+ */
+function testDailyTalkSendToOwner() {
+  const testPhone = String(PropertiesService.getScriptProperties().getProperty('TEST_OWNER_PHONE') || '').trim();
+  if (!testPhone) throw new Error('Script Properties에 TEST_OWNER_PHONE이 없습니다.');
+
+  const ss = SpreadsheetApp.openById(RM_DAILY_TALK_CONFIG.OPERATIONS_SPREADSHEET_ID);
+  const settings = loadDailyTalkSettings_(ss);
+  const pfId = String(settings.SOLAPI_PF_ID || '').trim();
+  if (!pfId || pfId.indexOf('...') !== -1) throw new Error('설정 시트의 SOLAPI_PF_ID가 실제 값으로 입력되지 않았습니다.');
+
+  const linkUrl = RM_DAILY_TALK_CONFIG.WIX_CATEGORY_URL;
+  const text = [
+    '[TEST] 라이언멤버스 Ryan Daily Talk',
+    '이 메시지는 운영자 발송 테스트입니다. 학생에게는 전송되지 않았습니다.',
+    '',
+    linkUrl
+  ].join('\n');
+
+  const messages = [{
+    to: testPhone.replace(/\D/g, ''),
+    text,
+    kakaoOptions: {
+      pfId,
+      disableSms: true,
+      bms: {
+        targeting: 'I',
+        chatBubbleType: 'TEXT',
+        adult: false,
+        buttons: [{
+          name: '오늘의 영어 열기',
+          linkType: 'WL',
+          linkMobile: linkUrl,
+          linkPc: linkUrl
+        }]
+      }
+    },
+    customFields: {
+      source: 'MANUAL_OWNER_TEST',
+      contentId: 'TEST'
+    }
+  }];
+
+  const result = callSolapi_(messages);
+  Logger.log('testDailyTalkSendToOwner: sent to ***%s, result=%s', testPhone.replace(/\D/g, '').slice(-4), JSON.stringify(result));
+  return {ok: true, sentTo: 'ends with ' + testPhone.replace(/\D/g, '').slice(-4), result};
+}
+
 function readQueueRows_(sheet) {
   const lastRow = sheet.getLastRow();
   const lastColumn = sheet.getLastColumn();

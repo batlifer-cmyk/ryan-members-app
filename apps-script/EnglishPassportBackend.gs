@@ -3,7 +3,7 @@ const RM_PASSPORT_CONFIG = Object.freeze({
   REGISTRATION_SHEET: '_DB_등록신청',
   CONTACT_SHEET: '학생연락처',
   DAILY_TALK_CONSENT_VERSION: '2026-07-25-v2',
-  KAKAO_CHANNEL_URL: 'https://pf.kakao.com/_xkFxexfX'
+  KAKAO_CHANNEL_URL: 'https://pf.kakao.com/_xkFxexfX/friend'
 });
 
 /**

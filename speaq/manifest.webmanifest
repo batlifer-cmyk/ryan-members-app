@@ -1,0 +1,8 @@
+{
+  "name": "SPEAQ",
+  "short_name": "SPEAQ",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f5f1e8",
+  "theme_color": "#f5f1e8"
+}

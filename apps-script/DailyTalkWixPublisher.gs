@@ -2,8 +2,10 @@ const RM_DAILY_TALK_CONFIG = Object.freeze({
   OPERATIONS_SPREADSHEET_ID: '1vpPKVhDOj9Np5RL-Afu7vTHTqm4gfG3M5MCqkWmUeDE',
   SETTINGS_SHEET: '설정',
   QUEUE_SHEET: '콘텐츠대기열',
+  SUBSCRIBERS_SHEET: '신청자',
   LOG_SHEET: '발송로그',
   QUEUE_HEADER_ROW: 3,
+  SUBSCRIBERS_HEADER_ROW: 3,
   WIX_SITE_ID: '77af5a69-40e6-48a1-a727-03aee59a6da4',
   WIX_CONTENT_COLLECTION_ID: 'RyanDailyTalkContent',
   WIX_MAGAZINE_BASE_URL: 'https://www.ryanmembers.com/rm-magazine',
@@ -62,6 +64,12 @@ function runDailyTalkWixAndKakaoPipeline() {
   } finally {
     lock.releaseLock();
   }
+}
+
+function runDailyTalkWixAndKakaoPipelineWithLog() {
+  const result = runDailyTalkWixAndKakaoPipeline();
+  Logger.log(JSON.stringify(result, null, 2));
+  return result;
 }
 
 function checkRmMagazineSecretAndWixAccess() {
@@ -496,6 +504,84 @@ function appendDailyTalkSendLogs_(recipients, item, result, sentAt) {
       recipient.track, 'SENT', item.wixContentUrl, JSON.stringify(result)
     ]);
   });
+}
+
+function getActiveDailyTalkRecipients() {
+  const ss = SpreadsheetApp.openById(RM_DAILY_TALK_CONFIG.OPERATIONS_SPREADSHEET_ID);
+  const sheet = getDailyTalkSheet_(ss, RM_DAILY_TALK_CONFIG.SUBSCRIBERS_SHEET);
+  const lastRow = sheet.getLastRow();
+  const lastColumn = sheet.getLastColumn();
+  if (lastRow <= RM_DAILY_TALK_CONFIG.SUBSCRIBERS_HEADER_ROW) return [];
+
+  const headers = sheet.getRange(RM_DAILY_TALK_CONFIG.SUBSCRIBERS_HEADER_ROW, 1, 1, lastColumn).getDisplayValues()[0];
+  const map = buildHeaderMap_(headers);
+  const values = sheet
+    .getRange(RM_DAILY_TALK_CONFIG.SUBSCRIBERS_HEADER_ROW + 1, 1, lastRow - RM_DAILY_TALK_CONFIG.SUBSCRIBERS_HEADER_ROW, lastColumn)
+    .getDisplayValues();
+
+  return values.map((row, index) => {
+    const phone = normalizeDailyTalkPhone_(cell_(row, map, '휴대전화'));
+    return {
+      sourceRow: index + RM_DAILY_TALK_CONFIG.SUBSCRIBERS_HEADER_ROW + 1,
+      subscriberId: cell_(row, map, 'SUBSCRIBER_ID'),
+      studentName: cell_(row, map, '이름'),
+      phone,
+      track: normalizeDailyTalkTrack_(cell_(row, map, '트랙')),
+      level: cell_(row, map, '레벨'),
+      status: String(cell_(row, map, '상태') || '').trim().toUpperCase(),
+      channelAdded: cell_(row, map, '채널추가확인'),
+      advertisingConsent: cell_(row, map, '광고성수신동의'),
+      lastDailyTalkSentAt: cell_(row, map, '마지막발송일')
+    };
+  }).filter(recipient => {
+    if (!/^010-\d{4}-\d{4}$/.test(recipient.phone)) return false;
+    if (recipient.status !== 'ACTIVE') return false;
+    return !isExplicitDailyTalkNo_(recipient.channelAdded) && !isExplicitDailyTalkNo_(recipient.advertisingConsent);
+  });
+}
+
+function markDailyTalkSent(phone, sentAt) {
+  const ss = SpreadsheetApp.openById(RM_DAILY_TALK_CONFIG.OPERATIONS_SPREADSHEET_ID);
+  const sheet = getDailyTalkSheet_(ss, RM_DAILY_TALK_CONFIG.SUBSCRIBERS_SHEET);
+  const lastRow = sheet.getLastRow();
+  const lastColumn = sheet.getLastColumn();
+  if (lastRow <= RM_DAILY_TALK_CONFIG.SUBSCRIBERS_HEADER_ROW) return;
+
+  const headers = sheet.getRange(RM_DAILY_TALK_CONFIG.SUBSCRIBERS_HEADER_ROW, 1, 1, lastColumn).getDisplayValues()[0];
+  const map = buildHeaderMap_(headers);
+  const phoneColumn = map['휴대전화'];
+  const lastSentColumn = map['마지막발송일'];
+  if (phoneColumn === undefined || lastSentColumn === undefined) return;
+
+  const normalizedPhone = normalizeDailyTalkPhone_(phone);
+  const values = sheet
+    .getRange(RM_DAILY_TALK_CONFIG.SUBSCRIBERS_HEADER_ROW + 1, 1, lastRow - RM_DAILY_TALK_CONFIG.SUBSCRIBERS_HEADER_ROW, lastColumn)
+    .getDisplayValues();
+
+  values.forEach((row, index) => {
+    if (normalizeDailyTalkPhone_(row[phoneColumn]) === normalizedPhone) {
+      sheet.getRange(index + RM_DAILY_TALK_CONFIG.SUBSCRIBERS_HEADER_ROW + 1, lastSentColumn + 1).setValue(sentAt);
+    }
+  });
+}
+
+function buildHeaderMap_(headers) {
+  const map = {};
+  headers.forEach((header, index) => { if (header) map[String(header).trim()] = index; });
+  return map;
+}
+
+function normalizeDailyTalkTrack_(value) {
+  const text = String(value || '').trim().toUpperCase();
+  if (!text) return 'SMALL_TALK';
+  if (text.indexOf('BOTH') !== -1 || text.indexOf('전체') !== -1 || text.indexOf('둘') !== -1) return 'BOTH';
+  if (text.indexOf('BUSINESS') !== -1 || text.indexOf('비즈') !== -1) return 'BUSINESS';
+  return 'SMALL_TALK';
+}
+
+function isExplicitDailyTalkNo_(value) {
+  const text = String(value || '').trim().toUpperCase();
+  return ['FALSE', 'NO', 'N', '0', '거부', '미동의', '차단', '중단'].indexOf(text) !== -1;
 }
 
 function parseChunks_(value) {

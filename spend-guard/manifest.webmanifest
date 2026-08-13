@@ -1,0 +1,1 @@
+{"name":"지출경고 — Spend Guard","short_name":"지출경고","description":"삼성카드 소비와 Night-Out 과소비를 감시하는 개인 소비 가드레일","start_url":"./","scope":"./","display":"standalone","background_color":"#0b0d10","theme_color":"#0b0d10","icons":[{"src":"./icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]}

@@ -86,7 +86,7 @@ function checkRmMagazineSecretAndWixAccess() {
   const apiKey = properties.getProperty('WIX_API_KEY');
   if (!apiKey) {
     result.wix.error = 'WIX_API_KEY is missing in Script Properties.';
-    return result;
+    return logDiagnosticResult_(result);
   }
 
   try {
@@ -108,16 +108,21 @@ function checkRmMagazineSecretAndWixAccess() {
     result.wix.sampleItemFound = Boolean(item);
     if (!item) {
       result.wix.writeOk = 'SKIPPED_NO_SAMPLE_ITEM';
-      return result;
+      return logDiagnosticResult_(result);
     }
 
     updateWixDataItem_(apiKey, settings, collectionId, item.id, item.data || {});
     result.wix.writeOk = true;
-    return result;
+    return logDiagnosticResult_(result);
   } catch (error) {
     result.wix.error = sanitizeDiagnosticError_(error);
-    return result;
+    return logDiagnosticResult_(result);
   }
+}
+
+function logDiagnosticResult_(result) {
+  Logger.log(JSON.stringify(result, null, 2));
+  return result;
 }
 
 function sanitizeDiagnosticError_(error) {

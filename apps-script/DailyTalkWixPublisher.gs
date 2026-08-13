@@ -64,6 +64,67 @@ function runDailyTalkWixAndKakaoPipeline() {
   }
 }
 
+function checkRmMagazineSecretAndWixAccess() {
+  const properties = PropertiesService.getScriptProperties();
+  const result = {
+    checkedAt: new Date(),
+    scriptProperties: {
+      WIX_API_KEY: properties.getProperty('WIX_API_KEY') ? 'SET' : 'MISSING',
+      SOLAPI_API_KEY: properties.getProperty('SOLAPI_API_KEY') ? 'SET' : 'MISSING',
+      SOLAPI_API_SECRET: properties.getProperty('SOLAPI_API_SECRET') ? 'SET' : 'MISSING'
+    },
+    wix: {
+      siteId: RM_DAILY_TALK_CONFIG.WIX_SITE_ID,
+      collectionId: RM_DAILY_TALK_CONFIG.WIX_CONTENT_COLLECTION_ID,
+      readOk: false,
+      writeOk: false,
+      sampleItemFound: false,
+      error: ''
+    }
+  };
+
+  const apiKey = properties.getProperty('WIX_API_KEY');
+  if (!apiKey) {
+    result.wix.error = 'WIX_API_KEY is missing in Script Properties.';
+    return result;
+  }
+
+  try {
+    const ss = SpreadsheetApp.openById(RM_DAILY_TALK_CONFIG.OPERATIONS_SPREADSHEET_ID);
+    const settings = loadDailyTalkSettings_(ss);
+    const collectionId = String(settings.WIX_CMS_COLLECTION_ID || RM_DAILY_TALK_CONFIG.WIX_CONTENT_COLLECTION_ID).trim();
+    result.wix.siteId = String(settings.WIX_SITE_ID || RM_DAILY_TALK_CONFIG.WIX_SITE_ID);
+    result.wix.collectionId = collectionId;
+
+    const response = callWixDataApi_(apiKey, settings, 'https://www.wixapis.com/wix-data/v2/items/query', 'post', {
+      dataCollectionId: collectionId,
+      query: {
+        paging: {limit: 1, offset: 0}
+      }
+    });
+
+    const item = (response.dataItems || [])[0];
+    result.wix.readOk = true;
+    result.wix.sampleItemFound = Boolean(item);
+    if (!item) {
+      result.wix.writeOk = 'SKIPPED_NO_SAMPLE_ITEM';
+      return result;
+    }
+
+    updateWixDataItem_(apiKey, settings, collectionId, item.id, item.data || {});
+    result.wix.writeOk = true;
+    return result;
+  } catch (error) {
+    result.wix.error = sanitizeDiagnosticError_(error);
+    return result;
+  }
+}
+
+function sanitizeDiagnosticError_(error) {
+  return String(error && error.message ? error.message : error)
+    .replace(/[A-Za-z0-9_-]{32,}/g, '[redacted]');
+}
+
 function publishDailyTalkToWix_(item, settings) {
   const apiKey = PropertiesService.getScriptProperties().getProperty('WIX_API_KEY');
   if (!apiKey) throw new Error('Script Properties에 WIX_API_KEY가 없습니다.');

@@ -1,11 +1,14 @@
 const RM_DAILY_TALK_CONFIG = Object.freeze({
   OPERATIONS_SPREADSHEET_ID: '1vpPKVhDOj9Np5RL-Afu7vTHTqm4gfG3M5MCqkWmUeDE',
+  PASSPORT_SPREADSHEET_ID: '1P42_8yxR0Tlys8g48Cq1h4SryRHzTlljE0A-bvngwnE',
   SETTINGS_SHEET: '설정',
   QUEUE_SHEET: '콘텐츠대기열',
   SUBSCRIBERS_SHEET: '신청자',
+  PASSPORT_CONTACT_SHEET: '학생연락처',
   LOG_SHEET: '발송로그',
   QUEUE_HEADER_ROW: 3,
   SUBSCRIBERS_HEADER_ROW: 3,
+  PASSPORT_CONTACT_HEADER_ROW: 1,
   WIX_SITE_ID: '77af5a69-40e6-48a1-a727-03aee59a6da4',
   WIX_CONTENT_COLLECTION_ID: 'RyanDailyTalkContent',
   WIX_MAGAZINE_BASE_URL: 'https://www.ryanmembers.com/rm-magazine',
@@ -126,6 +129,29 @@ function checkRmMagazineSecretAndWixAccess() {
     result.wix.error = sanitizeDiagnosticError_(error);
     return logDiagnosticResult_(result);
   }
+}
+
+function checkDailyTalkPassportRecipientSource() {
+  const recipients = getActiveDailyTalkRecipients();
+  const result = recipients.reduce((summary, recipient) => {
+    summary.total += 1;
+    summary.byTrack[recipient.track] = (summary.byTrack[recipient.track] || 0) + 1;
+    return summary;
+  }, {
+    checkedAt: new Date(),
+    sourceSpreadsheetId: RM_DAILY_TALK_CONFIG.PASSPORT_SPREADSHEET_ID,
+    sourceSheet: RM_DAILY_TALK_CONFIG.PASSPORT_CONTACT_SHEET,
+    total: 0,
+    byTrack: {},
+    sampleRows: recipients.slice(0, 5).map(recipient => ({
+      sourceRow: recipient.sourceRow,
+      track: recipient.track,
+      status: recipient.status,
+      phoneLast4: String(recipient.phone || '').slice(-4)
+    }))
+  });
+  Logger.log(JSON.stringify(result, null, 2));
+  return result;
 }
 
 function logDiagnosticResult_(result) {
@@ -507,60 +533,71 @@ function appendDailyTalkSendLogs_(recipients, item, result, sentAt) {
 }
 
 function getActiveDailyTalkRecipients() {
-  const ss = SpreadsheetApp.openById(RM_DAILY_TALK_CONFIG.OPERATIONS_SPREADSHEET_ID);
-  const sheet = getDailyTalkSheet_(ss, RM_DAILY_TALK_CONFIG.SUBSCRIBERS_SHEET);
+  const ss = SpreadsheetApp.openById(RM_DAILY_TALK_CONFIG.PASSPORT_SPREADSHEET_ID);
+  const sheet = getDailyTalkSheet_(ss, RM_DAILY_TALK_CONFIG.PASSPORT_CONTACT_SHEET);
   const lastRow = sheet.getLastRow();
   const lastColumn = sheet.getLastColumn();
-  if (lastRow <= RM_DAILY_TALK_CONFIG.SUBSCRIBERS_HEADER_ROW) return [];
+  if (lastRow <= RM_DAILY_TALK_CONFIG.PASSPORT_CONTACT_HEADER_ROW) return [];
 
-  const headers = sheet.getRange(RM_DAILY_TALK_CONFIG.SUBSCRIBERS_HEADER_ROW, 1, 1, lastColumn).getDisplayValues()[0];
+  const headers = sheet.getRange(RM_DAILY_TALK_CONFIG.PASSPORT_CONTACT_HEADER_ROW, 1, 1, lastColumn).getDisplayValues()[0];
   const map = buildHeaderMap_(headers);
   const values = sheet
-    .getRange(RM_DAILY_TALK_CONFIG.SUBSCRIBERS_HEADER_ROW + 1, 1, lastRow - RM_DAILY_TALK_CONFIG.SUBSCRIBERS_HEADER_ROW, lastColumn)
+    .getRange(RM_DAILY_TALK_CONFIG.PASSPORT_CONTACT_HEADER_ROW + 1, 1, lastRow - RM_DAILY_TALK_CONFIG.PASSPORT_CONTACT_HEADER_ROW, lastColumn)
     .getDisplayValues();
 
   return values.map((row, index) => {
-    const phone = normalizeDailyTalkPhone_(cell_(row, map, '휴대전화'));
+    const phone = normalizeDailyTalkPhone_(
+      cell_(row, map, '최종전화번호') ||
+      cell_(row, map, '전화번호') ||
+      cell_(row, map, '전화번호(수동입력)') ||
+      cell_(row, map, '전화번호(자동)')
+    );
     return {
-      sourceRow: index + RM_DAILY_TALK_CONFIG.SUBSCRIBERS_HEADER_ROW + 1,
-      subscriberId: cell_(row, map, 'SUBSCRIBER_ID'),
-      studentName: cell_(row, map, '이름'),
+      sourceRow: index + RM_DAILY_TALK_CONFIG.PASSPORT_CONTACT_HEADER_ROW + 1,
+      subscriberId: `PASSPORT-${phone.replace(/\D/g, '')}`,
+      studentName: cell_(row, map, '학생명') || cell_(row, map, '학생명(수동입력키)'),
       phone,
-      track: normalizeDailyTalkTrack_(cell_(row, map, '트랙')),
-      level: cell_(row, map, '레벨'),
-      status: String(cell_(row, map, '상태') || '').trim().toUpperCase(),
-      channelAdded: cell_(row, map, '채널추가확인'),
-      advertisingConsent: cell_(row, map, '광고성수신동의'),
-      lastDailyTalkSentAt: cell_(row, map, '마지막발송일')
+      track: normalizeDailyTalkTrack_(cell_(row, map, 'dailyTalkTrack')),
+      level: '',
+      status: String(cell_(row, map, 'dailyTalkStatus') || '').trim().toUpperCase(),
+      optIn: toDailyTalkBoolean_(cell_(row, map, 'dailyTalkOptIn')),
+      channelAdded: cell_(row, map, 'kakaoChannelAdded'),
+      advertisingConsent: cell_(row, map, 'dailyTalkOptIn'),
+      lastDailyTalkSentAt: cell_(row, map, 'lastDailyTalkSentAt')
     };
   }).filter(recipient => {
+    if (!recipient.studentName) return false;
     if (!/^010-\d{4}-\d{4}$/.test(recipient.phone)) return false;
+    if (!recipient.optIn) return false;
     if (recipient.status !== 'ACTIVE') return false;
-    return !isExplicitDailyTalkNo_(recipient.channelAdded) && !isExplicitDailyTalkNo_(recipient.advertisingConsent);
+    return !isExplicitDailyTalkNo_(recipient.advertisingConsent);
   });
 }
 
 function markDailyTalkSent(phone, sentAt) {
-  const ss = SpreadsheetApp.openById(RM_DAILY_TALK_CONFIG.OPERATIONS_SPREADSHEET_ID);
-  const sheet = getDailyTalkSheet_(ss, RM_DAILY_TALK_CONFIG.SUBSCRIBERS_SHEET);
+  const ss = SpreadsheetApp.openById(RM_DAILY_TALK_CONFIG.PASSPORT_SPREADSHEET_ID);
+  const sheet = getDailyTalkSheet_(ss, RM_DAILY_TALK_CONFIG.PASSPORT_CONTACT_SHEET);
   const lastRow = sheet.getLastRow();
   const lastColumn = sheet.getLastColumn();
-  if (lastRow <= RM_DAILY_TALK_CONFIG.SUBSCRIBERS_HEADER_ROW) return;
+  if (lastRow <= RM_DAILY_TALK_CONFIG.PASSPORT_CONTACT_HEADER_ROW) return;
 
-  const headers = sheet.getRange(RM_DAILY_TALK_CONFIG.SUBSCRIBERS_HEADER_ROW, 1, 1, lastColumn).getDisplayValues()[0];
+  const headers = sheet.getRange(RM_DAILY_TALK_CONFIG.PASSPORT_CONTACT_HEADER_ROW, 1, 1, lastColumn).getDisplayValues()[0];
   const map = buildHeaderMap_(headers);
-  const phoneColumn = map['휴대전화'];
-  const lastSentColumn = map['마지막발송일'];
-  if (phoneColumn === undefined || lastSentColumn === undefined) return;
+  const phoneColumns = ['최종전화번호', '전화번호', '전화번호(수동입력)', '전화번호(자동)']
+    .map(header => map[header])
+    .filter(index => index !== undefined);
+  const lastSentColumn = map['lastDailyTalkSentAt'];
+  if (!phoneColumns.length || lastSentColumn === undefined) return;
 
   const normalizedPhone = normalizeDailyTalkPhone_(phone);
   const values = sheet
-    .getRange(RM_DAILY_TALK_CONFIG.SUBSCRIBERS_HEADER_ROW + 1, 1, lastRow - RM_DAILY_TALK_CONFIG.SUBSCRIBERS_HEADER_ROW, lastColumn)
+    .getRange(RM_DAILY_TALK_CONFIG.PASSPORT_CONTACT_HEADER_ROW + 1, 1, lastRow - RM_DAILY_TALK_CONFIG.PASSPORT_CONTACT_HEADER_ROW, lastColumn)
     .getDisplayValues();
 
   values.forEach((row, index) => {
-    if (normalizeDailyTalkPhone_(row[phoneColumn]) === normalizedPhone) {
-      sheet.getRange(index + RM_DAILY_TALK_CONFIG.SUBSCRIBERS_HEADER_ROW + 1, lastSentColumn + 1).setValue(sentAt);
+    const matchesPhone = phoneColumns.some(phoneColumn => normalizeDailyTalkPhone_(row[phoneColumn]) === normalizedPhone);
+    if (matchesPhone) {
+      sheet.getRange(index + RM_DAILY_TALK_CONFIG.PASSPORT_CONTACT_HEADER_ROW + 1, lastSentColumn + 1).setValue(sentAt);
     }
   });
 }

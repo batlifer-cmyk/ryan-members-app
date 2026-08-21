@@ -1,0 +1,85 @@
+ +
+    block('Structure') +
+    steplist([
+      '<b>Who you are</b> — "I\'m currently working as a marketing manager at ABC Company."',
+      '<b>What you do</b> — "I mainly focus on developing digital strategies and improving customer engagement."',
+      '<b>Your experience / achievement</b> — "Over the past five years, I\'ve helped increase online sales by 30%."',
+      '<b>Your goal / interest</b> — "I\'m currently interested in exploring new opportunities in global marketing."'
+    ]) +
+    example('"Hi, I\'m Sarah. I\'m currently a product manager at a technology company. I specialize in developing digital products and working with cross-functional teams. Over the past few years, I\'ve led several successful product launches across Asia. I\'m passionate about creating products that solve real customer problems."')
+  },
+  { id:'2-2', en:'2. PREP Framework', kr:'PREP — 의견을 명확하게 전달하기', body:
+    slideHead('2. PREP Framework','의견을 명확하게 전달하기') +
+    '<p class="lead">A simple structure for giving opinions in meetings, discussions, and presentations — helps you avoid vague answers like "I think it\'s good because it\'s better."</p>' +
+    '<div class="framework-badges">' +
+      '<div class="fb">P<span>Point</span></div><div class="fb">R<span>Reason</span></div><div class="fb">E<span>Example</span></div><div class="fb">P<span>Point</span></div>' +
+    '</div>' +
+    block('Example Question: "Do you think companies should allow remote work?"') +
+    starSteps([
+      {l:'P', t:'Point', d:'"From my perspective, companies should offer flexible work options."'},
+      {l:'R', t:'Reason', d:'"The main reason is that employees can be more productive when they have more control over their working environment."'},
+      {l:'E', t:'Example', d:'"For example, my previous company introduced a hybrid system, and employee satisfaction improved significantly."'},
+      {l:'P', t:'Point (repeat)', d:'"So overall, I believe flexibility can create better performance and engagement."'}
+    ]) +
+    block('Useful Expressions') +
+    '<div class="grid-2">' +
+      '<div class="card"><h4>Giving your point</h4><p>From my perspective... · I believe that... · My take is that... · I\'d argue that...</p></div>' +
+      '<div class="card"><h4>Giving reasons</h4><p>The main reason is... · One important factor is... · This is mainly because...</p></div>' +
+    '</div>' +
+    '<div class="card"><h4>Giving examples</h4><p>For example,... · A good example is... · In my experience,...</p></div>'
+  },
+  { id:'2-3', en:'3. STAR Framework', kr:'STAR — 경험을 설득력 있게 이야기하기', body:
+    slideHead('3. STAR Framework','경험을 설득력 있게 이야기하기') +
+    '<p class="lead">Mainly used for behavioral interviews, but also useful for explaining projects, challenges, and achievements at work.</p>' +
+    block('Example Question: "Tell me about a time you solved a difficult problem."') +
+    starSteps([
+      {l:'S', t:'Situation', d:'"In my previous role, our team faced increasing customer complaints after a product update."'},
+      {l:'T', t:'Task', d:'"I was responsible for identifying the main issues and improving customer satisfaction."'},
+      {l:'A', t:'Action', d:'"I analyzed customer feedback, identified common problems, and worked with the product team to develop solutions."'},
+      {l:'R', t:'Result', d:'"As a result, customer complaints decreased by 30% within three months."'}
+    ]) +
+    note('Key Point: Action 부분이 가장 중요합니다. <br><i>Weak:</i> "My team improved the process." → <i>Strong:</i> "I analyzed the data, identified the problem, and proposed a new process."')
+  },
+  { id:'2-4', en:'Open-ended discussion questions', kr:'프레임워크 연습용 자유토론 질문', body:
+    slideHead('Open-ended questions to practice','PREP / STAR 연습용 자유토론 질문') +
+    qlist(['Should companies allow employees to work remotely?','Will AI replace most office jobs?','Is work-life balance more important than salary?','Is a university degree still necessary?','Should companies prioritize profits or sustainability?','Is networking more important than technical skills?','What makes a great leader?','Should employees use AI at work?','Is changing jobs every few years a good career strategy?','Is learning English still important in the age of AI?','Is it better to be a specialist or a generalist?','Should companies hire for skills or cultural fit?','Can a company be successful without a strong company culture?'])
+  }
+]},
+
+{ id:'m3', en:'Module 3 · Communication Scenarios', kr:'비즈니스 커뮤니케이션 시나리오', sections:[
+  { id:'3-1', en:'Student-tailored roleplay scenarios', kr:'학생 맞춤형 상황 연습', body:
+    slideHead('Module 3. Business Communication Scenarios','학생 맞춤형 상황 연습') +
+    '<p class="lead kr">학생이 본인의 상황에 맞는 롤플레이나 영어 발표 자료를 미리 선생님에게 제공하면, 이를 바탕으로 수업을 진행합니다.</p>' +
+    scenarioGrid([
+      {t:'회의', en:'Meetings', d:'팀 미팅에서 의견을 제시하거나, 다른 사람의 의견에 동의·반대하는 표현을 연습.'},
+      {t:'협상', en:'Negotiation', d:'가격, 계약 조건, 일정 등을 협상할 때 자연스럽고 설득력 있게 말하는 연습.'},
+      {t:'고객 미팅', en:'Client Meetings', d:'해외 고객과 첫 미팅, 프로젝트 진행 상황 설명, 질문 답변 연습.'},
+      {t:'전화·화상회의', en:'Phone / Video Calls', d:'Zoom·Teams 미팅 진행, 전화 업무 처리 표현 연습.'},
+      {t:'면접', en:'Job Interview', d:'외국계 기업 / 해외 MBA 인터뷰 예상 질문 답변 연습.'},
+      {t:'성과 보고', en:'Status Updates', d:'상사·고객에게 진행 상황, 성과, 이슈를 간결하게 보고하는 연습.'},
+      {t:'피드백', en:'Giving & Receiving Feedback', d:'동료 업무에 건설적 피드백을 주거나, 받은 피드백에 적절히 대응.'},
+      {t:'네트워킹', en:'Networking', d:'컨퍼런스·전시회·행사에서 처음 만난 사람과 자연스럽게 대화 이어가기.'},
+      {t:'문제 해결', en:'Handling Problems', d:'배송 지연, 제품 문제, 일정 변경 등 예상치 못한 상황 설명·해결 연습.'},
+      {t:'채용 면접 진행', en:'Hiring', d:'면접관으로서 지원자에게 질문하거나 회사·포지션 소개 연습. → Module 5와 연계.'},
+      {t:'데이터 설명', en:'Data Presentation', d:'차트, 그래프, 매출, KPI 등을 영어로 설명하고 질문에 답변하는 연습.'}
+    ])
+  }
+]},
+
+{ id:'m4', en:'Module 4 · TED Discussions', kr:'비즈니스 TED 토론', sections:[
+  { id:'4-0', en:'Module intro', kr:'모듈 소개', body:
+    slideHead('Module 4. Business TED Discussions','비즈니스에 도움이 되는 TED 토론') +
+    '<p class="lead kr">비즈니스 환경에 도움이 되는 유명한 TED 영상을 시청한 후, 자신의 생각을 영어로 작성해 옵니다. 수업 시간에는 선생님과 함께 작성한 내용을 교정하고, 주제에 대해 자유롭게 토의합니다.</p>'
+  },
+  { id:'4-1', en:'TED 1 · Simon Sinek', kr:'Unit 1 · 소통과 설득', body:
+    tedCard({unit:'Unit 1 · Communication & Persuasion — "How do great professionals communicate?"',
+      title:'How Great Leaders Inspire Action', theme:'Simon Sinek',
+      talk:'How Great Leaders Inspire Action — Simon Sinek', url:'https://www.ted.com/talks/simon_sinek_how_great_leaders_inspire_action',
+      connects:['Elevator Pitch','Persuading','Giving opinions','Leadership communication'],
+      phrases:['"The key point is..."','"From my perspective..."','"What really matters is..."'],
+      discussion:['Why do people follow certain leaders?','What makes a company\'s message memorable?','How would you explain your company\'s "why"?'],
+      vocab:['purpose','inspire','motivate','communicate a vision','build trust']})
+  },
+  { id:'4-2', en:'TED 2 · Brené Brown', kr:'Unit 1 · 소통과 설득', body:
+    tedCard({unit:'Unit 1 · Communication & Persuasion',
+      titl

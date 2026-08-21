@@ -1,6 +1,5 @@
 'use client';
 
-import { upload } from '@vercel/blob/client';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { RMRecord, RecordKind } from '@/lib/types';
 
@@ -14,6 +13,16 @@ type RecentRecord = {
   summary: string;
   duration: number;
 };
+
+type UploadedChunk = {
+  url: string;
+  pathname: string;
+  index: number;
+  size: number;
+};
+
+const CHUNK_SIZE = 3 * 1024 * 1024;
+const MAX_FILE_SIZE = 24 * 1024 * 1024;
 
 const kindMeta: Record<RecordKind, { label: string; caption: string }> = {
   phone: { label: '전화상담', caption: '통화 녹음파일을 올려 전사합니다.' },
@@ -42,7 +51,20 @@ function safeExtension(name: string, type: string) {
   if (type.includes('mp4') || type.includes('m4a')) return '.m4a';
   if (type.includes('wav')) return '.wav';
   if (type.includes('mpeg') || type.includes('mp3')) return '.mp3';
+  if (type.includes('ogg')) return '.ogg';
   return '.audio';
+}
+
+async function deleteTemporaryUpload(uploadId: string) {
+  try {
+    await fetch('/api/blob/chunk', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uploadId }),
+    });
+  } catch {
+    // Server-side processing also performs cleanup. This is only best effort.
+  }
 }
 
 export default function Home() {
@@ -66,7 +88,7 @@ export default function Home() {
 
   const mediaRecorder = useRef<MediaRecorder | null>(null);
   const mediaStream = useRef<MediaStream | null>(null);
-  const chunks = useRef<Blob[]>([]);
+  const recordedChunks = useRef<Blob[]>([]);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const checkAuth = useCallback(async () => {
@@ -124,15 +146,27 @@ export default function Home() {
     setError('');
     setResult(null);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          channelCount: 1,
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+        },
+      });
       mediaStream.current = stream;
       const preferred = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'];
       const mimeType = preferred.find((type) => MediaRecorder.isTypeSupported(type));
-      const recorder = new MediaRecorder(stream, mimeType ? { mimeType, audioBitsPerSecond: 32000 } : { audioBitsPerSecond: 32000 });
-      chunks.current = [];
-      recorder.ondataavailable = (event) => { if (event.data.size) chunks.current.push(event.data); };
+      const recorder = new MediaRecorder(
+        stream,
+        mimeType ? { mimeType, audioBitsPerSecond: 32000 } : { audioBitsPerSecond: 32000 },
+      );
+      recordedChunks.current = [];
+      recorder.ondataavailable = (event) => {
+        if (event.data.size) recordedChunks.current.push(event.data);
+      };
       recorder.onstop = () => {
-        const blob = new Blob(chunks.current, { type: recorder.mimeType || 'audio/webm' });
+        const blob = new Blob(recordedChunks.current, { type: recorder.mimeType || 'audio/webm' });
         const ext = safeExtension('recording', blob.type);
         setFile(new File([blob], `rm-record-${Date.now()}${ext}`, { type: blob.type }));
         mediaStream.current?.getTracks().forEach((track) => track.stop());
@@ -156,31 +190,52 @@ export default function Home() {
     setRecording(false);
   }
 
+  async function uploadInPrivateChunks(target: File, uploadId: string) {
+    const total = Math.ceil(target.size / CHUNK_SIZE);
+    const chunks: UploadedChunk[] = [];
+
+    for (let index = 0; index < total; index += 1) {
+      const start = index * CHUNK_SIZE;
+      const end = Math.min(target.size, start + CHUNK_SIZE);
+      const part = target.slice(start, end, 'application/octet-stream');
+      setStatus(`1/3 음성파일을 비공개로 업로드하고 있습니다… ${index + 1}/${total}`);
+
+      const response = await fetch(`/api/blob/chunk?uploadId=${encodeURIComponent(uploadId)}&index=${index}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/octet-stream' },
+        body: part,
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || `업로드 조각 ${index + 1} 저장에 실패했습니다.`);
+      chunks.push(data.chunk as UploadedChunk);
+    }
+
+    return chunks;
+  }
+
   async function processRecord() {
     if (!file) return setError('녹음하거나 음성파일을 선택해 주세요.');
     if (!consentConfirmed) return setError('녹음·내부 분석 동의 확인이 필요합니다.');
+    if (file.size > MAX_FILE_SIZE) return setError('전사 가능한 파일은 최대 24MB입니다. 앱에서 직접 녹음하면 32kbps로 저장되어 긴 수업도 용량을 줄일 수 있습니다.');
+
     setError('');
     setResult(null);
+    const uploadId = crypto.randomUUID();
+    let uploaded = false;
 
     try {
-      setStatus('1/3 음성파일을 안전하게 업로드하고 있습니다…');
-      const ext = safeExtension(file.name, file.type);
-      const date = new Date().toISOString().slice(0, 10);
-      const pathname = `rm-record/audio/${date}/${crypto.randomUUID()}${ext}`;
-      const blob = await upload(pathname, file, {
-        access: 'private',
-        handleUploadUrl: '/api/blob/upload',
-      });
+      const chunks = await uploadInPrivateChunks(file, uploadId);
+      uploaded = true;
 
       setStatus('2/3 화자를 구분하며 전사하고 있습니다…');
       const response = await fetch('/api/process', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          audioUrl: blob.url,
-          audioPathname: blob.pathname,
+          uploadId,
+          chunks,
           originalName: file.name,
-          contentType: file.type || blob.contentType || 'application/octet-stream',
+          contentType: file.type || 'application/octet-stream',
           size: file.size,
           kind,
           subjectName,
@@ -198,6 +253,7 @@ export default function Home() {
     } catch (e) {
       setStatus('');
       setError(e instanceof Error ? e.message : '처리에 실패했습니다.');
+      if (!uploaded) await deleteTemporaryUpload(uploadId);
     }
   }
 
@@ -270,7 +326,11 @@ export default function Home() {
                 <input
                   type="file"
                   accept="audio/*,video/mp4,.m4a,.mp3,.wav,.webm,.ogg,.mp4"
-                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                  onChange={(e) => {
+                    const selected = e.target.files?.[0] ?? null;
+                    setFile(selected);
+                    setError(selected && selected.size > MAX_FILE_SIZE ? '이 파일은 24MB를 초과합니다. 더 낮은 비트레이트의 음성파일을 사용해 주세요.' : '');
+                  }}
                 />
               </label>
             </div>
@@ -290,7 +350,7 @@ export default function Home() {
           {error && <div className="error">{error}</div>}
           {status && <div className="status">{status}</div>}
 
-          <button className="primary process" disabled={!file || recording} onClick={processRecord}>
+          <button className="primary process" disabled={!file || recording || file.size > MAX_FILE_SIZE} onClick={processRecord}>
             전사 및 분석 시작
           </button>
         </section>
@@ -344,6 +404,10 @@ export default function Home() {
                     ))}
                   </div>
                 )}
+                <div className="two-col">
+                  <div><h3>어휘</h3><ul>{result.analysis.lesson.vocabulary.map((v, i) => <li key={i}>{v}</li>)}</ul></div>
+                  <div><h3>문법 포커스</h3><ul>{result.analysis.lesson.grammar_focus.map((v, i) => <li key={i}>{v}</li>)}</ul></div>
+                </div>
               </div>
             )}
           </div>

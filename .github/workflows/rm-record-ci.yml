@@ -1,0 +1,36 @@
+name: RM Record CI
+
+on:
+  pull_request:
+    paths:
+      - 'rm-record/**'
+      - '.github/workflows/rm-record-ci.yml'
+  push:
+    branches:
+      - 'feat/rm-record-v1'
+    paths:
+      - 'rm-record/**'
+      - '.github/workflows/rm-record-ci.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rm-record
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: rm-record/package-lock.json
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build
+        run: npm run build

@@ -13,7 +13,7 @@ export async function saveRecord(record: RMRecord) {
 }
 
 async function readJsonBlob<T>(url: string): Promise<T> {
-  const result = await get(url);
+  const result = await get(url, { access: 'private', useCache: false });
   if (!result || result.statusCode !== 200 || !result.stream) {
     throw new Error('저장된 기록을 읽지 못했습니다.');
   }

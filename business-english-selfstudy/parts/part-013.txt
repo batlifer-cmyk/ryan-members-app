@@ -1,0 +1,59 @@
+EP Drill','질문을 하나 골라 90초 안에 구조를 잡고 말합니다.',
+      '<select class="lab-select" data-study-key="open-q" onchange="setAnswer(\'open-q\',this.value);this.closest(\'.study-lab-body\').querySelector(\'.lab-question\').textContent=this.value">'+qq.map(function(x){return '<option '+(x===sel?'selected':'')+'>'+escHtml(x)+'</option>';}).join('')+'</select>'+
+      '<div class="lab-question">'+escHtml(sel)+'</div>'+textarea('open-answer','Write a short PREP answer.')+
+      '<div class="lab-actions"><button class="lab-btn" onclick="randomizeQuestion(this)">Random question</button><button class="lab-btn primary" onclick="startTimerFromButton(this,90)">⏱ 90-sec speaking</button><span class="timer-face">1:30</span></div><div class="speak-meter"><span></span></div>');
+  }
+  return '';
+}
+function randomizeQuestion(btn){
+  var box=btn.closest('.study-lab-body'),sel=box.querySelector('select'),opts=Array.from(sel.options),x=randomOf(opts);sel.value=x.value;sel.dispatchEvent(new Event('change'));
+}
+function startTimerFromButton(btn,sec){
+  var box=btn.closest('.study-lab-body'),face=box.querySelector('.timer-face'),meter=box.querySelector('.speak-meter span');startStudyTimer(sec,face,meter);
+}
+function scenarioPractice(item,root){
+  var cards=Array.from(root.querySelectorAll('.scenario-card')).map(function(c){return {t:c.querySelector('h4').textContent.trim(),d:c.querySelector('p').textContent.trim()};});
+  if(!cards.length) return '';
+  var sel=getAnswer('scenario-choice')||cards[0].t;
+  return practiceShell(item.sec.id,'Role-play Studio','교재에 제시된 업무 상황 중 하나를 골라 실제 본인 업무를 대입합니다.',
+    '<label class="lab-label">Scenario</label><select class="lab-select" data-study-key="scenario-choice">'+cards.map(function(x){return '<option '+(x.t===sel?'selected':'')+'>'+escHtml(x.t)+'</option>';}).join('')+'</select>'+
+    '<div class="lab-grid2"><div><label class="lab-label">Opening</label>'+textarea('scenario-open','How will you open the conversation?')+'</div><div><label class="lab-label">Key message</label>'+textarea('scenario-key','What is the main point you need to communicate?')+'</div>'+
+    '<div><label class="lab-label">Question / response</label>'+textarea('scenario-q','What question will you ask or answer?')+'</div><div><label class="lab-label">Next step</label>'+textarea('scenario-next','How will you close with a next step?')+'</div></div>'+
+    '<div class="lab-actions"><button class="lab-btn primary" onclick="startTimerFromButton(this,120)">⏱ 2-min role-play</button><span class="timer-face">2:00</span></div><div class="speak-meter"><span></span></div>');
+}
+function tedPractice(item,root){
+  if(item.sec.id==='4-0') return '';
+  var qs=listTexts(root,'ul.qlist li'),vocab=listTexts(root,'.word-chip'),q=qs.length?qs[qs.length-1]:'What is your opinion?';
+  return practiceShell(item.sec.id,'Watch → Think → Speak','영상 시청 전 예측과 시청 후 의견을 분리해서 작성합니다. 본문에 있는 Discussion questions와 Vocabulary를 활용하세요.',
+    '<label class="lab-label">Before watching · Prediction</label>'+textarea(item.sec.id+'-before','What do you expect the speaker to argue?')+
+    '<label class="lab-label">After watching · One-sentence takeaway</label>'+textarea(item.sec.id+'-takeaway','Summarize the main idea in one sentence.')+
+    '<div class="lab-question">'+escHtml(q)+'</div>'+
+    '<label class="lab-label">My opinion</label>'+textarea(item.sec.id+'-opinion','Answer the discussion question with your own view.')+
+    '<div class="lab-card"><b>Vocabulary challenge</b><div class="lab-mini">아래 단어 중 최소 2개를 답변에 사용해 보세요.</div><div style="margin-top:7px">'+vocab.map(function(x){return '<span class="skill-tag">'+escHtml(x)+'</span>';}).join('')+'</div></div>'+
+    '<div class="lab-actions"><button class="lab-btn primary" onclick="startTimerFromButton(this,90)">⏱ 90-sec response</button><span class="timer-face">1:30</span></div><div class="speak-meter"><span></span></div>');
+}
+function interviewPractice(item,root){
+  if(/^5-[1-5]$/.test(item.sec.id) || item.sec.id==='5-0'){
+    return practiceShell(item.sec.id,'Transfer STAR to Your Experience','예시를 읽은 뒤 같은 구조로 자신의 경험을 다시 작성하세요.',
+      frameworkFields('iv-'+item.sec.id,[['S · Situation','Your actual situation'],['T · Task','Your responsibility'],['A · Action','Specific actions you personally took'],['R · Result','Outcome / lesson']],
+      item.sec.id==='5-0'?'Choose one behavioral question from your own interview context.':(root.querySelector('.slide-title')?root.querySelector('.slide-title').textContent:'Behavioral interview practice'),''));
+  }
+  if(item.sec.id==='5-6'){
+    var cats=listTexts(root,'.card h4');
+    return practiceShell(item.sec.id,'STAR Expression Drill','Situation, Task, Action, Result 표현을 한 문장씩 직접 사용합니다.',
+      cats.map(function(c,i){return '<label class="lab-label">'+escHtml(c)+'</label>'+inputLine('star-exp-'+i,'Write one sentence using an expression from this category.');}).join(''));
+  }
+  if(/^5-(7|8|9|10|11|12|13)$/.test(item.sec.id)){
+    var qs=listTexts(root,'ul.qlist li'),sel=getAnswer('iv-q-'+item.sec.id)||qs[0];
+    return practiceShell(item.sec.id,'Interview Answer Practice','질문을 하나 선택하고 결론부터 답한 뒤 근거·경험을 덧붙입니다. Behavioral 질문은 STAR를 사용하세요.',
+      '<select class="lab-select" data-study-key="iv-q-'+item.sec.id+'" onchange="setAnswer(\'iv-q-'+item.sec.id+'\',this.value);this.closest(\'.study-lab-body\').querySelector(\'.lab-question\').textContent=this.value">'+qs.map(function(x){return '<option '+(x===sel?'selected':'')+'>'+escHtml(x)+'</option>';}).join('')+'</select>'+
+      '<div class="lab-question">'+escHtml(sel)+'</div>'+textarea('iv-a-'+item.sec.id,'Write your interview answer.')+
+      '<div class="lab-actions"><button class="lab-btn" onclick="randomizeQuestion(this)">Random question</button><button class="lab-btn" onclick="speakText(this.closest(\'.study-lab-body\').querySelector(\'.lab-question\').textContent)">🔊 Hear question</button><button class="lab-btn primary" onclick="startTimerFromButton(this,90)">⏱ 90-sec answer</button><span class="timer-face">1:30</span></div><div class="speak-meter"><span></span></div>');
+  }
+  return '';
+}
+function projectPractice(item,root){
+  return practiceShell(item.sec.id,'3-minute Final Project Builder','교재가 제시한 5개 주제 중 하나를 선택하고 3분 발표를 설계합니다.',
+    '<label class="lab-label">Topic</label><select class="lab-select" data-study-key="project-topic"><option>Company Introduction</option><option>Product Pitch</option><option>Self Introduction</option><option>Career Story</option><option>Business Proposal</option></select>'+
+    '<div class="lab-grid2"><div><label class="lab-label">Opening / main point</label>'+textarea('proj-open','What should the audience understand first?')+'</div><div><label class="lab-label">Supporting point 1</label>'+textarea('proj-1','Reason, example, or evidence')+'</div>'+
+    '<div><label class="lab-label">Supporting point 2</label>'+textarea('proj-2','Second reason, example, or evidence')+'</div><div><label class="lab-label">Closing / next step</label>'+textarea('proj-close','How will you

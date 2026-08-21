@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ryan Members Business English · Self-Study Lab V3.1</title>
+<style>
+body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:#fbfaf6;color:#1c2420;margin:0;padding:32px}.load{max-width:620px;margin:12vh auto}.bar{height:6px;background:#e4e0d4;border-radius:10px;overflow:hidden}.bar i{display:block;height:100%;width:45%;background:#e4b94e;animation:move 1s infinite alternate}@keyframes move{to{transform:translateX(120%)}}
+</style>
+</head>
+<body><div class="load"><b>Ryan Members Business English</b><p>Self-Study Lab V3.1을 불러오는 중입니다.</p><div class="bar"><i></i></div></div>
+<script>
+(async function(){
+  try{
+    const paths=Array.from({length:20},(_,i)=>`./parts/part-${String(i+1).padStart(3,'0')}.txt`);
+    const chunks=[];
+    for(const path of paths){
+      const r=await fetch(path,{cache:'no-store'});
+      if(!r.ok) throw new Error(`${path}: HTTP ${r.status}`);
+      chunks.push(await r.text());
+    }
+    const source=chunks.join('');
+    document.open();
+    document.write(source);
+    document.close();
+  }catch(err){
+    document.body.innerHTML='<div class="load"><h2>앱을 불러오지 못했습니다.</h2><pre style="white-space:pre-wrap;color:#b42318"></pre></div>';
+    document.querySelector('pre').textContent=String(err);
+  }
+})();
+</script>
+</body>
+</html>

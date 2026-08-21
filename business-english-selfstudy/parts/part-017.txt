@@ -1,0 +1,99 @@
+는 자기점검 방식으로 완료합니다.</p>'+
+    '<div id="practice-center-live"></div>';
+}
+function refreshPracticeCenter(){
+  var root=document.getElementById('practice-center-live'); if(!root) return;
+  var t=studyState.training, attempts=t.gradedAttempts||0, accuracy=attempts?Math.round((t.gradedCorrect||0)/attempts*100):0;
+  var weakCount=Object.keys(t.weak||{}).filter(function(k){return t.weak[k]>0;}).length;
+  root.innerHTML=
+    '<div class="mastery-strip">'+
+      '<div class="mastery-box"><b>'+t.xp+'</b><span>Total XP</span></div>'+
+      '<div class="mastery-box"><b>'+accuracy+'%</b><span>Objective accuracy</span></div>'+
+      '<div class="mastery-box"><b>'+t.streak+'</b><span>Study streak</span></div>'+
+      '<div class="mastery-box"><b>'+weakCount+'</b><span>Weak items</span></div>'+
+    '</div>'+
+    '<div class="practice-center-grid">'+
+    centerCard('m1','Business Small Talk','질문 이해 → 답변 생성 → 45초 발화')+
+    centerCard('m2','Speaking Frameworks','PREP·STAR·Elevator Pitch 구조 훈련')+
+    centerCard('m3','Communication Scenarios','업무 상황 분류 + role-play')+
+    centerCard('m4','TED Discussions','주제·vocabulary 확인 + 의견 발화')+
+    centerCard('m5','Business Interviews','STAR·면접 질문 집중훈련')+
+    centerCard('tk','Business English Toolkit','표현·idiom·collocation·strong verbs')+
+    '</div>'+
+    '<div class="lab-actions" style="margin-top:16px"><button class="lab-btn primary" onclick="startTraining(\'mixed\',10)">Mixed Review 10문제</button>'+
+    '<button class="lab-btn" onclick="startWeakReview()">오답만 복습</button></div>';
+}
+function centerCard(key,title,desc){
+  var p=studyState.training.byPack[key]||{sessions:0,correct:0,attempts:0};
+  var acc=p.attempts?Math.round(p.correct/p.attempts*100):0;
+  return '<div class="practice-center-card"><h4>'+title+'</h4><p>'+desc+'</p>'+
+    '<div class="lab-mini">Sessions '+(p.sessions||0)+' · Accuracy '+acc+'%</div>'+
+    '<div class="lab-actions"><button class="lab-btn chalk" onclick="startTraining(\''+key+'\',8)">8-step session</button></div></div>';
+}
+function getAllTasks(){
+  var out=[];Object.keys(TRAINING_PACKS).forEach(function(k){TRAINING_PACKS[k].forEach(function(t){var c=Object.assign({},t);c.pack=k;out.push(c);});});return out;
+}
+function startWeakReview(){
+  var all=getAllTasks(), ids=Object.keys(studyState.training.weak||{}).filter(function(id){return studyState.training.weak[id]>0;});
+  var tasks=all.filter(function(t){return ids.indexOf(t.id)!==-1;});
+  if(!tasks.length){alert('현재 저장된 오답이 없습니다.');return;}
+  startTraining('weak',Math.min(10,tasks.length),tasks);
+}
+var trainingSession=null;
+function startTraining(pack,count,forcedTasks){
+  ensureTrainerUI();
+  var source;
+  if(forcedTasks){ source=forcedTasks.slice(); }
+  else if(pack==='mixed'){source=getAllTasks();}
+  else {source=(TRAINING_PACKS[pack]||[]).map(function(t){var c=Object.assign({},t);c.pack=pack;return c;});}
+  if(!source.length){alert('이 모듈에는 아직 훈련 문제가 없습니다.');return;}
+  var weak=studyState.training.weak||{};
+  var priority=source.filter(function(t){return weak[t.id]>0;}).sort(function(a,b){return (weak[b.id]||0)-(weak[a.id]||0);});
+  var used={};priority.forEach(function(t){used[t.id]=true;});
+  var rest=shuffled(source.filter(function(t){return !used[t.id];}));
+  var chosen=priority.concat(rest).slice(0,Math.min(count,source.length));
+  trainingSession={pack:pack,queue:chosen,index:0,correct:0,graded:0,productive:0,retries:0,firstPass:chosen.length};
+  document.getElementById('trainer-overlay').classList.add('open');
+  document.body.style.overflow='hidden';
+  renderTrainingTask();
+}
+function closeTraining(){
+  var o=document.getElementById('trainer-overlay'); if(o)o.classList.remove('open');
+  document.body.style.overflow='';
+  if(document.getElementById('practice-center-live')) refreshPracticeCenter();
+}
+function taskPack(t){
+  if(t.pack)return t.pack;
+  for(var k in TRAINING_PACKS) if(TRAINING_PACKS[k].some(function(x){return x.id===t.id;})) return k;
+  return trainingSession && trainingSession.pack!=='mixed'?trainingSession.pack:'mixed';
+}
+function renderTrainingTask(){
+  var ses=trainingSession, card=document.getElementById('trainer-card');
+  if(!ses || ses.index>=ses.queue.length){finishTraining();return;}
+  var t=ses.queue[ses.index], pct=Math.round((ses.index/ses.queue.length)*100);
+  document.getElementById('trainer-progress-fill').style.width=pct+'%';
+  document.getElementById('trainer-pack-label').textContent=packLabel(ses.pack);
+  document.getElementById('trainer-step-label').textContent=(ses.index+1)+' / '+ses.queue.length;
+  document.getElementById('trainer-xp').textContent=studyState.training.xp||0;
+  var retry=t._retry?'<span class="retry-badge">RETRY</span>':'';
+  var html='<div class="trainer-eyebrow">'+escHtml(t.skill||'Practice')+retry+'</div><h2>'+escHtml(t.q||t.prompt||'Practice')+'</h2><div class="trainer-question">';
+  if(t.type==='mcq'){
+    html+=t.options.map(function(o,i){return '<button class="trainer-option" data-choice="'+i+'">'+escHtml(o)+'</button>';}).join('');
+    html+='<div class="trainer-feedback" id="trainer-feedback"></div><button class="trainer-next" id="trainer-next">Next →</button>';
+  } else if(t.type==='fill'){
+    html+='<input class="trainer-input" id="trainer-fill-input" autocomplete="off" placeholder="Type your answer">'+
+      '<div class="trainer-actions"><button class="trainer-btn primary" id="trainer-check">정답 확인</button></div>'+
+      '<div class="trainer-feedback" id="trainer-feedback"></div><button class="trainer-next" id="trainer-next">Next →</button>';
+  } else if(t.type==='order'){
+    html+='<div class="lab-mini">아래 조각을 순서대로 누르세요.</div><div class="trainer-order-answer" id="trainer-order-answer"></div>'+
+      '<div class="trainer-chunks">'+shuffled(t.chunks).map(function(c,i){return '<button class="trainer-chunk" data-chunk="'+escHtml(c)+'">'+escHtml(c)+'</button>';}).join('')+'</div>'+
+      '<div class="trainer-actions"><button class="trainer-btn" id="trainer-reset-order">Reset</button><button class="trainer-btn primary" id="trainer-check">Check order</button></div>'+
+      '<div class="trainer-feedback" id="trainer-feedback"></div><button class="trainer-next" id="trainer-next">Next →</button>';
+  } else if(t.type==='write'){
+    html+='<textarea class="trainer-textarea" id="trainer-write" placeholder="Write in English..."></textarea>'+
+      '<div class="trainer-checks">'+t.check.map(function(x,i){return '<label><input type="checkbox" class="trainer-selfcheck"> '+escHtml(x)+'</label>';}).join('')+'</div>'+
+      '<div class="trainer-actions"><span class="lab-mini" id="trainer-write-count">0 characters</span><button class="trainer-btn primary" id="trainer-complete">Complete writing</button></div>'+
+      '<div class="trainer-feedback" id="trainer-feedback"></div><button class="trainer-next" id="trainer-next">Next →</button>';
+  } else if(t.type==='speak'){
+    html+='<div class="trainer-timer" id="trainer-timer">'+Math.floor(t.seconds/60)+':'+String(t.seconds%60).padStart(2,'0')+'</div>'+
+      '<div class="tra

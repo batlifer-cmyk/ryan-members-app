@@ -1,0 +1,48 @@
+s":["Situation → Task → Action → Result","Situation → Action → Task → Result","Task → Situation → Result → Action","Result → Task → Action → Situation"],"answer":0,"explain":"교재는 STAR를 Situation → Task → Action → Result로 설명합니다."},{"id":"m5_mcq_2","type":"mcq","skill":"STAR Expressions","q":"STAR의 Task 단계에 가장 직접적으로 맞는 교재 표현은?","options":["The goal was to...","As a result...","I took the initiative to...","At that time, our team faced..."],"answer":0,"explain":"Useful STAR Expressions에서 “The goal was to...”는 Task 항목에 포함됩니다."},{"id":"m5_mcq_3","type":"mcq","skill":"STAR Expressions","q":"본인이 주도적으로 행동했다는 점을 가장 직접적으로 보여주는 STAR 표현은?","options":["I took the initiative to...","At that time, our team faced...","The goal was to...","As a result..."],"answer":0,"explain":"Useful STAR Expressions에서 “I took the initiative to...”는 Action에 포함됩니다."},{"id":"m5_mcq_4","type":"mcq","skill":"STAR Expressions","q":"행동 이후의 결과를 꺼낼 때 사용하는 STAR 표현은?","options":["As a result...","The biggest challenge was...","I was asked to...","I decided to..."],"answer":0,"explain":"Useful STAR Expressions에서 “As a result...”는 Result 항목에 포함됩니다."},{"id":"m5_mcq_5","type":"mcq","skill":"Interview Questions","q":"다음 중 교재의 Behavioral Questions (STAR Practice)에 포함된 질문은?","options":["Tell me about a time you adapted to a major change.","What is your home address?","Which keyboard do you use?","What is your favorite color?"],"answer":0,"explain":"Classic Interview Questions의 Behavioral Questions에 “Tell me about a time you adapted to a major change.”가 포함됩니다."},{"id":"m5_write_1","type":"write","skill":"Interview","prompt":"“Tell me about a time you persuaded someone to accept your idea.”에 STAR 구조로 자신의 실제 경험을 작성하세요.","min":90,"check":["Situation","Task","Action에서 본인 행동","Result"]},{"id":"m5_speak_1","type":"speak","skill":"Interview","prompt":"“Why should we hire you?”에 90초 동안 답하세요. 먼저 핵심 강점을 말하고, 그 강점을 보여주는 경험 또는 성과를 덧붙이세요.","seconds":90,"check":["핵심 답변을 먼저 제시","근거/경험","직무 기여와 연결"]}],"tk":[{"id":"tk_mcq_1","type":"mcq","skill":"Expressions","q":"강하게 동의할 때 교재의 Agreeing 항목에 제시된 표현은?","options":["I couldn't agree more.","I see your point, but...","Let me clarify.","It might make sense to..."],"answer":0,"explain":"Toolkit의 Agreeing 항목에 “I couldn't agree more.”가 제시됩니다."},{"id":"tk_mcq_2","type":"mcq","skill":"Expressions","q":"제안하기(Making suggestions)에 해당하는 교재 표현은?","options":["It might make sense to...","I couldn't agree more.","Keep me posted.","At the end of the day..."],"answer":0,"explain":"Making suggestions 항목에 “It might make sense to...”가 제시됩니다."},{"id":"tk_mcq_3","type":"mcq","skill":"Expressions","q":"핵심을 강조할 때 교재의 Emphasizing 항목에 제시된 표현은?","options":["The key point is...","Let's stay in touch.","I couldn't agree more.","Give me a moment."],"answer":0,"explain":"Toolkit의 Emphasizing 항목에는 “The key point is...”가 제시됩니다."},{"id":"tk_mcq_4","type":"mcq","skill":"Idioms","q":"“Raise the bar”의 교재상 의미는?","options":["기준을 높이다","나중에 다시 이야기하다","업무를 익히다","여러 역할을 맡다"],"answer":0,"explain":"Business Idioms에서 raise the bar는 ‘기준을 높이다’입니다."},{"id":"tk_mcq_5","type":"mcq","skill":"Idioms","q":"“On the same page”의 교재상 의미는?","options":["같은 이해를 하고 있다","틀을 벗어나 생각하다","업무를 익히다","다시 처음부터 검토하다"],"answer":0,"explain":"Business Idioms에서 on the same page는 ‘같은 이해를 하고 있다’입니다."},{"id":"tk_mcq_6","type":"mcq","skill":"Collocations","q":"거래를 성사시키다는 의미로 교재에 제시된 collocation은?","options":["close a deal","do a deal","provide a deal","reach a deal"],"answer":0,"explain":"Part D Collocations에 “close a deal”이 제시됩니다."},{"id":"tk_mcq_7","type":"mcq","skill":"Collocations","q":"‘합의에 도달하다’에 해당하는 교재의 collocation은?","options":["reach an agreement","do an agreement","provide an agreement","hit an agreement"],"answer":0,"explain":"Part D Collocations에 “reach an agreement”이 제시됩니다."},{"id":"tk_mcq_8","type":"mcq","skill":"Strong Verbs","q":"교재의 weak → strong verb 표에서 fix의 대안은?","options":["resolve","obtain","execute","provide"],"answer":0,"explain":"Strong Verbs 표에는 fix → resolve가 제시됩니다."},{"id":"tk_fill_1","type":"fill","skill":"Idioms","prompt":"계속 알려주세요: Keep me □□□□□□.","answer":"posted","accepted":["posted"],"explain":"교재의 idiom 예시는 “Keep me posted.”입니다."},{"id":"tk_order_1","type":"order","skill":"Collocations","prompt":"올바른 collocation을 배열하세요.","chunks":["a concern","raise"],"answer":["raise","a concern"],"explain":"Part D Collocations에 “raise a concern”이 있습니다."},{"id":"tk_write_1","type":"write","skill":"Expressions","prompt":"회의에서 상대 의견에 일부 동의하지만 다른 접근을 제안하는 2–3문장을 작성하세요. “I see your point, but...” 또는 “That’s a fair point. However...” 중 하나를 사용하세요.","min":45,"check":["정중한 반대 표현 사용","대안/자기 의견 제시"]}]};
+studyState.training = studyState.training || {
+  xp:0, sessions:0, gradedAttempts:0, gradedCorrect:0, productive:0,
+  weak:{}, byPack:{}, streak:0, lastStudyDate:null
+};
+
+function shuffled(arr){
+  var a=arr.slice();
+  for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}
+  return a;
+}
+function packLabel(k){
+  return {m1:'Business Small Talk',m2:'Speaking Frameworks',m3:'Communication Scenarios',m4:'TED Discussions',m5:'Business Interviews',tk:'Business English Toolkit',mixed:'Mixed Review'}[k] || k;
+}
+function ensureTrainerUI(){
+  if(document.getElementById('trainer-overlay')) return;
+  var d=document.createElement('div'); d.id='trainer-overlay';
+  d.innerHTML='<div class="trainer-top">'+
+    '<button class="trainer-close" onclick="closeTraining()" aria-label="닫기">×</button>'+
+    '<div class="trainer-progress"><span id="trainer-progress-fill"></span></div>'+
+    '<div class="trainer-stat hide-mobile" id="trainer-pack-label"></div>'+
+    '<div class="trainer-stat" id="trainer-step-label"></div>'+
+    '<div class="trainer-stat">XP <b id="trainer-xp"></b></div>'+
+    '</div><div class="trainer-main"><div class="trainer-card" id="trainer-card"></div></div>';
+  document.body.appendChild(d);
+}
+function installTrainerLauncher(){
+  var top=document.getElementById('topbar'); if(!top || document.getElementById('trainer-launch')) return;
+  var b=document.createElement('button'); b.id='trainer-launch'; b.className='trainer-launch'; b.textContent='PRACTICE';
+  b.title='현재 모듈 문제풀이 세션';
+  b.onclick=function(){
+    var item=flat[current], pack=(item && TRAINING_PACKS[item.mod.id])?item.mod.id:'mixed';
+    startTraining(pack,8);
+  };
+  var count=document.getElementById('progress-count-text');
+  top.insertBefore(b,count);
+}
+function installSectionTrainer(item){
+  var lab=document.querySelector('#content-inner .study-lab-head');
+  if(!lab || !TRAINING_PACKS[item.mod.id] || lab.querySelector('.trainer-inline')) return;
+  var b=document.createElement('button');
+  b.className='lab-btn chalk trainer-inline'; b.textContent='Practice Session';
+  b.onclick=function(){startTraining(item.mod.id,8);};
+  lab.appendChild(b);
+}
+function practiceCenterShell(){
+  return slideHead('Practice Center','문제풀이 · 오답복습 · 말하기 세션')+
+    '<p class="lead kr">강의노트를 순서대로 읽는 것과 별도로, 문제 중심의 짧은 학습 세션을 실행합니다. 객관식·순서배열·빈칸은 즉시 채점되고 틀린 문제는 세션 마지막에 한 번 더 출제됩니다. 쓰기와 말하기

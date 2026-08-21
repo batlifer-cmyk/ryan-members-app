@@ -1,0 +1,11 @@
+nyMatch) g.classList.add('open');
+  });
+});
+
+buildSidebar();
+ensureTrainerUI();
+installTrainerLauncher();
+render();
+</script>
+</body>
+</html>

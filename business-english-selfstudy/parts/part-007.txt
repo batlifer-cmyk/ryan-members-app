@@ -1,0 +1,85 @@
+e:'The Power of Vulnerability', theme:'Brené Brown',
+      talk:'The Power of Vulnerability — Brené Brown', url:'https://www.ted.com/talks/brene_brown_the_power_of_vulnerability',
+      scenarios:['Giving feedback','Managing teams','Building relationships'],
+      discussion:['Should leaders show vulnerability?','Does being honest make someone a stronger leader?'],
+      vocab:['authenticity','trust','connection','leadership style','emotional intelligence']})
+  },
+  { id:'4-3', en:'TED 3 · Angela Duckworth', kr:'Unit 2 · 리더십과 커리어 성장', body:
+    tedCard({unit:'Unit 2 · Leadership & Career Growth — "What makes someone successful?"',
+      title:'Grit: The Power of Passion and Perseverance', theme:'Angela Duckworth',
+      talk:'Grit: The Power of Passion and Perseverance — Angela Duckworth', url:'https://www.ted.com/talks/angela_lee_duckworth_grit_the_power_of_passion_and_perseverance',
+      connects:['career conversations','interview preparation','professional growth'],
+      discussion:['Is talent more important than persistence?','What skill helped you grow professionally?','Tell me about a challenge you overcame.'],
+      vocab:['perseverance','resilience','long-term goal','overcome challenges','continuous improvement'],
+      starLink:'Connects to STAR interview format — Situation: "Early in my career, I faced..." / Task: "My responsibility was..." / Action: "I decided to..." / Result: "As a result..."'})
+  },
+  { id:'4-4', en:'TED 4 · Sheryl Sandberg', kr:'Unit 2 · 리더십과 커리어 성장', body:
+    tedCard({unit:'Unit 2 · Leadership & Career Growth',
+      title:'Why We Have Too Few Women Leaders', theme:'Sheryl Sandberg',
+      talk:'Why We Have Too Few Women Leaders — Sheryl Sandberg', url:'https://www.ted.com/talks/sheryl_sandberg_why_we_have_too_few_women_leaders',
+      connects:['leadership discussions','workplace culture','diversity topics'],
+      discussion:['What prevents people from taking leadership roles?','How can companies create better opportunities?'],
+      vocab:['leadership opportunity','confidence','career development','workplace culture']})
+  },
+  { id:'4-5', en:'TED 5 · Dan Pink', kr:'Unit 3 · 혁신과 문제 해결', body:
+    tedCard({unit:'Unit 3 · Innovation & Problem Solving — "How do companies grow?"',
+      title:'The Puzzle of Motivation', theme:'Dan Pink',
+      talk:'The Puzzle of Motivation — Dan Pink', url:'https://www.ted.com/talks/dan_pink_the_puzzle_of_motivation',
+      connects:['management','employee motivation','workplace preferences'],
+      phrases:['"One thing I\'ve noticed is..."','"I\'d argue that..."','"It depends on..."'],
+      discussion:['What motivates employees?','Are bonuses always effective?','What creates better performance?'],
+      vocab:['autonomy','motivation','productivity','performance','incentive']})
+  },
+  { id:'4-6', en:'TED 6 · Adam Grant', kr:'Unit 3 · 혁신과 문제 해결', body:
+    tedCard({unit:'Unit 3 · Innovation & Problem Solving',
+      title:'The Surprising Habits of Original Thinkers', theme:'Adam Grant',
+      talk:'The Surprising Habits of Original Thinkers — Adam Grant', url:'https://www.ted.com/talks/adam_grant_the_surprising_habits_of_original_thinkers',
+      connects:['Think outside the box','Innovation','Open-minded mindset'],
+      discussion:['Are creative people born or developed?','How can companies encourage new ideas?'],
+      vocab:['innovation','creativity','challenge assumptions','experiment','take risks']})
+  },
+  { id:'4-7', en:'TED 7 · Amy Cuddy', kr:'Unit 4 · 협상과 의사결정', body:
+    tedCard({unit:'Unit 4 · Negotiation & Decision Making — "How do professionals make better decisions?"',
+      title:'The Surprising Secret to Speaking with Confidence', theme:'Amy Cuddy',
+      talk:'Your Body Language May Shape Who You Are — Amy Cuddy', url:'https://www.ted.com/talks/amy_cuddy_your_body_language_may_shape_who_you_are',
+      connects:['meetings','presentations','interviews'],
+      discussion:['How important is confidence in business?','Can body language change communication?'],
+      vocab:['confidence','presence','influence','persuasion']})
+  },
+  { id:'4-8', en:'TED 8 · Sal Khan', kr:'Unit 5 · AI, 미래의 업무, 글로벌 비즈니스', body:
+    tedCard({unit:'Unit 5 · AI, Future Work & Global Business — "How will work change?"',
+      title:'How AI Could Save (Not Destroy) Education', theme:'Sal Khan',
+      talk:'How AI Could Save (Not Destroy) Education — Sal Khan', url:'https://www.ted.com/talks/sal_khan_how_ai_could_save_not_destroy_education',
+      discussion:['What skills will become more important because of AI?','What can humans do better than machines?'],
+      vocab:['adapt','leverage technology','critical thinking','human connection','future skills']})
+  },
+  { id:'4-9', en:'TED 9 · Anthony Goldbloom', kr:'Unit 5 · AI, 미래의 업무, 글로벌 비즈니스', body:
+    tedCard({unit:'Unit 5 · AI, Future Work & Global Business',
+      title:'The Jobs We\'ll Lose to Machines — and the Ones We Won\'t', theme:'Anthony Goldbloom',
+      talk:'The Jobs We\'ll Lose to Machines and the Ones We Won\'t — Anthony Goldbloom', url:'https://www.ted.com/talks/anthony_goldbloom_the_jobs_we_ll_lose_to_machines_and_the_ones_we_won_t',
+      phrases:['"In my experience..."','"I tend to believe..."','"One possibility is..."'],
+      discussion:['Which jobs will change because of AI?','What skills should professionals develop?'],
+      vocab:['automation','adaptability','reskilling','data literacy','human judgment']})
+  }
+]},
+
+{ id:'m5', en:'Module 5 · Business Interviews', kr:'비즈니스 영어 면접', sections:[
+  { id:'5-0', en:'STAR for interviews', kr:'STAR 답변 구조 (면접용)', body:
+    slideHead('STAR Practice','면접 답변 구조') +
+    block('한국어 설명','kr') +
+    '<p class="lead kr">STAR는 경험 기반 면접 질문(Behavioral Interview Questions)에 답변할 때 사용하는 대표적인 답변 구조입니다. 상황 → 목표 → 행동 → 결과의 흐름으로 답변하면 경험과 역량을 더 명확하고 설득력 있게 전달할 수 있습니다.</p>' +
+    starSteps([
+      {l:'S', t:'Situation 상황', d:'어떤 상황이나 배경이 있었는지 설명'},
+      {l:'T', t:'Task 과제/목표', d:'내가 맡은 책임이나 해결해야 할 목표 설명'},
+      {l:'A', t:'Action 행동', d:'문제 해결을 위해 내가 실제로 한 행동 설명'},
+      {l:'R', t:'Result 결과', d:'결과와 성과, 배운 점 설명'}
+    ]) +
+    note('Key point: 면접에서는 Action 부분이 가장 중요합니다. "팀이 했다"보다 "제가 무엇을 했는지"를 구체적으로 설명하세요. / Interviewers want to know what you personally did, not only what your team achieved.')
+  },
+  { id:'5-1', en:'Sample answer 1 · Difficult problem', kr:'예시답변 1 · 어려운 문제 해결', body:
+    slideHead('"Tell me about a time you solved a difficult problem."','샘플 답변 1') +
+    starSteps([
+      {l:'S', t:'Situation', d:'In my previous role, our team noticed that customer complaints were increasing after a product update.'},
+      {l:'T', t:'Task', d:'I was responsible for identifying the main cause and finding a solution with the product team.'},
+      {l:'A', t:'Action', d:'I analyzed customer feedback, organized the issues into categories, and worked with the development team to prioritize the most urgent problems.'},
+      {l:'R', t:'Result', d:'We reduced customer complaints by 30% within three months and improved customer 

@@ -1,0 +1,86 @@
+oggleSectionDone(\''+id+'\',this)">'+(sectionDone(id)?'✓ Practice completed':'Mark practice complete')+'</button></div></div></div>';
+}
+
+/* ---------- Diagnostic ---------- */
+var diagnosticQuestions = [
+ {skill:'Frameworks',q:'PREP에서 의견을 구조화하는 올바른 순서는?',o:['Point → Reason → Example → Point','Problem → Result → Evidence → Plan','Point → Example → Reason → Task','Purpose → Risk → Example → Proposal'],a:0,e:'교재의 PREP는 Point, Reason, Example, Point의 순서입니다.'},
+ {skill:'Frameworks',q:'STAR 답변에서 면접관이 특히 알고 싶어 하는 부분으로 교재가 강조하는 것은?',o:['Situation의 배경 설명','Task의 직함 설명','Action에서 내가 실제로 한 행동','Result에서 회사 전체 성과'],a:2,e:'교재는 Action 부분이 가장 중요하며, 팀이 아니라 본인이 무엇을 했는지 구체적으로 말하라고 강조합니다.'},
+ {skill:'Frameworks',q:'교재에서 Elevator Pitch의 일반적인 길이는?',o:['10–15초','30–60초','2–3분','5분 이상'],a:1,e:'교재는 Elevator Pitch를 보통 30–60초의 짧은 소개로 설명합니다.'},
+ {skill:'Expressions',q:'상대 의견을 정중하게 반대할 때 교재에 제시된 표현은?',o:['No, that is wrong.','I see your point, but...','You misunderstood me.','I refuse to agree.'],a:1,e:'Toolkit의 Politely disagreeing 항목에 “I see your point, but...”가 제시됩니다.'},
+ {skill:'Collocations',q:'교재의 Business Collocations에 맞는 조합은?',o:['do a deadline','take a deadline','meet a deadline','make a deadline'],a:2,e:'Toolkit의 collocation 표에는 “meet a deadline”이 제시됩니다.'},
+ {skill:'Idioms',q:'“Circle back”이 교재에서 뜻하는 것은?',o:['기준을 높이다','나중에 다시 이야기하다','업무를 바로 시작하다','의견을 끝까지 고수하다'],a:1,e:'교재의 idiom 목록에서 circle back은 나중에 다시 이야기하는 의미로 사용됩니다.'},
+ {skill:'Small Talk',q:'네트워킹 행사에서 처음 만난 사람에게 가장 직접적으로 맞는 교재 질문은?',o:['What brought you to this event?','Why should we hire you?','What are your salary expectations?','What is the root cause?'],a:0,e:'Module 1 Networking events 질문에 “What brought you to this event?”가 포함됩니다.'},
+ {skill:'Scenarios',q:'차트, 그래프, 매출, KPI를 영어로 설명하는 연습은 어느 시나리오인가?',o:['Hiring','Data Presentation','Networking','Giving Feedback'],a:1,e:'Module 3의 Data Presentation은 차트, 그래프, 매출, KPI 설명과 질의응답을 다룹니다.'},
+ {skill:'Interviews',q:'“Tell me about a time you solved a difficult problem.”에 교재가 연결하는 대표 프레임워크는?',o:['PREP','STAR','Elevator Pitch','AIDA'],a:1,e:'교재는 이 질문을 STAR의 대표 예시로 사용합니다.'},
+ {skill:'TED',q:'Angela Duckworth의 Grit TED 학습 페이지가 직접 연결하는 항목은?',o:['STAR interview format','Salary negotiation','Phone etiquette','Email writing'],a:0,e:'해당 TED 페이지는 career conversations, interview preparation과 함께 STAR interview format 연결을 명시합니다.'},
+ {skill:'Expressions',q:'말을 다시 명확하게 설명할 때 Toolkit에 제시된 표현은?',o:['What I mean is...','Keep me posted.','Let’s stay in touch.','I completely agree.'],a:0,e:'Clarifying 항목에 “What I mean is...”가 포함됩니다.'},
+ {skill:'Mindset',q:'교재가 제시하는 세 가지 mindset pillar에 포함되지 않는 것은?',o:['Curiosity','Open-mindedness','Standing your ground','Perfect pronunciation'],a:3,e:'교재의 세 기둥은 Curiosity, Open-mindedness, Standing your ground입니다.'}
+];
+function diagnosticShell(){
+  return '<div class="pretest-banner"><div class="slide-eyebrow" style="color:#E4B94E">PRE-COURSE DIAGNOSTIC</div><h2>Business English 사전진단</h2>'+
+  '<p>본격적인 학습 전에 현재 알고 있는 내용을 확인합니다. 점수는 성적이 아니라 어떤 영역부터 복습할지 정하는 용도입니다.</p></div>'+
+  '<div id="diagnostic-app"></div>';
+}
+function renderDiagnostic(){
+  var app=document.getElementById('diagnostic-app'); if(!app) return;
+  var idx=(studyState.quiz.diagIndex||0), score=(studyState.quiz.diagScore||0);
+  if(idx>=diagnosticQuestions.length){
+    var band=score<=4?'기초부터 시작':(score<=8?'핵심 복습 권장':'실전 연습 중심으로 진행');
+    var rec=score<=4?'Module 1 → Module 2 → Toolkit 순서로 기초 구조와 표현을 먼저 확인하세요.':
+            score<=8?'Module 2 Frameworks와 Toolkit을 먼저 복습한 뒤 Scenarios·Interview로 이동하세요.':
+            'Module 3 Scenarios, Module 5 Interviews, Module 6 Project에서 실제 발화량을 늘리세요.';
+    app.innerHTML='<div class="study-lab"><div class="study-lab-body score-box"><div class="lab-kicker">DIAGNOSTIC RESULT</div><div class="score-num">'+score+' / '+diagnosticQuestions.length+'</div><div class="score-band">'+band+'</div>'+
+      '<div class="lab-card" style="text-align:left"><b>권장 시작점</b><p class="lab-intro" style="margin-top:6px">'+rec+'</p></div>'+
+      '<button class="lab-btn" onclick="resetDiagnostic()">다시 풀기</button><button class="lab-btn primary" onclick="goTo(1)">학습 시작 →</button></div></div>';
+    studyState.diag={score:score,total:diagnosticQuestions.length,band:band};saveStudy();return;
+  }
+  var x=diagnosticQuestions[idx];
+  app.innerHTML='<div class="study-lab"><div class="study-lab-head"><div><div class="lab-kicker">DIAGNOSTIC</div><h3>'+x.skill+'</h3></div><div class="lab-status">'+(idx+1)+' / '+diagnosticQuestions.length+'</div></div>'+
+    '<div class="study-lab-body quiz-shell"><div class="lab-question">'+escHtml(x.q)+'</div>'+
+    x.o.map(function(o,i){return '<button class="quiz-option" data-i="'+i+'">'+escHtml(o)+'</button>';}).join('')+
+    '<div class="quiz-feedback" id="diag-feedback"></div></div></div>';
+  app.querySelectorAll('.quiz-option').forEach(function(b){
+    b.onclick=function(){
+      var choice=Number(b.dataset.i),ok=choice===x.a;
+      app.querySelectorAll('.quiz-option').forEach(function(z){z.disabled=true;});
+      b.classList.add(ok?'correct':'wrong');
+      if(!ok) app.querySelector('.quiz-option[data-i="'+x.a+'"]').classList.add('correct');
+      var f=document.getElementById('diag-feedback');f.textContent=x.e;f.classList.add('show');
+      if(ok) studyState.quiz.diagScore=(studyState.quiz.diagScore||0)+1;
+      setTimeout(function(){studyState.quiz.diagIndex=idx+1;saveStudy();renderDiagnostic();},850);
+    };
+  });
+}
+function resetDiagnostic(){studyState.quiz.diagIndex=0;studyState.quiz.diagScore=0;studyState.diag=null;saveStudy();renderDiagnostic();}
+
+/* ---------- Module start micro-quizzes ---------- */
+var moduleQuiz = {
+ '1-0':[
+  ['이 모듈의 학생 준비 방식은?',['각 질문에 미리 답변을 준비한다','표현을 암기만 한다','번역만 제출한다'],0],
+  ['Small Talk 질문이 쓰일 수 있는 곳은?',['면접에만','회사 내부와 고객 미팅 등 다양한 상황','이메일에만'],1]
+ ],
+ '2-0':[
+  ['교재가 효과적인 비즈니스 커뮤니케이션에서 먼저 강조하는 것은?',['어려운 단어','명확한 구조와 논리','빠른 발음'],1],
+  ['학생이 피드백 받는 항목에 포함되는 것은?',['톤·속도·바디랭귀지','철자 시험만','번역 속도만'],0]
+ ],
+ '4-0':[
+  ['TED 모듈의 기본 흐름은?',['시청 후 자신의 생각을 영어로 작성하고 토의','영상 제목 암기','한국어 요약만 제출'],0],
+  ['수업에서 하는 일은?',['작성 내용 교정과 주제 토의','영상 편집','발표 점수만 기록'],0]
+ ],
+ '5-0':[
+  ['STAR의 A는?',['Action','Agreement','Audience'],0],
+  ['STAR의 Result 단계는 무엇을 설명하나요?',['결과·성과·배운 점','상황의 배경','내가 맡은 책임'],0]
+ ]
+};
+function microQuizHtml(secId){
+  var qs=moduleQuiz[secId]; if(!qs) return '';
+  var q=qs[0];
+  return '<div class="module-start-quiz"><b>2문항 워밍업 퀴즈</b><div class="lab-mini">본문을 읽기 전에 현재 이해를 빠르게 확인하세요.</div><button class="lab-btn" style="margin-top:8px" onclick="runMicroQuiz(\''+secId+'\',this)">시작</button><div class="micro-slot"></div></div>';
+}
+function runMicroQuiz(secId,btn){
+  var qs=moduleQuiz[secId],slot=btn.parentElement.querySelector('.micro-slot'),i=0,score=0;
+  btn.style.display='none';
+  function draw(){
+    if(i>=qs.length){slot.innerHTML='<div class="lab-card"><b>'+score+'/'+qs.length+' 정답</b><div class="lab-mini">이제 본문과 Practice Lab을 진행하세요.</div></div>';return;}
+    var q=qs[i];
+    slot.innerHTML='<div class="lab-question" style="font-size:14p

@@ -1,0 +1,92 @@
+ finish?')+'</div></div>'+
+    '<div class="lab-actions"><button class="lab-btn chalk" onclick="previewProject(this)">Preview outline</button><button class="lab-btn primary" onclick="startTimerFromButton(this,180)">⏱ 3-min rehearsal</button><span class="timer-face">3:00</span></div><div class="speak-meter"><span></span></div><div class="lab-preview"></div>');
+}
+function previewProject(btn){
+  var parts=[getAnswer('proj-open'),getAnswer('proj-1'),getAnswer('proj-2'),getAnswer('proj-close')].filter(Boolean);
+  var box=btn.closest('.study-lab-body').querySelector('.lab-preview');box.textContent=parts.join('\n\n');box.classList.add('show');
+}
+function toolkitPractice(item,root){
+  var sec=item.sec.id;
+  if(/^a-/.test(sec)){
+    var ex=listTexts(root,'ul.qlist li');
+    return practiceShell(sec,'Expression Production','표현을 눈으로만 읽지 말고 하나를 선택해 자신의 실제 업무 문장으로 바꾸세요.',
+      '<div class="lab-card"><b>Choose one expression</b><div style="margin-top:8px">'+ex.map(function(x){return '<button class="lab-btn" style="margin:3px" data-say="'+escHtml(x)+'" onclick="speakText(this.dataset.say)">'+escHtml(x)+'</button>';}).join('')+'</div></div>'+
+      '<label class="lab-label">My sentence</label>'+textarea('tk-'+sec,'Use one expression above in a real work situation.')+
+      '<label class="lab-label">Situation</label>'+inputLine('tk-sit-'+sec,'Meeting, client call, networking event, etc.'));
+  }
+  if(/^b-/.test(sec)){
+    var words=listTexts(root,'.word-chip');
+    return practiceShell(sec,'Vocabulary Activation','이 페이지의 핵심 어휘 중 최소 3개를 골라 문장으로 사용하세요.',
+      '<div class="lab-card">'+words.map(function(x){return '<span class="skill-tag">'+escHtml(x)+'</span>';}).join('')+'</div>'+
+      '<label class="lab-label">Sentence 1</label>'+inputLine('v1-'+sec,'Use one word or phrase.')+
+      '<label class="lab-label">Sentence 2</label>'+inputLine('v2-'+sec,'Use a different word or phrase.')+
+      '<label class="lab-label">Sentence 3</label>'+inputLine('v3-'+sec,'Use a third word or phrase.'));
+  }
+  if(sec==='c-1'){
+    var rows=Array.from(root.querySelectorAll('.idiom-row')).map(function(r){return r.textContent.trim();});
+    return practiceShell(sec,'Idiom Recall','뜻을 가린 상태에서 영어 표현을 보고 의미를 회상한 뒤, 자신의 문장으로 다시 사용하세요.',
+      '<div class="lab-card"><b>Random recall card</b><div class="lab-question" id="idiom-random">'+escHtml(rows[0]||'')+'</div><button class="lab-btn" onclick="newIdiomCard(this)">다른 카드</button></div>'+
+      '<label class="lab-label">My example sentence</label>'+textarea('idiom-own','Write your own example sentence.'));
+  }
+  if(sec==='d-1'){
+    var rows=Array.from(root.querySelectorAll('table.voc-table tr')).map(function(r){var t=r.querySelectorAll('td');return t.length>=3?[t[0].textContent.trim(),t[2].textContent.trim()]:null;}).filter(Boolean);
+    return practiceShell(sec,'Collocation Quick Check','표의 동사+명사 조합을 회상합니다.',
+      '<div id="collocation-quiz"></div><button class="lab-btn" onclick="newCollocationQuiz(this)">새 문제</button>');
+  }
+  if(sec==='d-2'){
+    return practiceShell(sec,'Rewrite with Stronger Verbs','표에 있는 weak → strong verb 변환을 참고해 업무 문장을 다시 써보세요.',
+      '<label class="lab-label">Simple version</label>'+textarea('weak-sentence','Write a simple business sentence using a common verb.')+
+      '<label class="lab-label">Rewritten version</label>'+textarea('strong-sentence','Rewrite it using one of the stronger verbs shown above.'));
+  }
+  return '';
+}
+function newIdiomCard(btn){
+  var root=btn.closest('#content-inner'),rows=Array.from(root.querySelectorAll('.idiom-row')).map(function(r){return r.textContent.trim();});var el=btn.parentElement.querySelector('#idiom-random');el.textContent=randomOf(rows);
+}
+function newCollocationQuiz(btn){
+  var root=btn.closest('#content-inner'),rows=Array.from(root.querySelectorAll('table.voc-table tr')).map(function(r){var t=r.querySelectorAll('td');return t.length>=3?[t[0].textContent.trim(),t[2].textContent.trim()]:null;}).filter(Boolean);
+  if(rows.length<4)return;var target=randomOf(rows),verbs=rows.map(function(r){return r[0];}).filter(function(v){return v!==target[0];});
+  var opts=[target[0]].concat(verbs.sort(function(){return Math.random()-.5;}).slice(0,3)).sort(function(){return Math.random()-.5;});
+  var slot=btn.parentElement.querySelector('#collocation-quiz');
+  slot.innerHTML='<div class="lab-question">Which verb completes: ___ '+escHtml(target[1])+'?</div>'+opts.map(function(v){return '<button class="quiz-option" data-v="'+escHtml(v)+'">'+escHtml(v)+'</button>';}).join('');
+  slot.querySelectorAll('.quiz-option').forEach(function(b){b.onclick=function(){var ok=b.dataset.v===target[0];b.classList.add(ok?'correct':'wrong');slot.querySelectorAll('.quiz-option').forEach(function(z){z.disabled=true;});if(!ok)Array.from(slot.querySelectorAll('.quiz-option')).find(function(z){return z.dataset.v===target[0];}).classList.add('correct');};});
+}
+function overviewPractice(item,root){
+  if(item.sec.id==='0-1'){
+    return practiceShell(item.sec.id,'Personal Goal Setup','교재의 세 mindset pillar를 자신의 업무 상황에 연결합니다.',
+      '<label class="lab-label">Where do you need English most?</label>'+textarea('goal-context','Describe one real situation: meeting, client call, presentation, interview, etc.')+
+      '<label class="lab-label">My communication goal</label>'+textarea('goal-result','What do you want to be able to explain, propose, persuade, or handle?')+
+      '<div class="lab-checks"><label><input type="checkbox" data-study-key="goal-curiosity"> Curiosity — 상대의 관점을 먼저 질문해 본다.</label><label><input type="checkbox" data-study-key="goal-open"> Open-mindedness — 다른 관점을 이해한 뒤 말한다.</label><label><input type="checkbox" data-study-key="goal-ground"> Standing your ground — 내 생각을 명확하게 표현한다.</label></div>');
+  }
+  return '';
+}
+function mountPractice(item){
+  var root=document.getElementById('content-inner'); if(!root) return;
+  if(item.sec.id==='0-0'){renderDiagnostic();return;}
+  if(moduleQuiz[item.sec.id]) root.insertAdjacentHTML('beforeend',microQuizHtml(item.sec.id));
+  var h='';
+  if(item.mod.id==='m0') h=overviewPractice(item,root);
+  if(item.mod.id==='m1' && item.sec.id!=='1-0') h=smallTalkPractice(item,root);
+  if(item.mod.id==='m2' && item.sec.id!=='2-0') h=frameworkPractice(item,root);
+  if(item.mod.id==='m3') h=scenarioPractice(item,root);
+  if(item.mod.id==='m4') h=tedPractice(item,root);
+  if(item.mod.id==='m5') h=interviewPractice(item,root);
+  if(item.mod.id==='m6') h=projectPractice(item,root);
+  if(item.mod.id==='tk') h=toolkitPractice(item,root);
+  if(h) root.insertAdjacentHTML('beforeend',h);
+  bindStudyInputs(root);
+  if(item.sec.id==='d-1'){var b=root.querySelector('#practice-d-1 .lab-btn'); if(b)newCollocationQuiz(b);}
+  updateStudyCount();
+}
+
+
+/* Pre-course diagnostic is an added self-study layer; original course content below is preserved. */
+curriculum[0].sections.unshift({
+  id:'0-0',
+  en:'Pre-course Diagnostic',
+  kr:'사전진단 퀴즈',
+  body: diagnosticShell()
+});
+
+
+/* ================= SELF-STUDY V3 · SESSION TRAINER 

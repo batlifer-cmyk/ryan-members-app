@@ -1,10 +1,19 @@
-import { get } from '@vercel/blob';
+import { del, get, put } from '@vercel/blob';
 import { isAuthorized } from '@/lib/auth';
 import { saveRecord } from '@/lib/blob-records';
 import type { AnalysisResult, DiarizedTranscript, RecordKind, RMRecord } from '@/lib/types';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
+
+const MAX_TRANSCRIPTION_BYTES = 24 * 1024 * 1024;
+
+type UploadedChunk = {
+  url: string;
+  pathname: string;
+  index: number;
+  size: number;
+};
 
 const ANALYSIS_SCHEMA = {
   type: 'object',
@@ -87,6 +96,61 @@ function kindLabel(kind: RecordKind) {
   return '수업';
 }
 
+function safeExtension(name: string, contentType: string) {
+  const match = name.match(/\.([a-z0-9]{2,5})$/i);
+  if (match) return `.${match[1].toLowerCase()}`;
+  if (contentType.includes('webm')) return '.webm';
+  if (contentType.includes('mp4') || contentType.includes('m4a')) return '.m4a';
+  if (contentType.includes('wav')) return '.wav';
+  if (contentType.includes('mpeg') || contentType.includes('mp3')) return '.mp3';
+  if (contentType.includes('ogg')) return '.ogg';
+  return '.audio';
+}
+
+async function readPrivateChunks(chunks: UploadedChunk[], contentType: string) {
+  const sorted = [...chunks].sort((a, b) => a.index - b.index);
+  if (sorted.length === 0 || sorted.length > 100) {
+    throw new Error('업로드 조각 수가 올바르지 않습니다.');
+  }
+
+  const declaredSize = sorted.reduce((sum, chunk) => sum + Math.max(0, chunk.size || 0), 0);
+  if (declaredSize > MAX_TRANSCRIPTION_BYTES) {
+    throw new Error('음성파일은 최대 24MB까지 전사할 수 있습니다.');
+  }
+
+  const buffers: ArrayBuffer[] = [];
+  let actualSize = 0;
+
+  for (let position = 0; position < sorted.length; position += 1) {
+    const chunk = sorted[position];
+    if (chunk.index !== position || !chunk.url || !chunk.pathname) {
+      throw new Error('업로드 조각이 누락되었거나 순서가 올바르지 않습니다.');
+    }
+    const stored = await get(chunk.url, { access: 'private', useCache: false });
+    if (!stored || stored.statusCode !== 200 || !stored.stream) {
+      throw new Error(`업로드 조각 ${position + 1}을 읽지 못했습니다.`);
+    }
+    const bytes = await new Response(stored.stream).arrayBuffer();
+    actualSize += bytes.byteLength;
+    if (actualSize > MAX_TRANSCRIPTION_BYTES) {
+      throw new Error('음성파일은 최대 24MB까지 전사할 수 있습니다.');
+    }
+    buffers.push(bytes);
+  }
+
+  return new Blob(buffers, { type: contentType || 'application/octet-stream' });
+}
+
+async function cleanupChunks(chunks: UploadedChunk[]) {
+  const urls = chunks.map((chunk) => chunk.url).filter(Boolean);
+  if (!urls.length) return;
+  try {
+    await del(urls);
+  } catch (error) {
+    console.error('RM Record temporary chunk cleanup failed', error);
+  }
+}
+
 async function transcribeAudio(audio: Blob, filename: string) {
   const form = new FormData();
   form.append('file', audio, filename);
@@ -164,8 +228,8 @@ export async function POST(request: Request) {
   }
 
   const body = (await request.json()) as {
-    audioUrl?: string;
-    audioPathname?: string;
+    uploadId?: string;
+    chunks?: UploadedChunk[];
     originalName?: string;
     contentType?: string;
     size?: number;
@@ -176,21 +240,21 @@ export async function POST(request: Request) {
     consentConfirmed?: boolean;
   };
 
-  if (!body.audioUrl || !body.audioPathname || !body.kind || !body.consentConfirmed) {
+  const chunks = Array.isArray(body.chunks) ? body.chunks : [];
+  if (!body.uploadId || !chunks.length || !body.kind || !body.consentConfirmed) {
     return Response.json({ error: '필수 정보가 누락되었습니다.' }, { status: 400 });
+  }
+  if ((body.size || 0) > MAX_TRANSCRIPTION_BYTES) {
+    await cleanupChunks(chunks);
+    return Response.json({ error: '음성파일은 최대 24MB까지 전사할 수 있습니다.' }, { status: 413 });
   }
 
   try {
-    const stored = await get(body.audioUrl);
-    if (!stored || stored.statusCode !== 200 || !stored.stream) {
-      throw new Error('업로드한 오디오를 읽지 못했습니다.');
-    }
+    const contentType = body.contentType || 'application/octet-stream';
+    const originalName = body.originalName || 'recording.webm';
+    const audioBlob = await readPrivateChunks(chunks, contentType);
 
-    const audioBlob = await new Response(stored.stream, {
-      headers: { 'Content-Type': body.contentType || 'application/octet-stream' },
-    }).blob();
-
-    const transcript = await transcribeAudio(audioBlob, body.originalName || 'recording.webm');
+    const transcript = await transcribeAudio(audioBlob, originalName);
     const analysis = await analyzeTranscript({
       kind: body.kind,
       subjectName: body.subjectName?.trim() ?? '',
@@ -199,20 +263,30 @@ export async function POST(request: Request) {
       transcript,
     });
 
+    const recordId = crypto.randomUUID();
+    const createdAt = new Date().toISOString();
+    const extension = safeExtension(originalName, contentType);
+    const audioPathname = `rm-record/audio/${createdAt.slice(0, 10)}/${recordId}${extension}`;
+    const storedAudio = await put(audioPathname, audioBlob, {
+      access: 'private',
+      addRandomSuffix: false,
+      contentType,
+    });
+
     const record: RMRecord = {
-      id: crypto.randomUUID(),
-      createdAt: new Date().toISOString(),
+      id: recordId,
+      createdAt,
       kind: body.kind,
       subjectName: body.subjectName?.trim() ?? '',
       staffName: body.staffName?.trim() ?? '',
       note: body.note?.trim() ?? '',
       consentConfirmed: true,
       audio: {
-        url: body.audioUrl,
-        pathname: body.audioPathname,
-        originalName: body.originalName || 'recording.webm',
-        contentType: body.contentType || 'application/octet-stream',
-        size: body.size || 0,
+        url: storedAudio.url,
+        pathname: storedAudio.pathname,
+        originalName,
+        contentType,
+        size: audioBlob.size,
       },
       transcript,
       analysis,
@@ -223,5 +297,7 @@ export async function POST(request: Request) {
   } catch (error) {
     const message = error instanceof Error ? error.message : '처리에 실패했습니다.';
     return Response.json({ error: message }, { status: 500 });
+  } finally {
+    await cleanupChunks(chunks);
   }
 }

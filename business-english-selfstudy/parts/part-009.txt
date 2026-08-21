@@ -1,0 +1,98 @@
+ en:'Final speaking project', kr:'최종 프로젝트 개요', body:
+    slideHead('Module 6. Independent Speaking Project','최종 발표 프로젝트') +
+    '<p class="lead kr">앞선 모듈에서 학습한 비즈니스 스피킹 구조, 핵심 표현, 어휘, 그리고 논리적으로 생각을 전달하는 방법을 실제 발표 형태로 통합하는 최종 프로젝트입니다. 정확한 문장보다, 생각을 명확하게 구조화하고 설득력 있게 전달하는 능력이 중요합니다.</p>' +
+    block('3분 Presentation — 주제 선택') +
+    qlist(['Company Introduction','Product Pitch','Self Introduction','Career Story','Business Proposal'])
+  }
+]},
+
+{ id:'tk', en:'Business English Toolkit', kr:'핵심 표현 & 어휘 툴킷', sections:[
+  { id:'a-1', en:'A1 · Giving opinions', kr:'의견 제시', body:
+    slideHead('Part A. Essential Expressions','1. Giving opinions (의견 제시)') +
+    note('Instead of "I think..." → use:') +
+    qlist(['From my perspective,...','In my experience,...','One thing I\'ve noticed is...','If you ask me,...','My take is that...','I\'d argue that...','One possibility is...','I tend to believe...'],true) +
+    example('E.g., "From my perspective, improving communication is more important than reducing costs."')
+  },
+  { id:'a-2', en:'A2 · Agreeing', kr:'동의하기', body:
+    slideHead('Part A. Essential Expressions','2. Agreeing') +
+    qlist(['I completely agree.','I couldn\'t agree more.','That\'s exactly how I see it.','That\'s a great point.','I think we\'re on the same page.','Absolutely.'],true) +
+    example('E.g., "I completely agree with your approach."')
+  },
+  { id:'a-3', en:'A3 · Politely disagreeing', kr:'정중하게 반대하기', body:
+    slideHead('Part A. Essential Expressions','3. Politely disagreeing') +
+    note('Instead of "No." → use:') +
+    qlist(['I see your point, but...','That\'s one way to look at it.','I\'m not entirely convinced.','I\'d look at it a little differently.','That\'s a fair point. However...','I understand where you\'re coming from.'],true) +
+    example('E.g., "I see your point, but I think we should focus on customer retention first."')
+  },
+  { id:'a-4', en:'A4 · Making suggestions', kr:'제안하기', body:
+    slideHead('Part A. Essential Expressions','4. Making suggestions') +
+    qlist(['What if we...','Have you considered...?','One option could be...','Why don\'t we...?','It might make sense to...','We could also...'],true) +
+    example('E.g., "It might make sense to postpone the launch."')
+  },
+  { id:'a-5', en:'A5 · Persuading', kr:'설득하기', body:
+    slideHead('Part A. Essential Expressions','5. Persuading') +
+    qlist(['The main reason is...','The biggest advantage is...','This would allow us to...','I believe this approach would...','It would help us...','The key benefit is...'],true)
+  },
+  { id:'a-6', en:'A6 · Buying time', kr:'시간 벌기', body:
+    slideHead('Part A. Essential Expressions','6. Buying time') +
+    qlist(['That\'s a good question.','Let me think for a second.','That\'s an interesting point.','Give me a moment.','Let me put it this way.','What I mean is...'],true)
+  },
+  { id:'a-7', en:'A7 · Clarifying', kr:'명확히 하기', body:
+    slideHead('Part A. Essential Expressions','7. Clarifying') +
+    qlist(['What I mean is...','In other words...','To put it another way...','Let me clarify.','Just to be clear...'],true)
+  },
+  { id:'a-8', en:'A8 · Emphasizing', kr:'강조하기', body:
+    slideHead('Part A. Essential Expressions','8. Emphasizing') +
+    qlist(['The key point is...','The important thing is...','What really matters is...','At the end of the day...','Ultimately,...'],true)
+  },
+  { id:'a-9', en:'A9 · Showing uncertainty', kr:'불확실함 표현하기', body:
+    slideHead('Part A. Essential Expressions','9. Showing uncertainty') +
+    qlist(['It depends.','I\'m not completely sure.','I\'d have to look into that.','That\'s a good question.','Off the top of my head...'],true)
+  },
+  { id:'a-10', en:'A10 · Ending conversations', kr:'대화 마무리하기', body:
+    slideHead('Part A. Essential Expressions','10. Ending conversations') +
+    qlist(['It was great talking with you.','Let\'s stay in touch.','I hope we get the chance to work together.','Thanks for your time.','Enjoy the rest of the event.'],true)
+  },
+  { id:'b-1', en:'B1 · Communication vocabulary', kr:'커뮤니케이션 어휘', body:
+    slideHead('Part B. High-frequency Vocabulary','Communication') +
+    chips(['communicate','clarify','explain','summarize','persuade','negotiate','discuss','mention','recommend','propose','confirm','respond','follow up','misunderstand','align'])
+  },
+  { id:'b-2', en:'B2 · Meetings vocabulary', kr:'회의 관련 어휘', body:
+    slideHead('Part B. High-frequency Vocabulary','Meetings') +
+    chips(['agenda','action items','meeting minutes','deadline','priority','update','progress','issue','concern','decision','outcome','next steps']) +
+    block('Useful collocations') +
+    chips(['set an agenda','reach a decision','meet a deadline','miss a deadline','share an update','raise an issue'])
+  },
+  { id:'b-3', en:'B3 · Projects vocabulary', kr:'프로젝트 관련 어휘', body:
+    slideHead('Part B. High-frequency Vocabulary','Projects') +
+    chips(['deliverable','timeline','budget','scope','resources','stakeholder','implementation','execution','launch','rollout']) +
+    block('Useful combinations') +
+    chips(['meet a milestone','stay on schedule','go over budget','stay within budget','launch a product','roll out a feature'])
+  },
+  { id:'b-4', en:'B4 · Performance vocabulary', kr:'성과 관련 어휘', body:
+    slideHead('Part B. High-frequency Vocabulary','Performance') +
+    chips(['productivity','efficiency','performance','growth','revenue','profit','customer satisfaction','retention','improvement','feedback','KPI','target']) +
+    block('Common collocations') +
+    chips(['hit the target','miss the target','drive growth','increase revenue','improve efficiency','boost productivity'])
+  },
+  { id:'b-5', en:'B5 · Leadership vocabulary', kr:'리더십 관련 어휘', body:
+    slideHead('Part B. High-frequency Vocabulary','Leadership') +
+    chips(['ownership','accountability','responsibility','initiative','collaboration','transparency','trust','influence','confidence','resilience']) +
+    block('Useful phrases') +
+    chips(['take ownership','show initiative','build trust','earn credibility','gain experience','lead by example'])
+  },
+  { id:'b-6', en:'B6 · Problem solving vocabulary', kr:'문제 해결 관련 어휘', body:
+    slideHead('Part B. High-frequency Vocabulary','Problem Solving') +
+    chips(['challenge','obstacle','solution','root cause','bottleneck','risk','opportunity','trade-off','workaround','contingency plan']) +
+    block('Useful verbs') +
+    chips(['identify','resolve','address','mitigate','prevent','overcome'])
+  },
+  { id:'c-1', en:'Part C · Business idioms', kr:'비즈니스 아이디엄 & 자연스러운 표현', body:
+    slideHead('Part C. Business Idioms & Natural Expressions','다국적 기업에서 매우 흔하게 쓰이는 표현들') +
+    [
+      ['On the same page','같은 이해를 하고 있다','Let\'s make sure we\'re on the same page.'],
+      ['Touch base','간단히 이야기하다','Let\'s touch base next week.'],
+      ['Circle back','나중에 다시 이야기하다','I\'ll circle back tomorrow.'],
+      ['Keep me posted','계속 알려주세요','Keep me posted.'],
+      ['In the loop','정보를 공유받는 상태','Please keep me in the loop.'],
+      ['

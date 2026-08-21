@@ -1,0 +1,62 @@
+x">'+escHtml(q[0])+'</div>'+q[1].map(function(o,oi){return '<button class="quiz-option" data-i="'+oi+'">'+escHtml(o)+'</button>';}).join('');
+    slot.querySelectorAll('.quiz-option').forEach(function(b){b.onclick=function(){var ok=Number(b.dataset.i)===q[2];b.classList.add(ok?'correct':'wrong');slot.querySelectorAll('.quiz-option').forEach(function(z){z.disabled=true;});if(!ok)slot.querySelector('.quiz-option[data-i="'+q[2]+'"]').classList.add('correct');if(ok)score++;setTimeout(function(){i++;draw();},600);};});
+  } draw();
+}
+
+/* ---------- Practice builders ---------- */
+function smallTalkPractice(item,root){
+  var qs=listTexts(root,'ul.qlist li'); if(!qs.length) return '';
+  var key='qsel-'+item.sec.id, selected=getAnswer(key)||qs[0];
+  var opts=qs.map(function(q){return '<option '+(q===selected?'selected':'')+'>'+escHtml(q)+'</option>';}).join('');
+  return practiceShell(item.sec.id,'Answer Builder','질문 하나를 골라 실제 대화처럼 답을 만들어 보세요. 아래 3단계는 자습을 위한 추가 연습 구조입니다.',
+    '<label class="lab-label">Question</label><select class="lab-select" data-study-key="'+key+'" onchange="setAnswer(\''+key+'\',this.value); this.closest(\'.study-lab-body\').querySelector(\'.lab-question\').textContent=this.value">'+opts+'</select>'+
+    '<div class="lab-question">'+escHtml(selected)+'</div>'+
+    '<div class="lab-grid2"><div><label class="lab-label">1 · Direct answer</label>'+textarea(item.sec.id+'-direct','Answer the question directly.')+'</div>'+
+    '<div><label class="lab-label">2 · Add one detail / example</label>'+textarea(item.sec.id+'-detail','Add a reason, detail, or short example.')+'</div></div>'+
+    '<label class="lab-label">3 · Follow-up question</label>'+inputLine(item.sec.id+'-follow','Ask the other person a related question.')+
+    '<div class="lab-actions"><button class="lab-btn" onclick="speakText(this.closest(\'.study-lab-body\').querySelector(\'.lab-question\').textContent)">🔊 Hear question</button>'+
+    '<button class="lab-btn" onclick="dictateTo(\''+item.sec.id+'-direct\',this)">🎙 Dictate answer</button>'+
+    '<button class="lab-btn chalk" onclick="composeSmallTalk(\''+item.sec.id+'\',this)">Preview full response</button></div>'+
+    '<div class="lab-preview"></div>'+
+    '<div class="lab-checks"><label><input type="checkbox" data-study-key="'+item.sec.id+'-c1"> 질문에 바로 답했다.</label><label><input type="checkbox" data-study-key="'+item.sec.id+'-c2"> 이유·경험·예시 중 하나를 추가했다.</label><label><input type="checkbox" data-study-key="'+item.sec.id+'-c3"> 상대에게 되물을 질문을 만들었다.</label></div>'
+  );
+}
+function composeSmallTalk(id,btn){
+  var a=getAnswer(id+'-direct'),b=getAnswer(id+'-detail'),c=getAnswer(id+'-follow');
+  var box=btn.closest('.study-lab-body').querySelector('.lab-preview');
+  box.textContent=[a,b,c].filter(Boolean).join(' ');box.classList.add('show');
+}
+function frameworkFields(id,labels,prompt,model){
+  return '<div class="lab-question">'+escHtml(prompt)+'</div><div class="lab-grid4">'+labels.map(function(x,i){return '<div class="lab-step"><b>'+escHtml(x[0])+'</b>'+textarea(id+'-'+i,x[1])+'</div>';}).join('')+'</div>'+
+  '<div class="lab-actions"><button class="lab-btn chalk" onclick="previewFramework(\''+id+'\',this,'+labels.length+')">Combine answer</button>'+
+  '<button class="lab-btn" onclick="dictateTo(\''+id+'-0\',this)">🎙 Start speaking</button>'+
+  (model?'<button class="lab-btn" onclick="toggleModel(this)">Show / hide model</button>':'')+
+  '</div><div class="lab-preview"></div>'+(model?'<div class="lab-preview hidden-answer">'+escHtml(model)+'</div>':'');
+}
+function previewFramework(id,btn,n){
+  var parts=[];for(var i=0;i<n;i++) if(getAnswer(id+'-'+i)) parts.push(getAnswer(id+'-'+i));
+  var boxes=btn.closest('.study-lab-body').querySelectorAll('.lab-preview');boxes[0].textContent=parts.join(' ');boxes[0].classList.add('show');
+}
+function toggleModel(btn){var boxes=btn.closest('.study-lab-body').querySelectorAll('.lab-preview');var b=boxes[boxes.length-1];b.classList.add('show');b.classList.toggle('reveal');}
+function frameworkPractice(item,root){
+  if(item.sec.id==='2-1'){
+    return practiceShell(item.sec.id,'Build Your Elevator Pitch','교재의 4단계 구조를 그대로 사용해 자신의 실제 소개를 작성합니다.',
+      frameworkFields('elev',[['1 · Who you are','Your role / current position'],['2 · What you do','Your main focus or responsibility'],['3 · Experience / achievement','A concrete achievement or experience'],['4 · Goal / interest','What you are interested in next']],
+      'Imagine you meet a new client or professional contact. Introduce yourself in 30–60 seconds.',
+      'Hi, I’m Sarah. I’m currently a product manager at a technology company. I specialize in developing digital products and working with cross-functional teams. Over the past few years, I’ve led several successful product launches across Asia. I’m passionate about creating products that solve real customer problems.'));
+  }
+  if(item.sec.id==='2-2'){
+    var prompts=htmlListFromSection('2-4'),p=getAnswer('prep-prompt')||prompts[0];
+    return practiceShell(item.sec.id,'PREP Writing → Speaking','Open-ended question을 하나 고르고 Point–Reason–Example–Point 네 칸을 채우세요.',
+      '<label class="lab-label">Practice question</label><select class="lab-select" data-study-key="prep-prompt" onchange="setAnswer(\'prep-prompt\',this.value);document.querySelector(\'#practice-2-2 .lab-question\').textContent=this.value">'+prompts.map(function(x){return '<option '+(x===p?'selected':'')+'>'+escHtml(x)+'</option>';}).join('')+'</select>'+
+      frameworkFields('prep',[['P · Point','State your opinion clearly.'],['R · Reason','Give the main reason.'],['E · Example','Give an example or experience.'],['P · Point','Summarize your message.']],p,'From my perspective, companies should offer flexible work options. The main reason is that employees can be more productive when they have more control over their working environment. For example, my previous company introduced a hybrid system, and employee satisfaction improved significantly. So overall, I believe flexibility can create better performance and engagement.'));
+  }
+  if(item.sec.id==='2-3'){
+    return practiceShell(item.sec.id,'STAR Story Builder','교재의 STAR 순서로 본인의 실제 경험을 작성합니다. 특히 Action은 본인이 한 행동을 구체적으로 적으세요.',
+      frameworkFields('star',[['S · Situation','Describe the background.'],['T · Task','What was your responsibility?'],['A · Action','What did YOU actually do?'],['R · Result','What happened as a result?']],
+      'Tell me about a time you solved a difficult problem.',
+      'In my previous role, our team faced increasing customer complaints after a product update. I was responsible for identifying the main issues and improving customer satisfaction. I analyzed customer feedback, identified common problems, and worked with the product team to develop solutions. As a result, customer complaints decreased by 30% within three months.'));
+  }
+  if(item.sec.id==='2-4'){
+    var qq=listTexts(root,'ul.qlist li'),sel=getAnswer('open-q')||qq[0];
+    return practiceShell(item.sec.id,'Random PR

@@ -1,0 +1,96 @@
+.phrases ? block('Useful expressions') + qlist(t.phrases, true) : '') +
+    (t.starLink ? note(t.starLink) : '');
+}
+function vocTable(rows){
+  return '<table class="voc-table"><tbody>'+rows.map(function(r){
+    return '<tr><td>'+r[0]+'</td><td class="arrow">→</td><td>'+r[1]+'</td></tr>';
+  }).join('')+'</tbody></table>';
+}
+
+/* ---------------- CURRICULUM DATA ---------------- */
+var curriculum = [
+{ id:'m0', en:'Overview', kr:'오리엔테이션', sections:[
+  { id:'0-1', en:'Mindset & Philosophy', kr:'마인드셋 & 수업 철학', body:
+    slideHead('Mindset & Philosophy','마인드셋 & 수업 철학') +
+    '<p class="lead kr">오늘날 AI는 거의 모든 것을 번역할 수 있지만, 진정으로 중요한 능력은 번역이 실제로 정확한지 판단하는 능력입니다. 사람과 사람 사이의 소통에서 형성되는 신뢰는 AI가 대신할 수 없으며, 번역과 말하기는 완전히 다른 능력입니다. 그래서 이 수업은 실제 의사소통 — 설명하고, 의견을 제시하고, 설득하고, 자신감 있게 말하는 연습 — 에 초점을 맞춥니다.</p>' +
+    '<p class="lead">Today, AI can translate almost anything — but the real skill is judging whether that translation is actually accurate. Trust built through genuine human communication cannot be replaced by AI, and translation and speaking are completely different skills. That is why our classes focus on real communication: explaining ideas, giving opinions, persuading others, and speaking naturally with confidence.</p>' +
+    block('마인드셋 3가지 · Three mindset pillars') +
+    qlist([
+      '<b>호기심 Curiosity</b> — 예상치 못한 기회를 만든다 / creates opportunities you never expected',
+      '<b>열린 마음 Open-mindedness</b> — 말하기 전에 다양한 관점을 먼저 이해한다 / understand other perspectives before sharing your own',
+      '<b>소신 Standing your ground</b> — 존중하되, 자신의 생각을 자신 있게 표현한다 / respect others, but express your own ideas with confidence'
+    ]) +
+    note('비즈니스 영어는 단순한 언어 실력이 아니라 마인드셋입니다. 완벽한 발음보다, 아이디어를 제안하고 설득하며 성과로 연결하는 사람이 인정받습니다.')
+  },
+  { id:'0-2', en:'Who this is for & how to teach', kr:'타겟층 & 수업 진행 방법', body:
+    slideHead('Who this is for','타겟층 & 수업 진행 방법') +
+    block('타겟층 · Target students') +
+    qlist([
+      '비즈니스 영어에 관심있으면서 스몰톡 등 전반적인 영어 실력을 향상하고 싶은 직장인',
+      '실제로 영어를 사용하며 업무를 하지만 실력이 부족해 답답한 직장인',
+      '영어 면접을 준비하며 영어 공부도 하고 싶은 예비 직장인 / 이직 준비생'
+    ]) +
+    block('수업 방식 · How to run this course') +
+    qlist([
+      '총 6개 모듈 — <b>순서대로 진행해도 되고, 섞어서 진행해도 됨</b>',
+      '불필요한 모듈은 생략 가능. 비즈니스 영어는 범위가 넓기 때문에 반드시 학생에게 니즈를 먼저 물어볼 것',
+      'Message House 방식: 학생이 상황별 질문에 대한 답변을 미리 준비 → 수업에서 교사가 교정 + 관련 대화를 자연스럽게 이어가며 실시간 피드백 제공'
+    ]) +
+    note('사이드바에서 모듈을 클릭해 원하는 순서로 자유롭게 이동할 수 있습니다. 좌우 화살표 키로도 슬라이드를 넘길 수 있습니다.')
+  }
+]},
+
+{ id:'m1', en:'Module 1 · Business Small Talk', kr:'비즈니스 스몰톡', sections:[
+  { id:'1-0', en:'Module intro', kr:'모듈 소개', body:
+    slideHead('Module 1. Business Small Talk','비즈니스 스몰톡') +
+    '<p class="lead kr">흔히 쓰이는 비즈니스 영어 질문들입니다. 면접에서도 자주 물어보는 질문이지만, 아래 질문들은 회사 내부, 고객 미팅 등 다양한 상황에서 자주 쓰일 수 있습니다.</p>' +
+    note('Preparing Your Answers — 학생이 각 카테고리의 질문에 미리 답변을 준비해오면, 수업 시간에 교정하고 자연스럽게 대화를 이어갑니다.')
+  },
+  { id:'1-1', en:'Getting to know someone', kr:'상대방 알아가기', body:
+    slideHead('Getting to know someone','상대방 알아가기') +
+    qlist(['Tell me a little about yourself.','What\'s your role?','How did you end up doing what you\'re doing?','What does a typical day look like for you?','How long have you been with the company?'])
+  },
+  { id:'1-2', en:'Career and work', kr:'커리어와 업무', body:
+    slideHead('Career and work','커리어와 업무') +
+    qlist(['What do you enjoy most about your job?','What\'s the most rewarding part of your work?','What\'s the biggest challenge in your role?','If you didn\'t have your current job, what do you think you\'d be doing?','What skills have been the most valuable in your career?'])
+  },
+  { id:'1-3', en:'Company and team', kr:'회사와 팀', body:
+    slideHead('Company and team','회사와 팀') +
+    qlist(['What are the company\'s highest-priority goals this year?','How does your role contribute to those goals?','What\'s your team focused on right now?','What excites you most about where the company is headed?','What makes your company culture unique?'])
+  },
+  { id:'1-4', en:'Workplace preferences', kr:'업무 스타일 선호', body:
+    slideHead('Workplace preferences','업무 스타일 선호') +
+    qlist(['What kind of work environment do you enjoy most?','Do you prefer working from the office, from home, or a hybrid setup?','How does your team usually collaborate?','What\'s something that helps you stay productive?'])
+  },
+  { id:'1-5', en:'Travel and relocation', kr:'출장과 이주', body:
+    slideHead('Travel and relocation','출장과 이주') +
+    qlist(['What\'s the best business trip you\'ve ever taken?','What\'s the worst business trip you\'ve ever taken?','Do you travel much for work?','Are there any countries you\'d be interested in relocating to? Why?','Is there anywhere you\'d love to work internationally?'])
+  },
+  { id:'1-6', en:'Life outside work', kr:'회사 밖 삶', body:
+    slideHead('Life outside work','회사 밖 삶') +
+    qlist(['What do you like to do outside of work?','Have you picked up any new hobbies recently?','How do you usually unwind after a busy week?','Have you read any good books or watched anything interesting lately?','Any exciting plans for the weekend?'])
+  },
+  { id:'1-7', en:'Industry and professional growth', kr:'산업과 커리어 성장', body:
+    slideHead('Industry and professional growth','산업과 커리어 성장') +
+    qlist(['What trends are you seeing in your industry?','What are you most excited about in your field right now?','Have you learned anything recently that\'s changed how you work?','Are there any conferences or events you look forward to each year?'])
+  },
+  { id:'1-8', en:'Networking events', kr:'네트워킹 행사', body:
+    slideHead('Networking events','네트워킹 행사') +
+    qlist(['What brought you to this event?','Is this your first time attending?','What\'s been your biggest takeaway so far?','Have you met anyone interesting today?'])
+  }
+]},
+
+{ id:'m2', en:'Module 2 · Speaking Frameworks', kr:'비즈니스 스피킹 프레임워크', sections:[
+  { id:'2-0', en:'Module intro', kr:'모듈 소개', body:
+    slideHead('Module 2. Business Speaking Frameworks','비즈니스 스피킹 프레임워크') +
+    block('한국어 설명','kr') +
+    '<p class="lead kr">비즈니스 환경에서 효과적인 커뮤니케이션은 단순히 어려운 단어를 쓰는 것이 아닙니다. 뛰어난 전문가는 생각을 명확하게 정리하고, 아이디어를 논리적으로 설명하며, 상대방을 자신 있게 설득합니다. 학생들은 실제 업무 상황을 바탕으로 자신만의 스크립트를 준비하고, 다음 항목에 대해 피드백을 받습니다.</p>' +
+    qlist(['명확한 구조와 논리성','자연스러운 비즈니스 표현','설득력 있는 커뮤니케이션','자신감 있는 전달 방식 (톤·속도·바디랭귀지)'],true) +
+    block('English explanation','en') +
+    '<p class="lead">The most effective professionals organize their thoughts clearly, explain ideas logically, and persuade others confidently. Students prepare scripts based on real situations and receive feedback on structure, natural expressions, persuasive communication, and confident delivery.</p>'
+  },
+  { id:'2-1', en:'1. Elevator Pitch', kr:'엘리베이터 피치 — 나를 빠르고 명확하게 소개하기', body:
+    slideHead('1. Elevator Pitch','나를 빠르고 명확하게 소개하기') +
+    '<p class="lead">A short introduction that explains who you are, what you do, and what value you bring — usually 30–60 seconds.</p>' +
+    block('언제 쓰나요? · Useful for') +
+    chips(['Networking events','First meetings','Job interviews','Client introductions'])

@@ -1,0 +1,144 @@
+7FB18B;}
+  .trainer-option.wrong{background:#FDEDEA;border-color:#D48D82;}
+  .trainer-option:disabled{cursor:default;}
+  .trainer-feedback{
+    display:none;border-radius:10px;padding:12px 14px;margin-top:12px;font-size:13.5px;line-height:1.6;
+    background:#F0EEE6;border:1px solid #DDD8CB;
+  }
+  .trainer-feedback.show{display:block;}
+  .trainer-next{
+    display:none;margin-top:14px;margin-left:auto;border:0;background:#182420;color:#fff;
+    border-radius:9px;padding:11px 18px;font-size:13px;font-weight:700;cursor:pointer;
+  }
+  .trainer-next.show{display:block;}
+  .trainer-chunks{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0;}
+  .trainer-chunk{
+    border:1px solid #CFC9B9;background:#fff;border-radius:9px;padding:9px 11px;cursor:pointer;font-size:14px;
+  }
+  .trainer-chunk.used{opacity:.35;}
+  .trainer-order-answer{
+    min-height:54px;border:1px dashed #BDB5A1;border-radius:10px;padding:10px;display:flex;flex-wrap:wrap;gap:7px;
+    background:#FCFBF7;
+  }
+  .trainer-input,.trainer-textarea{
+    width:100%;border:1px solid #CFC9B9;background:#fff;border-radius:10px;padding:12px;font-size:14px;font-family:var(--font-body);
+  }
+  .trainer-textarea{min-height:150px;resize:vertical;line-height:1.65;}
+  .trainer-input:focus,.trainer-textarea:focus{outline:2px solid rgba(228,185,78,.35);border-color:#A98A39;}
+  .trainer-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
+  .trainer-btn{
+    border:1px solid #CFC9B9;background:#fff;border-radius:9px;padding:10px 13px;font-size:13px;font-weight:600;cursor:pointer;
+  }
+  .trainer-btn.primary{background:#182420;border-color:#182420;color:#fff;}
+  .trainer-btn.chalk{background:#E4B94E;border-color:#E4B94E;color:#18201D;}
+  .trainer-checks{display:grid;gap:8px;margin-top:14px;padding:13px;background:#F4F1E7;border-radius:10px;}
+  .trainer-checks label{font-size:13px;display:flex;gap:8px;align-items:flex-start;}
+  .trainer-transcript{margin-top:12px;}
+  .trainer-timer{font-family:var(--font-mono);font-size:34px;color:#B4611F;font-weight:700;margin:10px 0;}
+  .trainer-result{
+    text-align:center;background:#fff;border:1px solid #DDD8CB;border-radius:16px;padding:28px 20px;
+    box-shadow:0 12px 34px rgba(28,36,32,.06);
+  }
+  .trainer-score{font-family:var(--font-display);font-size:48px;font-weight:700;}
+  .trainer-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:18px;}
+  .trainer-metric{border:1px solid #E0DBCE;border-radius:10px;padding:11px;background:#FAF9F5;}
+  .trainer-metric b{display:block;font-size:20px}.trainer-metric span{font-size:11px;color:#66736C;}
+  .practice-center-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:16px;}
+  .practice-center-card{border:1px solid var(--line);background:#fff;border-radius:11px;padding:16px;}
+  .practice-center-card h4{margin:0 0 6px;font-size:15px;}
+  .practice-center-card p{margin:0 0 12px;font-size:12.5px;color:var(--ink-soft);line-height:1.55;}
+  .mastery-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin:14px 0;}
+  .mastery-box{border:1px solid var(--line);background:#fff;border-radius:10px;padding:11px;}
+  .mastery-box b{font-size:20px;display:block}.mastery-box span{font-size:11px;color:var(--ink-soft);}
+  .retry-badge{display:inline-block;border-radius:20px;padding:4px 8px;background:#FBEDE0;color:#9C4D16;font-size:11px;margin-left:7px;}
+  @media(max-width:760px){
+    .trainer-top{padding:9px 12px}.trainer-main{padding:24px 12px 70px}
+    .trainer-card h2{font-size:24px}.trainer-question{padding:15px}
+    .trainer-metrics,.mastery-strip,.practice-center-grid{grid-template-columns:1fr 1fr}
+    .trainer-stat.hide-mobile{display:none}
+  }
+
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div id="scrim"></div>
+  <nav id="sidebar">
+    <div class="brand">
+      <div class="eyebrow">Ryan Members</div>
+      <h1>Business English Self-Study Lab V3.1</h1>
+      <p>사전진단 · 문제세션 · 오답복습 · 말하기</p>
+    </div>
+    <div id="search-wrap">
+      <input id="search" type="text" placeholder="예: PREP, 협상, TED..." autocomplete="off">
+    </div>
+    <div id="mod-container"></div>
+  </nav>
+
+  <div id="main">
+    <div id="topbar">
+      <button id="menu-toggle" aria-label="메뉴 열기"><span></span></button>
+      <div class="crumb" id="crumb"></div>
+      <div id="progress-track"><div id="progress-fill"></div></div>
+      <div id="progress-count-text"></div>
+    </div>
+    <div id="content-scroll">
+      <div id="content-inner"></div>
+    </div>
+    <div id="footer-nav">
+      <button class="nav-btn prev" id="btn-prev">
+        <span>‹</span>
+        <span><span class="lbl">Prev</span><span class="tt" id="prev-title"></span></span>
+      </button>
+      <span class="kbd-hint">← / → 방향키로 이동</span>
+      <button class="nav-btn next" id="btn-next">
+        <span><span class="lbl">Next</span><span class="tt" id="next-title"></span></span>
+        <span>›</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------------- helpers to build slide HTML ---------------- */
+function qlist(items, compact){
+  return '<ul class="qlist'+(compact?' compact':'')+'">'+items.map(function(t){return '<li>'+t+'</li>';}).join('')+'</ul>';
+}
+function steplist(items){
+  return '<ol class="steplist">'+items.map(function(t){return '<li>'+t+'</li>';}).join('')+'</ol>';
+}
+function chips(items){
+  return '<div class="word-chip-wrap">'+items.map(function(t){return '<span class="word-chip">'+t+'</span>';}).join('')+'</div>';
+}
+function head(en, kr){
+  return '<div class="slide-eyebrow">'+en+'</div><h2 class="slide-title">'+ (kr && !en.match(/^Toolkit/) ? '' : '') + '</h2>';
+}
+function slideHead(title, kr){
+  return '<h2 class="slide-title">'+title+'</h2>'+(kr?'<p class="slide-kr">'+kr+'</p>':'');
+}
+function block(title, tagKind){
+  var tag = tagKind ? '<span class="tag '+tagKind+'">'+(tagKind==='kr'?'KR':'EN')+'</span>' : '';
+  return '<h3 class="blk">'+title+' '+tag+'</h3>';
+}
+function example(html){ return '<div class="example">'+html+'</div>'; }
+function note(html){ return '<div class="note-box">'+html+'</div>'; }
+function starSteps(steps){
+  return steps.map(function(s){
+    return '<div class="star-step"><div class="star-letter">'+s.l+'</div><div class="star-body"><b>'+s.t+'</b><span>'+s.d+'</span></div></div>';
+  }).join('');
+}
+function scenarioGrid(items){
+  return '<div class="grid-2">'+items.map(function(s){
+    return '<div class="scenario-card"><h4>'+s.t+' <em>'+s.en+'</em></h4><p>'+s.d+'</p></div>';
+  }).join('')+'</div>';
+}
+function tedCard(t){
+  return slideHead(t.title, t.theme) +
+    '<div class="ted-meta"><span class="pill">'+t.unit+'</span></div>' +
+    '<p class="lead"><a class="ted-link" href="'+t.url+'" target="_blank" rel="noopener">'+t.talk+' ↗</a></p>' +
+    (t.connects ? block('Connects to / 연결 포인트') + qlist(t.connects, true) : '') +
+    (t.scenarios ? block('Business scenarios') + qlist(t.scenarios, true) : '') +
+    block('Discussion questions') + qlist(t.discussion) +
+    block('Vocabulary') + chips(t.vocab) +
+    (t

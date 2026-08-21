@@ -1,0 +1,165 @@
+on updateStreak(){
+  var tr=studyState.training, today=new Date();today.setHours(0,0,0,0);
+  var key=today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+  if(tr.lastStudyDate===key)return;
+  if(tr.lastStudyDate){
+    var prev=new Date(tr.lastStudyDate+'T00:00:00'),diff=Math.round((today-prev)/86400000);
+    tr.streak=diff===1?(tr.streak||0)+1:1;
+  }else tr.streak=1;
+  tr.lastStudyDate=key;
+}
+function finishTraining(){
+  var ses=trainingSession,tr=studyState.training, pack=ses.pack;
+  tr.sessions=(tr.sessions||0)+1;updateStreak();
+  if(pack!=='mixed' && pack!=='weak'){
+    tr.byPack[pack]=tr.byPack[pack]||{sessions:0,correct:0,attempts:0};
+    tr.byPack[pack].sessions=(tr.byPack[pack].sessions||0)+1;
+  }
+  saveStudy();
+  var accuracy=ses.graded?Math.round(ses.correct/ses.graded*100):0;
+  document.getElementById('trainer-progress-fill').style.width='100%';
+  document.getElementById('trainer-step-label').textContent='Complete';
+  var weakCount=Object.keys(tr.weak||{}).filter(function(k){return tr.weak[k]>0;}).length;
+  document.getElementById('trainer-card').innerHTML=
+    '<div class="trainer-result"><div class="trainer-eyebrow">SESSION COMPLETE</div>'+
+    '<div class="trainer-score">'+(ses.graded?accuracy+'%':'DONE')+'</div>'+
+    '<p>객관식·빈칸·배열은 즉시 채점했고, 틀린 문제는 세션 마지막에 다시 출제했습니다.</p>'+
+    '<div class="trainer-metrics">'+
+      '<div class="trainer-metric"><b>'+ses.correct+'/'+ses.graded+'</b><span>Objective correct</span></div>'+
+      '<div class="trainer-metric"><b>'+ses.productive+'</b><span>Writing / speaking</span></div>'+
+      '<div class="trainer-metric"><b>'+ses.retries+'</b><span>Retry items</span></div>'+
+      '<div class="trainer-metric"><b>'+weakCount+'</b><span>Weak items saved</span></div>'+
+    '</div>'+
+    '<div class="trainer-actions" style="justify-content:center;margin-top:20px"><button class="trainer-btn" onclick="closeTraining()">교재로 돌아가기</button>'+
+    '<button class="trainer-btn chalk" onclick="startTraining(\''+(pack==='weak'?'mixed':pack)+'\',8)">한 세션 더</button></div></div>';
+  if(document.getElementById('practice-center-live'))refreshPracticeCenter();
+}
+
+/* Insert the V3 Practice Center before the original Mindset page. */
+curriculum[0].sections.splice(1,0,{
+  id:'0-P',
+  en:'Practice Center',
+  kr:'문제풀이 학습센터',
+  body:practiceCenterShell()
+});
+
+
+/* ---------------- Flatten + render ---------------- */
+var flat = [];
+curriculum.forEach(function(m){
+  m.sections.forEach(function(s){ flat.push({ sec:s, mod:m }); });
+});
+
+var current = 0;
+
+function buildSidebar(){
+  var wrap = document.getElementById('mod-container');
+  wrap.innerHTML = '';
+  curriculum.forEach(function(m, mi){
+    var group = document.createElement('div');
+    group.className = 'mod-group';
+    group.dataset.mod = m.id;
+    if(mi===0) group.classList.add('open');
+
+    var headBtn = document.createElement('button');
+    headBtn.className = 'mod-head';
+    headBtn.innerHTML = '<span class="mod-num">'+(mi===curriculum.length-1 ? 'TK' : ('M'+mi))+'</span>' +
+      '<span class="mod-titles"><span class="mod-en">'+m.en+'</span><span class="mod-kr">'+m.kr+'</span></span>' +
+      '<span class="mod-chevron">▸</span>';
+    headBtn.addEventListener('click', function(){ group.classList.toggle('open'); });
+    group.appendChild(headBtn);
+
+    var ul = document.createElement('ul');
+    ul.className = 'sec-list';
+    m.sections.forEach(function(s){
+      var li = document.createElement('li');
+      var btn = document.createElement('button');
+      btn.className = 'sec-item';
+      btn.dataset.id = s.id;
+      btn.textContent = s.en;
+      btn.addEventListener('click', function(){
+        goTo(flat.findIndex(function(f){ return f.sec.id===s.id; }));
+        closeMobileDrawer();
+      });
+      li.appendChild(btn);
+      ul.appendChild(li);
+    });
+    group.appendChild(ul);
+    wrap.appendChild(group);
+  });
+}
+
+function render(){
+  var item = flat[current];
+  document.getElementById('content-inner').innerHTML = item.sec.body;
+  mountPractice(item);
+  installSectionTrainer(item);
+  if(item.sec.id==='0-P') refreshPracticeCenter();
+  document.getElementById('content-scroll').scrollTop = 0;
+
+  document.querySelectorAll('.sec-item').forEach(function(b){
+    b.classList.toggle('active', b.dataset.id === item.sec.id);
+  });
+  document.querySelectorAll('.mod-group').forEach(function(g){
+    if(g.dataset.mod === item.mod.id) g.classList.add('open');
+  });
+  var active = document.querySelector('.sec-item.active');
+  if(active && typeof active.scrollIntoView === 'function') active.scrollIntoView({block:'nearest'});
+
+  document.getElementById('crumb').innerHTML = '<b>'+item.mod.en+'</b> · '+item.sec.en;
+  var pct = Math.round(((current+1)/flat.length)*100);
+  document.getElementById('progress-fill').style.width = pct+'%';
+  updateStudyCount();
+
+  var prevBtn = document.getElementById('btn-prev');
+  var nextBtn = document.getElementById('btn-next');
+  prevBtn.disabled = current===0;
+  nextBtn.disabled = current===flat.length-1;
+  document.getElementById('prev-title').textContent = current>0 ? flat[current-1].sec.en : '';
+  document.getElementById('next-title').textContent = current<flat.length-1 ? flat[current+1].sec.en : '';
+}
+
+function goTo(idx){
+  if(idx<0 || idx>=flat.length) return;
+  current = idx;
+  render();
+}
+
+document.getElementById('btn-prev').addEventListener('click', function(){ goTo(current-1); });
+document.getElementById('btn-next').addEventListener('click', function(){ goTo(current+1); });
+
+document.addEventListener('keydown', function(e){
+  if(document.activeElement && ['INPUT','TEXTAREA','SELECT'].indexOf(document.activeElement.tagName)!==-1) return;
+  if(e.key === 'ArrowRight') goTo(current+1);
+  if(e.key === 'ArrowLeft') goTo(current-1);
+});
+
+/* ---------------- Mobile drawer ---------------- */
+var sidebar = document.getElementById('sidebar');
+var scrim = document.getElementById('scrim');
+document.getElementById('menu-toggle').addEventListener('click', function(){
+  sidebar.classList.add('open');
+  scrim.classList.add('show');
+});
+scrim.addEventListener('click', closeMobileDrawer);
+function closeMobileDrawer(){
+  sidebar.classList.remove('open');
+  scrim.classList.remove('show');
+}
+
+/* ---------------- Search filter ---------------- */
+document.getElementById('search').addEventListener('input', function(e){
+  var q = e.target.value.trim().toLowerCase();
+  document.querySelectorAll('.mod-group').forEach(function(g){
+    var modId = g.dataset.mod;
+    var mod = curriculum.find(function(m){ return m.id===modId; });
+    var anyMatch = false;
+    g.querySelectorAll('.sec-item').forEach(function(btn){
+      var sec = mod.sections.find(function(s){ return s.id===btn.dataset.id; });
+      var hay = (sec.en+' '+sec.kr).toLowerCase();
+      var match = q==='' || hay.indexOf(q) !== -1;
+      btn.classList.toggle('hidden', !match);
+      if(match) anyMatch = true;
+    });
+    g.classList.toggle('hidden', !anyMatch);
+    if(q!=='' && a

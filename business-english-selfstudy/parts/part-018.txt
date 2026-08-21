@@ -1,0 +1,114 @@
+iner-actions"><button class="trainer-btn chalk" id="trainer-start-speak">Start timer</button><button class="trainer-btn" id="trainer-dictate">🎙 Speech-to-text</button></div>'+
+      '<textarea class="trainer-textarea trainer-transcript" id="trainer-transcript" placeholder="지원 브라우저에서는 Speech-to-text로 발화 기록을 남길 수 있습니다. 직접 메모해도 됩니다."></textarea>'+
+      '<div class="trainer-checks">'+t.check.map(function(x){return '<label><input type="checkbox" class="trainer-selfcheck"> '+escHtml(x)+'</label>';}).join('')+'</div>'+
+      '<div class="trainer-actions"><button class="trainer-btn primary" id="trainer-complete">Complete speaking</button></div>'+
+      '<div class="trainer-feedback" id="trainer-feedback"></div><button class="trainer-next" id="trainer-next">Next →</button>';
+  }
+  html+='</div>';
+  card.innerHTML=html;
+  bindTrainerTask(t);
+}
+function bindTrainerTask(t){
+  var feedback=document.getElementById('trainer-feedback'), next=document.getElementById('trainer-next');
+  function showFeedback(text,ok){
+    feedback.textContent=text;feedback.classList.add('show');
+    feedback.style.background=ok?'#E8F4EB':'#FDEDEA';
+    next.classList.add('show');
+    next.onclick=advanceTraining;
+  }
+  if(t.type==='mcq'){
+    document.querySelectorAll('#trainer-card .trainer-option').forEach(function(b){
+      b.onclick=function(){
+        var choice=Number(b.dataset.choice),ok=choice===t.answer;
+        document.querySelectorAll('#trainer-card .trainer-option').forEach(function(x){x.disabled=true;});
+        b.classList.add(ok?'correct':'wrong');
+        if(!ok)document.querySelector('#trainer-card .trainer-option[data-choice="'+t.answer+'"]').classList.add('correct');
+        scoreObjective(t,ok);
+        showFeedback(t.explain,ok);
+      };
+    });
+  }
+  if(t.type==='fill'){
+    document.getElementById('trainer-check').onclick=function(){
+      var input=document.getElementById('trainer-fill-input');
+      var v=input.value.trim().toLowerCase();
+      var accepted=(t.accepted||[t.answer]).map(function(x){return String(x).toLowerCase();});
+      var ok=v!=='' && accepted.indexOf(v)!==-1;
+      scoreObjective(t,ok);
+      if(v===''){
+        showFeedback('정답: '+t.answer+'. '+t.explain, false);
+      }else{
+        showFeedback((ok?'정답입니다. ':'정답: '+t.answer+'. ')+t.explain,ok);
+      }
+      this.disabled=true;
+      input.disabled=true;
+    };
+  }
+  if(t.type==='order'){
+    var chosen=[];
+    document.querySelectorAll('#trainer-card .trainer-chunk').forEach(function(b){
+      b.onclick=function(){if(b.classList.contains('used'))return;chosen.push(b.dataset.chunk);b.classList.add('used');renderChosen();};
+    });
+    function renderChosen(){document.getElementById('trainer-order-answer').innerHTML=chosen.map(function(x){return '<span class="skill-tag">'+escHtml(x)+'</span>';}).join('');}
+    document.getElementById('trainer-reset-order').onclick=function(){chosen=[];document.querySelectorAll('#trainer-card .trainer-chunk').forEach(function(b){b.classList.remove('used');});renderChosen();};
+    document.getElementById('trainer-check').onclick=function(){
+      if(chosen.length!==t.answer.length)return;
+      var ok=chosen.join('||')===t.answer.join('||');scoreObjective(t,ok);
+      showFeedback((ok?'정답입니다. ':'정답: '+t.answer.join(' ')+'. ')+t.explain,ok);
+      this.disabled=true;document.querySelectorAll('#trainer-card .trainer-chunk').forEach(function(b){b.disabled=true;});
+    };
+  }
+  if(t.type==='write'){
+    var ta=document.getElementById('trainer-write'),cnt=document.getElementById('trainer-write-count');
+    ta.oninput=function(){cnt.textContent=ta.value.length+' characters';};
+    document.getElementById('trainer-complete').onclick=function(){
+      var checks=document.querySelectorAll('#trainer-card .trainer-selfcheck');
+      var checked=Array.from(checks).filter(function(x){return x.checked;}).length;
+      if(ta.value.trim().length<(t.min||30)){feedback.textContent='조금 더 작성하세요. 최소 '+(t.min||30)+'자 이상을 권장합니다.';feedback.classList.add('show');return;}
+      if(checked<Math.max(1,checks.length-1)){feedback.textContent='자기점검 항목을 다시 확인하세요.';feedback.classList.add('show');return;}
+      scoreProductive(t);showFeedback('작성 완료. 다음 문제로 이동하세요.',true);this.disabled=true;ta.disabled=true;
+    };
+  }
+  if(t.type==='speak'){
+    var started=false,finished=false,interval=null,left=t.seconds;
+    var timer=document.getElementById('trainer-timer');
+    document.getElementById('trainer-start-speak').onclick=function(){
+      if(started)return;started=true;var btn=this;btn.disabled=true;
+      interval=setInterval(function(){left--;timer.textContent=Math.floor(left/60)+':'+String(Math.max(0,left%60)).padStart(2,'0');if(left<=0){clearInterval(interval);finished=true;timer.textContent='TIME';}},1000);
+    };
+    document.getElementById('trainer-dictate').onclick=function(){
+      var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+      if(!SR){alert('이 브라우저는 Speech-to-text를 지원하지 않습니다. Chrome 계열 브라우저를 권장합니다.');return;}
+      var r=new SR();r.lang='en-US';r.interimResults=false;var btn=this;btn.disabled=true;btn.textContent='Listening...';
+      r.onresult=function(e){var ta=document.getElementById('trainer-transcript');ta.value=(ta.value?ta.value+' ':'')+e.results[0][0].transcript;};
+      r.onend=function(){btn.disabled=false;btn.textContent='🎙 Speech-to-text';};r.start();
+    };
+    document.getElementById('trainer-complete').onclick=function(){
+      var checks=document.querySelectorAll('#trainer-card .trainer-selfcheck');
+      var checked=Array.from(checks).filter(function(x){return x.checked;}).length;
+      if(!started){feedback.textContent='먼저 speaking timer를 시작하세요.';feedback.classList.add('show');return;}
+      if(checked<Math.max(1,checks.length-1)){feedback.textContent='발화 후 자기점검 항목을 확인하세요.';feedback.classList.add('show');return;}
+      if(interval)clearInterval(interval);scoreProductive(t);showFeedback('말하기 연습 완료. 다음 단계로 이동하세요.',true);this.disabled=true;
+    };
+  }
+}
+function scoreObjective(t,ok){
+  var pack=taskPack(t), tr=studyState.training;
+  tr.gradedAttempts=(tr.gradedAttempts||0)+1;trainingSession.graded++;
+  tr.byPack[pack]=tr.byPack[pack]||{sessions:0,correct:0,attempts:0};tr.byPack[pack].attempts++;
+  if(ok){
+    tr.gradedCorrect=(tr.gradedCorrect||0)+1;trainingSession.correct++;tr.byPack[pack].correct++;
+    tr.xp=(tr.xp||0)+(t._retry?5:10);
+    if(tr.weak[t.id]){tr.weak[t.id]--;if(tr.weak[t.id]<=0)delete tr.weak[t.id];}
+  }else{
+    tr.weak[t.id]=(tr.weak[t.id]||0)+1;
+    if(!t._retry){var retry=Object.assign({},t);retry._retry=true;trainingSession.queue.push(retry);trainingSession.retries++;}
+  }
+  saveStudy();document.getElementById('trainer-xp').textContent=tr.xp;
+}
+function scoreProductive(t){
+  var tr=studyState.training;tr.productive=(tr.productive||0)+1;trainingSession.productive++;
+  tr.xp=(tr.xp||0)+8;saveStudy();document.getElementById('trainer-xp').textContent=tr.xp;
+}
+function advanceTraining(){trainingSession.index++;renderTrainingTask();}
+functi

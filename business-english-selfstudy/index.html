@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Ryan Members Business English · Self-Study Lab V3.1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;600;700&family=Noto+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+
+<div id="app">
+  <div id="scrim"></div>
+  <nav id="sidebar">
+    <div class="brand">
+      <div class="eyebrow">Ryan Members</div>
+      <h1>Business English Self-Study Lab V3.1</h1>
+      <p>사전진단 · 문제세션 · 오답복습 · 말하기</p>
+    </div>
+    <div id="search-wrap">
+      <input id="search" type="text" placeholder="예: PREP, 협상, TED..." autocomplete="off">
+    </div>
+    <div id="mod-container"></div>
+  </nav>
+
+  <div id="main">
+    <div id="topbar">
+      <button id="menu-toggle" aria-label="메뉴 열기"><span></span></button>
+      <div class="crumb" id="crumb"></div>
+      <div id="progress-track"><div id="progress-fill"></div></div>
+      <div id="progress-count-text"></div>
+    </div>
+    <div id="content-scroll">
+      <div id="content-inner"></div>
+    </div>
+    <div id="footer-nav">
+      <button class="nav-btn prev" id="btn-prev">
+        <span>‹</span>
+        <span><span class="lbl">Prev</span><span class="tt" id="prev-title"></span></span>
+      </button>
+      <span class="kbd-hint">← / → 방향키로 이동</span>
+      <button class="nav-btn next" id="btn-next">
+        <span><span class="lbl">Next</span><span class="tt" id="next-title"></span></span>
+        <span>›</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script src="./core-data.js"></script>
+<script src="./study-v2.js"></script>
+<script src="./trainer-v3.js"></script>
+<script src="./app-init.js"></script>
+</body>
+</html>

@@ -1,0 +1,80 @@
+satisfaction.'}
+    ])
+  },
+  { id:'5-2', en:'Sample answer 2 · Difficult colleague', kr:'예시답변 2 · 까다로운 동료', body:
+    slideHead('"Tell me about a time you worked with a difficult colleague."','샘플 답변 2') +
+    starSteps([
+      {l:'S', t:'Situation', d:'I once worked with a colleague who had a very different communication style from mine.'},
+      {l:'T', t:'Task', d:'We needed to collaborate on an important project with a tight deadline.'},
+      {l:'A', t:'Action', d:'Instead of avoiding the conflict, I scheduled a one-on-one conversation to understand their perspective and agreed on a clearer way to communicate.'},
+      {l:'R', t:'Result', d:'We improved our collaboration, completed the project on time, and developed a stronger working relationship.'}
+    ])
+  },
+  { id:'5-3', en:'Sample answer 3 · Leadership', kr:'예시답변 3 · 리더십 발휘', body:
+    slideHead('"Tell me about a time you showed leadership."','샘플 답변 3') +
+    starSteps([
+      {l:'S', t:'Situation', d:'During a major project, our team was struggling to stay aligned because different members had different priorities.'},
+      {l:'T', t:'Task', d:'I needed to help the team coordinate effectively and keep the project on track.'},
+      {l:'A', t:'Action', d:'I created a clear timeline, organized weekly check-ins, and made sure everyone understood their responsibilities.'},
+      {l:'R', t:'Result', d:'The project was completed successfully, and we delivered the final product two weeks ahead of schedule.'}
+    ])
+  },
+  { id:'5-4', en:'Sample answer 4 · A mistake', kr:'예시답변 4 · 실수 경험', body:
+    slideHead('"Tell me about a time you made a mistake."','샘플 답변 4') +
+    starSteps([
+      {l:'S', t:'Situation', d:'Early in my career, I underestimated the time needed to complete a report.'},
+      {l:'T', t:'Task', d:'I was responsible for delivering the report to my manager before an important meeting.'},
+      {l:'A', t:'Action', d:'I immediately informed my manager, explained the situation, and created a new plan to complete the report. After that, I started using a better planning system for future projects.'},
+      {l:'R', t:'Result', d:'I completed the report successfully and learned the importance of realistic planning and proactive communication.'}
+    ])
+  },
+  { id:'5-5', en:'Sample answer 5 · Persuading someone', kr:'예시답변 5 · 아이디어로 설득하기', body:
+    slideHead('"Tell me about a time you persuaded someone to accept your idea."','샘플 답변 5') +
+    starSteps([
+      {l:'S', t:'Situation', d:'In my previous company, I suggested changing our customer onboarding process, but some team members were concerned about the additional work.'},
+      {l:'T', t:'Task', d:'I needed to convince the team that the change would create long-term benefits.'},
+      {l:'A', t:'Action', d:'I prepared data showing customer feedback trends and explained how the new process could reduce repetitive tasks.'},
+      {l:'R', t:'Result', d:'The team agreed to implement the change, and we improved customer response time by 20%.'}
+    ])
+  },
+  { id:'5-6', en:'Useful STAR expressions', kr:'STAR 답변용 표현모음', body:
+    slideHead('Useful STAR Expressions','상황별 표현 모음') +
+    '<div class="grid-2">' +
+      '<div class="card"><h4>Situation</h4><p>"In my previous role, I was responsible for..." · "At that time, our team faced..." · "The biggest challenge was..."</p></div>' +
+      '<div class="card"><h4>Task</h4><p>"My main responsibility was..." · "I was asked to..." · "The goal was to..."</p></div>' +
+      '<div class="card"><h4>Action</h4><p>"I decided to..." · "I took the initiative to..." · "I worked closely with..." · "I implemented..."</p></div>' +
+      '<div class="card"><h4>Result</h4><p>"As a result..." · "This helped us..." · "We were able to..." · "I learned that..."</p></div>' +
+    '</div>'
+  },
+  { id:'5-7', en:'Classic Qs · Introduction & Background', kr:'클래식 질문 1 · 자기소개', body:
+    slideHead('Classic Interview Questions','1. Introduction & Background') +
+    qlist(['Tell me about yourself.','Walk me through your background.','How would you describe yourself professionally?','Can you tell me about your current role and responsibilities?','What does a typical day look like in your current position?'])
+  },
+  { id:'5-8', en:'Classic Qs · Career & Experience', kr:'클래식 질문 2 · 커리어와 경험', body:
+    slideHead('Classic Interview Questions','2. Career & Experience') +
+    qlist(['What achievement are you most proud of?','Tell me about a challenging project you worked on.','What skills have you developed throughout your career?','What experience has had the biggest impact on your professional growth?','What is the most valuable lesson you have learned in your career?'])
+  },
+  { id:'5-9', en:'Classic Qs · Motivation & Goals', kr:'클래식 질문 3 · 동기와 목표', body:
+    slideHead('Classic Interview Questions','3. Motivation & Career Goals') +
+    qlist(['Why are you interested in this position?','Why do you want to work for our company?','What do you know about our company?','Why are you considering leaving your current company?','What are you looking for in your next role?','Where do you see yourself in five years?'])
+  },
+  { id:'5-10', en:'Classic Qs · Strengths & Self-Awareness', kr:'클래식 질문 4 · 강점과 자기인식', body:
+    slideHead('Classic Interview Questions','4. Strengths & Self-Awareness') +
+    qlist(['What are your greatest strengths?','What is your biggest weakness?','How would your colleagues describe you?','What motivates you at work?','How do you handle pressure?','How do you prioritize your work?'])
+  },
+  { id:'5-11', en:'Classic Qs · Behavioral (STAR)', kr:'클래식 질문 5 · 행동 기반 질문', body:
+    slideHead('Classic Interview Questions','5. Behavioral Questions (STAR Practice)') +
+    qlist(['Tell me about a time you took ownership of a difficult situation.','Tell me about a time you solved a difficult problem.','Tell me about a time you made a mistake and what you learned from it.','Tell me about a time you worked with a difficult colleague.','Tell me about a time you worked successfully as part of a team.','Tell me about a time you persuaded someone to accept your idea.','Tell me about a time you had to explain something complex.','Tell me about a time you adapted to a major change.'])
+  },
+  { id:'5-12', en:'Classic Qs · Business & Industry', kr:'클래식 질문 6 · 산업 이해', body:
+    slideHead('Classic Interview Questions','6. Business & Industry Thinking') +
+    qlist(['What trends are affecting your industry?','What challenges do companies in your industry face?','What skills will become more important in the future?'])
+  },
+  { id:'5-13', en:'Classic Qs · Closing Questions', kr:'클래식 질문 7 · 마무리 질문', body:
+    slideHead('Classic Interview Questions','7. Closing Questions') +
+    qlist(['Why should we hire you?','What can you bring to this company?','Do you have any questions for us?','What are your salary expectations?','When would you be available to start?'])
+  }
+]},
+
+{ id:'m6', en:'Module 6 · Independent Project', kr:'독립 스피킹 프로젝트', sections:[
+  { id:'6-1',

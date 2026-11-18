@@ -59,6 +59,7 @@ function runDailyTalkPipeline(options) {
     var items = readQueueRows_(queue);
     var logIndex = readSendLogIndex_(ss);
     var audience = testMode ? [] : getAudienceForSend_().recipients;
+    var sessionSentKeys = {}; // contentId+phone already accepted in this run
     var results = [];
 
     items.forEach(function (item) {
@@ -79,7 +80,7 @@ function runDailyTalkPipeline(options) {
           contentId: item.contentId,
           track: item.track,
           targets: testMode ? testRecipients_(settings) : audience,
-          alreadySentKeys: logIndex.keys
+          alreadySentKeys: Object.assign({}, logIndex.keys, sessionSentKeys)
         }], { maxRecipients: Number(settings.MAX_RECIPIENTS_PER_RUN) || RM_DAILY_TALK_CONFIG.MAX_RECIPIENTS_PER_RUN });
 
         if (!plan.targets.length) {
@@ -88,6 +89,7 @@ function runDailyTalkPipeline(options) {
         }
 
         var sendResult = dispatchKakaoMessages_(item, plan.targets, settings, testMode);
+        (sendResult.sentKeys || []).forEach(function (key) { sessionSentKeys[key] = true; });
         writeQueueSendResult_(queue, queueHeaderUnit, item.rowNumber, sendResult, testMode);
         results.push({
           contentId: item.contentId,
@@ -287,6 +289,7 @@ function dispatchKakaoMessages_(item, targets, settings, testMode) {
   parsed.results.forEach(function (result) { byPhone[result.phone] = result; });
 
   var logRows = [];
+  var sentKeys = [];
   var sentCount = 0;
   var failedCount = 0;
 
@@ -295,6 +298,7 @@ function dispatchKakaoMessages_(item, targets, settings, testMode) {
     var status = outcome.ok ? 'SENT' : (outcome.pending ? 'PENDING' : 'FAILED');
     if (outcome.ok) {
       sentCount += 1;
+      sentKeys.push(buildSendKey(item.contentId, target.phone));
       if (!testMode) markDailyTalkSent(target.phone, sentAt);
     } else {
       failedCount += 1;
@@ -320,6 +324,7 @@ function dispatchKakaoMessages_(item, targets, settings, testMode) {
   return {
     sentCount: sentCount,
     failedCount: failedCount,
+    sentKeys: sentKeys,
     sentAt: sentAt,
     verified: parsed.verified,
     detail: JSON.stringify({ results: parsed.results })

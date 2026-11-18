@@ -295,7 +295,7 @@ function doPost(e) {
  */
 function getActiveDailyTalkRecipients() {
   var cache = CacheService.getScriptCache();
-  var cacheKey = 'rmDailyTalkAudience_' + rmContactSheetName();
+  var cacheKey = audienceCacheKey_();
   var cached = cache.get(cacheKey);
   if (cached) {
     try {
@@ -402,9 +402,13 @@ function markDailyTalkSent(phone, sentAt) {
   return { ok: true, row: row };
 }
 
+function audienceCacheKey_() {
+  return 'rmDailyTalkAudience_' + rmRegistrationSpreadsheetId_() + '_' + rmContactSheetName();
+}
+
 function invalidateAudienceCache_() {
   try {
-    CacheService.getScriptCache().remove('rmDailyTalkAudience_' + rmContactSheetName());
+    CacheService.getScriptCache().remove(audienceCacheKey_());
   } catch (ignored) { /* ignore */ }
 }
 

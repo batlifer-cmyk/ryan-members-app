@@ -167,6 +167,10 @@ sendDailyTalkTestToOwner('https://www.ryanmembers.com/post/<실제-게시물-슬
 `TEST_MODE=true`인 동안 정규 파이프라인(`runDailyTalkPipeline`)은 **학생에게 발송하지 않고**
 TEST_PHONE으로만 보낸다.
 
+> 실패한 대기열 행은 자동 재시도하지 않고 `상태=FAILED`로 남는다(원인 확인 후 사람이 `APPROVED`로 되돌려 재시도).
+> 같은 실행 안에서 같은 `CONTENT_ID`가 여러 번 나와도 수신자별로 한 번만 나가고,
+> 이미 접수된 `CONTENT_ID+전화번호`는 다음 실행에서도 건너뛴다.
+
 ---
 
 ## 7. 롤백

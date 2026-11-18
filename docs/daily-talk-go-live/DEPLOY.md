@@ -17,20 +17,24 @@
 
 ---
 
-## 1. Apps Script 프로젝트 만들기
+## 1. Apps Script 프로젝트 만들기 — **독립(standalone) 프로젝트**
 
-### 방법 A — 시트 바인딩(권장: 등록 시트에 붙임)
+> ⚠️ `RM 재등록 조기경보` 시트에는 이미 **다른 계정 소유의 바인딩 스크립트**(잔디 `/등록`·카드결제
+> 웹훅용 `doPost`)가 붙어 있다. 그 프로젝트에 이 코드를 넣으면 `doPost`/`onOpen`이 충돌해
+> **등록 웹훅이 깨진다.** 반드시 새 독립 프로젝트를 만든다.
 
-1. `RM 재등록 조기경보` 스프레드시트를 연다.
-2. `확장 프로그램` → `Apps Script`.
-3. 프로젝트 이름을 `English Passport + Ryan Daily Talk`로 바꾼다.
-4. 아래 4개 파일을 만든다(이름 정확히):
+### 방법 A — 웹에서 새 프로젝트
+
+1. `https://script.new` 를 연다(또는 Drive → 새로 만들기 → Apps Script).
+2. 프로젝트 이름을 `English Passport + Ryan Daily Talk`로 바꾼다.
+3. 아래 파일을 만든다(이름 정확히):
    * `PassportCore.gs` ← `apps-script/PassportCore.gs`
    * `EnglishPassportBackend.gs` ← `apps-script/EnglishPassportBackend.gs`
    * `DailyTalkWixPublisher.gs` ← `apps-script/DailyTalkWixPublisher.gs`
    * `Index` (HTML) ← `apps-script/Index.html`
    * `QRCode` (HTML) ← `apps-script/QRCode.html`
-5. `프로젝트 설정` → **"appsscript.json 매니페스트 파일 표시"** 를 켜고
+   * 기본으로 생긴 `Code.gs`는 비우거나 지운다.
+4. `프로젝트 설정` → **"appsscript.json 매니페스트 파일 표시"** 를 켜고
    `apps-script/appsscript.json` 내용으로 교체한다.
 
 ### 방법 B — clasp (로컬에서 반복 배포할 때)
@@ -49,9 +53,9 @@ JSON
 clasp push
 ```
 
-* 새 프로젝트를 CLI로 만들 경우 `clasp create` 계열 명령의 옵션 이름이 버전마다 다르다.
-  `clasp create --help`로 `--type sheets --parentId <스프레드시트ID>` 지원 여부를 확인하고,
+* 프로젝트 생성 명령의 옵션 이름은 clasp 버전마다 다르다. `clasp create --help`로 확인하고,
   없으면 방법 A로 한 번 만든 뒤 그 `SCRIPT_ID`를 `.clasp.json`에 넣는다.
+  `--type sheets --parentId …`(바인딩)는 **쓰지 않는다**(위 충돌 이유).
 * `appsscript.json`의 `webapp`(실행: 나 / 액세스: 모든 사용자) 설정은 배포 시 그대로 쓰인다.
 
 ---
@@ -202,4 +206,6 @@ TEST_PHONE으로만 보낸다.
 - [ ] 테스트 카카오 발송 1건 성공(6번)
 - [ ] Wix 임베드 교체 완료(5번)
 - [ ] 활성 수신자 수와 명단을 사람이 한 번 대조(`getDailyTalkAudienceReport()`)
-- [ ] 매일 발송 트리거 등록(평일 08시 등) — 운영 시트 메뉴 `Ryan Daily Talk`
+- [ ] 매일 발송 트리거 등록(평일 08시 등) — 메뉴가 없으면 편집기에서 트리거를 직접 추가한다
+      (`runDailyTalkPipeline`, 시간 기반, 평일 08:00). `onOpen` 메뉴는 시트에 바인딩된
+      프로젝트에서만 보이므로, 독립 프로젝트에서는 사용하지 않는다.

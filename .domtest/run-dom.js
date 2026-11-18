@@ -138,10 +138,22 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     const rec = text('#dailyTrackRecommendation');
     if (rec.indexOf('Daily Small Talk') === -1) throw new Error('recommendation not SMALL_TALK: ' + rec);
   });
+  check('summary updates immediately when Daily Talk is checked', () => {
+    const summary = text('#summary');
+    if (summary.indexOf('Daily Small Talk') === -1) {
+      throw new Error('summary not refreshed after opt-in: ' + summary);
+    }
+  });
   const businessRadio = document.querySelector('input[name="dailyTalkTrackChoice"][value="BUSINESS"]');
   businessRadio.checked = true;
   businessRadio.dispatchEvent(new window.Event('change', { bubbles: true }));
   await wait(10);
+  check('summary updates immediately when the track changes', () => {
+    const summary = text('#summary');
+    if (summary.indexOf('Daily Business Talk') === -1) {
+      throw new Error('summary not refreshed after track change: ' + summary);
+    }
+  });
 
   document.getElementById('privacy').checked = true;
   // jsdom does not run the implicit submit of a clicked submit button, so the

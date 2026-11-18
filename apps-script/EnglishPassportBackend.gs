@@ -143,7 +143,18 @@ function submitPassport(input) {
   }
 
   var lock = LockService.getScriptLock();
-  if (!lock.tryLock(20000)) {
+  var lockHeld = false;
+  var lockUnavailable = false;
+  try {
+    lockHeld = lock.tryLock(20000);
+  } catch (lockError) {
+    // A transient LockService failure must not drop a valid registration:
+    // record it and continue without the lock instead of failing the submit.
+    lockUnavailable = true;
+    logPassportError_('submitPassport.lock', lockError, { submissionId: submissionId });
+  }
+  // Only a real contention (tryLock returned false without an error) is BUSY.
+  if (!lockHeld && !lockUnavailable) {
     return { ok: false, errorCode: 'BUSY', message: '접수가 잠시 몰리고 있습니다. 잠시 후 다시 시도해 주세요.' };
   }
 
@@ -188,7 +199,7 @@ function submitPassport(input) {
       detail: String(error && error.message ? error.message : error)
     };
   } finally {
-    lock.releaseLock();
+    if (lockHeld) lock.releaseLock();
   }
 }
 

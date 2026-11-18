@@ -578,14 +578,17 @@
   optInCheckbox.checked = false;
   optInCheckbox.addEventListener('change', function () {
     trackSection.classList.toggle('visible', optInCheckbox.checked);
-    if (!optInCheckbox.checked) return;
-    refreshTrackRecommendation();
-    // Default to the recommendation only once; the visitor's later choice wins.
-    if (!document.querySelector('input[name="dailyTalkTrackChoice"][data-touched="true"]')) {
-      var recommended = classifyTrack(resolvedCourseType());
-      var radio = document.querySelector('input[name="dailyTalkTrackChoice"][value="' + recommended + '"]');
-      if (radio) radio.checked = true;
+    if (optInCheckbox.checked) {
+      refreshTrackRecommendation();
+      // Default to the recommendation only once; the visitor's later choice wins.
+      if (!document.querySelector('input[name="dailyTalkTrackChoice"][data-touched="true"]')) {
+        var recommended = classifyTrack(resolvedCourseType());
+        var radio = document.querySelector('input[name="dailyTalkTrackChoice"][value="' + recommended + '"]');
+        if (radio) radio.checked = true;
+      }
     }
+    // The summary sits above this checkbox on page 4, so refresh it right away.
+    renderSummary();
   });
 
   document.querySelectorAll('input[name="dailyTalkTrackChoice"]').forEach(function (radio) {
@@ -594,6 +597,7 @@
       document.querySelectorAll('input[name="dailyTalkTrackChoice"]').forEach(function (other) {
         if (other !== radio) other.dataset.touched = 'true';
       });
+      renderSummary();
     });
   });
 

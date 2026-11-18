@@ -1,0 +1,12 @@
+{
+  "description": "Fixture shaped like rows read from 학생연락처 (English Passport contact upsert target). No real student data: names and numbers are invented.",
+  "records": [
+    { "rowNumber": 2, "name": "김테스트", "phone": "010-1111-2222", "optIn": true, "track": "SMALL_TALK", "status": "ACTIVE", "lastSentAt": "" },
+    { "rowNumber": 3, "name": "이비즈", "phone": "010-3333-4444", "optIn": true, "track": "BUSINESS", "status": "ACTIVE", "lastSentAt": "2026-11-17T08:00:00Z" },
+    { "rowNumber": 4, "name": "박미동의", "phone": "010-5555-6666", "optIn": false, "track": "SMALL_TALK", "status": "ACTIVE", "lastSentAt": "" },
+    { "rowNumber": 5, "name": "최유선", "phone": "051-123-4567", "optIn": true, "track": "SMALL_TALK", "status": "ACTIVE", "lastSentAt": "" },
+    { "rowNumber": 6, "name": "정중복", "phone": "010-3333-4444", "optIn": true, "track": "BOTH", "status": "ACTIVE", "lastSentAt": "" },
+    { "rowNumber": 7, "name": "한정지", "phone": "010-1212-3434", "optIn": true, "track": "SMALL_TALK", "status": "PAUSED", "lastSentAt": "" },
+    { "rowNumber": 8, "name": "둘다받음", "phone": "010-7777-8888", "optIn": true, "track": "BOTH", "status": "ACTIVE", "lastSentAt": "" }
+  ]
+}

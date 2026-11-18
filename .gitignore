@@ -1,0 +1,29 @@
+# Google Apps Script / clasp local state
+.clasp.json
+.clasprc.json
+.claspignore.local
+appsscript.json.bak
+
+# Secrets and local environment
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+credentials*.json
+client_secret*.json
+service-account*.json
+
+# Tests / tooling scratch
+node_modules/
+tmpqr/
+tests/tmp/
+coverage/
+
+# OS noise
+.DS_Store
+Thumbs.db
+
+# Local DOM check harness (jsdom is installed locally, not committed)
+.domtest/node_modules/
+.domtest/package-lock.json

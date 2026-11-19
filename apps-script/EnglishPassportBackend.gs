@@ -210,7 +210,7 @@ function submitPassport(input) {
     appendRowFromFields_(registrationSheet, registrationMap, registrationFields);
 
     var contactResult = upsertContactRow_(contactSheet, contactMap, payload, now);
-    invalidateAudienceCache_();
+    var audienceMirror = syncDailyTalkAudienceMirror_('submitPassport');
 
     return {
       ok: true,
@@ -224,6 +224,7 @@ function submitPassport(input) {
       dailyTalkTrackLabel: payload.dailyTalkOptIn ? (RM_TRACK_LABELS[payload.dailyTalkTrack] || payload.dailyTalkTrack) : '',
       dailyTalkStatus: payload.dailyTalkStatus,
       contactAction: contactResult.action,
+      audienceMirror: audienceMirror,
       kakaoFriendUrl: RM_PASSPORT_CONFIG.KAKAO_FRIEND_URL,
       message: '출발이 허가되었습니다.'
     };
@@ -303,7 +304,7 @@ function submitDailyTalkOnly(input) {
       sheet.getRange(row, map[field]).setValue(built.fields[field]);
     });
 
-    invalidateAudienceCache_();
+    var audienceMirror = syncDailyTalkAudienceMirror_('submitDailyTalkOnly');
 
     return {
       ok: true,
@@ -316,6 +317,7 @@ function submitDailyTalkOnly(input) {
       dailyTalkStatus: payload.dailyTalkStatus,
       consentVersion: payload.dailyTalkConsentVersion,
       registrationRecorded: false,
+      audienceMirror: audienceMirror,
       kakaoFriendUrl: RM_PASSPORT_CONFIG.KAKAO_FRIEND_URL,
       message: action === 'ADDED' ? '신청이 완료되었습니다.' : '트랙이 변경되었습니다.'
     };
@@ -491,11 +493,35 @@ function refreshDailyTalkAudienceMirror() {
   sheet.getRange(1, 1, 1, 6).setValues([['전화번호', '이름', '트랙', '상태', '동기화시각', 'CONTACT_ROW']]);
   if (recipients.length) {
     var rows = recipients.map(function (recipient) {
-      return [recipient.phone, recipient.name, recipient.track, 'ACTIVE', syncedAt, recipient.rowNumber];
+      return [recipient.phone, recipient.name, recipient.track, 'ACTIVE', '', recipient.rowNumber];
     });
     sheet.getRange(2, 1, rows.length, 6).setValues(rows);
+    // The sync stamp is the freshness flag getAudienceForSend_ trusts, so it is
+    // written only after every roster row is in place: a half-written mirror
+    // then reads as stale and the send falls back to the live contact sheet
+    // instead of going out to a partial audience.
+    sheet.getRange(2, 5, rows.length, 1).setValues(rows.map(function () { return [syncedAt]; }));
   }
   return { ok: true, mirrored: recipients.length, syncedAt: syncedAt };
+}
+
+/**
+ * Refreshes the `발송대상` mirror right after a contact write, so a new sign-up
+ * or a track change is in the send audience before the next pipeline run.
+ *
+ * The contact row is already saved when this runs, so a mirror problem must
+ * never turn the student's success response into an error: it is logged and
+ * reported back as {ok:false}.
+ */
+function syncDailyTalkAudienceMirror_(scope) {
+  invalidateAudienceCache_();
+  try {
+    var mirror = refreshDailyTalkAudienceMirror();
+    return { ok: true, mirrored: mirror.mirrored, syncedAt: mirror.syncedAt };
+  } catch (error) {
+    logPassportError_((scope || 'syncDailyTalkAudienceMirror') + '.mirror', error, {});
+    return { ok: false, mirrored: 0, error: String(error && error.message ? error.message : error) };
+  }
 }
 
 /**
@@ -546,7 +572,7 @@ function markDailyTalkSent(phone, sentAt) {
 }
 
 function audienceCacheKey_() {
-  return 'rmDailyTalkAudience_' + rmRegistrationSpreadsheetId_() + '_' + rmContactSheetName();
+  return 'rmDailyTalkAudience_' + rmRegistrationSpreadsheetId_() + '_' + rmContactSheetName_();
 }
 
 function invalidateAudienceCache_() {

@@ -14,6 +14,8 @@ const vm = require('vm');
 const ROOT = path.resolve(__dirname, '..');
 const CONTACT_SHEET = '학생연락처';
 const REGISTRATION_SHEET = '_DB_등록신청';
+const MIRROR_SHEET = '발송대상';
+const MIRROR_HEADERS = ['전화번호', '이름', '트랙', '상태', '동기화시각', 'CONTACT_ROW'];
 const CONTACT_HEADERS = [
   '', '학생명', '전화번호', '수동입력', 'dailyTalkOptIn', 'dailyTalkTrack',
   'dailyTalkConsentAt', 'dailyTalkConsentVersion', 'kakaoChannelAdded',
@@ -27,9 +29,15 @@ vm.runInContext(
   global.__sandbox,
   { filename: 'apps-script/EnglishPassportBackend.gs' }
 );
-['submitDailyTalkOnly', 'getDailyTalkOnlyConfig'].forEach((name) => {
+['submitDailyTalkOnly', 'getDailyTalkOnlyConfig', 'submitPassport'].forEach((name) => {
   global[name] = global.__sandbox[name];
 });
+
+const REGISTRATION_SPREADSHEET_ID = global.__sandbox.RM_PASSPORT_CONFIG.SPREADSHEET_ID;
+const OPERATIONS_SPREADSHEET_ID = global.__sandbox.RM_PASSPORT_CONFIG.DAILY_TALK_OPERATIONS_SPREADSHEET_ID;
+const REGISTRATION_HEADERS = [''].concat(
+  global.__sandbox.RM_REGISTRATION_COLUMN_SPEC.map((column) => column.field)
+);
 
 function makeSheet(name, headers, rows) {
   const grid = [headers.slice()].concat((rows || []).map((row) => row.slice()));
@@ -70,6 +78,12 @@ function makeSheet(name, headers, rows) {
     appendRow(values) {
       grid.push(values.slice());
     },
+    clear() {
+      for (let i = 0; i < grid.length; i += 1) grid[i] = [];
+    },
+    insertSheet() {
+      throw new Error('insertSheet is not available in the fake');
+    },
     getRange(row, col, numRows, numCols) {
       const rowCount = numRows || 1;
       const colCount = numCols || 1;
@@ -109,21 +123,38 @@ function makeSheet(name, headers, rows) {
   };
 }
 
-function installFakes(rows) {
+function installFakes(rows, options) {
+  const opts = options || {};
   const contact = makeSheet(CONTACT_SHEET, CONTACT_HEADERS, rows || []);
+  const registration = makeSheet(REGISTRATION_SHEET, REGISTRATION_HEADERS, []);
+  const mirror = opts.withoutMirror ? null : makeSheet(MIRROR_SHEET, MIRROR_HEADERS, []);
   const requestedSheets = [];
   const openedIds = [];
-  const spreadsheet = {
-    getId: () => 'FAKE-SS',
+  const registrationSpreadsheet = {
+    getId: () => 'FAKE-REGISTRATION-SS',
     getSheetByName(name) {
       requestedSheets.push(name);
-      return name === CONTACT_SHEET ? contact : null;
+      if (name === CONTACT_SHEET) return contact;
+      if (name === REGISTRATION_SHEET) return registration;
+      return null;
+    }
+  };
+  const operationsSpreadsheet = {
+    getId: () => 'FAKE-OPERATIONS-SS',
+    getSheetByName(name) {
+      requestedSheets.push(name);
+      if (name === MIRROR_SHEET) return mirror;
+      return null;
+    },
+    insertSheet(name) {
+      requestedSheets.push('insertSheet:' + name);
+      throw new Error('insertSheet is not available in the fake');
     }
   };
   global.__sandbox.SpreadsheetApp = {
     openById(id) {
       openedIds.push(id);
-      return spreadsheet;
+      return id === OPERATIONS_SPREADSHEET_ID ? operationsSpreadsheet : registrationSpreadsheet;
     }
   };
   global.__sandbox.PropertiesService = {
@@ -145,7 +176,16 @@ function installFakes(rows) {
     formatDate: () => '20260101-000000',
     getUuid: () => '00000000-0000-0000-0000-000000000000'
   };
-  return { contact, requestedSheets, openedIds };
+  return { contact, registration, mirror, requestedSheets, openedIds };
+}
+
+/** The mirror written by refreshDailyTalkAudienceMirror, as plain row arrays. */
+function mirrorRows(fake) {
+  const sheet = fake.mirror;
+  if (!sheet) return [];
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return [];
+  return sheet.getRange(2, 1, lastRow - 1, 6).getValues();
 }
 
 function submit(overrides) {
@@ -226,8 +266,7 @@ describe('Daily Talk only · storage (fake sheet)', () => {
     assert.equal(result.action, 'ADDED');
     assert.equal(result.registrationRecorded, false);
     assert.equal(result.dailyTalkTrack, 'SMALL_TALK');
-    assert.equal(fake.openedIds.length, 1);
-    assert.deepEqual(fake.requestedSheets, [CONTACT_SHEET]);
+    assert.equal(fake.requestedSheets[0], CONTACT_SHEET);
     assert.equal(fake.requestedSheets.indexOf(REGISTRATION_SHEET), -1);
     assert.equal(fake.contact.getLastRow(), 2);
     assert.equal(cell(fake.contact, 2, 2), '홍길동');
@@ -239,6 +278,20 @@ describe('Daily Talk only · storage (fake sheet)', () => {
     assert.equal(cell(fake.contact, 2, 8), '2026-11-20-dailytalk-only-v1');
     assert.equal(cell(fake.contact, 2, 10), 'ACTIVE');
     assert.equal(cell(fake.contact, 2, 14), '', 'unrelated columns stay empty');
+  });
+
+  test('a new sign-up is written into the 발송대상 mirror before the response', () => {
+    const fake = installFakes([]);
+    const result = submit();
+    assert.equal(result.audienceMirror.ok, true);
+    assert.equal(result.audienceMirror.mirrored, 1);
+    const rows = mirrorRows(fake);
+    assert.equal(rows.length, 1);
+    assert.deepEqual(rows[0].slice(0, 4), ['010-1234-5678', '홍길동', 'SMALL_TALK', 'ACTIVE']);
+    assert.match(rows[0][4], /^\d{4}-\d{2}-\d{2}T/, 'each mirrored row carries the sync stamp');
+    assert.equal(rows[0][5], 2, 'CONTACT_ROW points back at the student row');
+    assert.equal(result.audienceMirror.syncedAt, rows[0][4]);
+    assert.ok(fake.openedIds.indexOf(OPERATIONS_SPREADSHEET_ID) !== -1, 'the operations sheet is refreshed');
   });
 
   test('a track change updates only the Daily Talk cells of the existing row', () => {
@@ -265,7 +318,24 @@ describe('Daily Talk only · storage (fake sheet)', () => {
     assert.equal(cell(fake.contact, 2, 11), '2026-11-19T08:00:00.000Z');
     assert.equal(cell(fake.contact, 2, 12), '2026-11-18T12:04:13.552Z');
     assert.equal(cell(fake.contact, 2, 14), '수강중');
-    assert.deepEqual(fake.requestedSheets, [CONTACT_SHEET]);
+    assert.equal(fake.requestedSheets[0], CONTACT_SHEET);
+    assert.equal(fake.requestedSheets.indexOf(REGISTRATION_SHEET), -1);
+    const rows = mirrorRows(fake);
+    assert.equal(rows.length, 1);
+    assert.deepEqual(rows[0].slice(0, 4), ['010-8537-0071', '최진혁', 'BUSINESS', 'ACTIVE'],
+      'the changed track reaches the mirror immediately');
+  });
+
+  test('a mirror failure is reported but never fails the saved sign-up', () => {
+    const fake = installFakes([], { withoutMirror: true });
+    const result = submit();
+    assert.equal(result.ok, true);
+    assert.equal(result.action, 'ADDED');
+    assert.equal(result.message, '신청이 완료되었습니다.');
+    assert.equal(result.audienceMirror.ok, false);
+    assert.ok(result.audienceMirror.error, 'the mirror error is returned for the log');
+    assert.equal(cell(fake.contact, 2, 2), '홍길동', 'the contact row stays saved');
+    assert.equal(cell(fake.contact, 2, 6), 'SMALL_TALK');
   });
 
   test('a different typed name does not rename the stored student', () => {
@@ -297,5 +367,59 @@ describe('Daily Talk only · storage (fake sheet)', () => {
     assert.excludes(config.consentText, '영어여권 발급 후');
     assert.equal(config.kakaoFriendUrl, 'https://pf.kakao.com/_xkFxexfX/friend');
     assert.equal(config.trackLabels.BOTH, '두 콘텐츠 모두');
+  });
+});
+
+describe('English Passport · audience mirror', () => {
+  function passport(overrides) {
+    return global.submitPassport(Object.assign({
+      studentName: '박테스트',
+      phone: '010-2222-3333',
+      registrationType: '신규등록',
+      lessonCount: 8,
+      courseType: '원장직강',
+      learningGoal: '회화 자신감',
+      privacyConsent: true,
+      dailyTalkOptIn: true,
+      dailyTalkTrack: 'BOTH'
+    }, overrides || {}));
+  }
+
+  test('a passport sign-up with Daily Talk consent reaches the mirror too', () => {
+    const fake = installFakes([]);
+    const result = passport();
+    assert.equal(result.ok, true);
+    assert.equal(result.contactAction, 'ADDED');
+    assert.equal(result.audienceMirror.ok, true);
+    assert.equal(result.audienceMirror.mirrored, 1);
+    assert.equal(fake.registration.getLastRow(), 2, 'the registration row is still written');
+    const rows = mirrorRows(fake);
+    assert.equal(rows.length, 1);
+    assert.deepEqual(rows[0].slice(0, 4), ['010-2222-3333', '박테스트', 'BOTH', 'ACTIVE']);
+  });
+
+  test('a passport sign-up without Daily Talk consent leaves the mirror empty', () => {
+    const fake = installFakes([]);
+    const result = passport({ dailyTalkOptIn: false, dailyTalkTrack: '' });
+    assert.equal(result.ok, true);
+    assert.equal(result.audienceMirror.ok, true);
+    assert.equal(result.audienceMirror.mirrored, 0);
+    assert.equal(mirrorRows(fake).length, 0, 'an opt-out student is not a send target');
+  });
+});
+
+describe('Daily Talk audience', () => {
+  test('reads the active audience from the contact sheet (cache key path)', () => {
+    const fake = installFakes([[
+      '', '최진혁', '010-8537-0071', '010-8537-0071', true, 'BOTH',
+      '2026-11-19T19:14:23.523Z', '2026-11-20-dailytalk-only-v1', '', 'ACTIVE', '', '', '', '수강중'
+    ]]);
+    const recipients = global.__sandbox.getActiveDailyTalkRecipients();
+    assert.equal(recipients.length, 1);
+    assert.equal(recipients[0].phone, '010-8537-0071');
+    assert.equal(recipients[0].name, '최진혁');
+    assert.equal(recipients[0].track, 'BOTH');
+    assert.equal(recipients[0].rowNumber, 2);
+    assert.ok(fake.openedIds.length >= 1);
   });
 });

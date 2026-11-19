@@ -12,8 +12,8 @@
   margin: 0 auto;
   padding: 4px 0 132px;
   color: var(--rmdt-ink);
-  font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard",
-    "Noto Sans KR", "Helvetica Neue", Arial, sans-serif;
+  font-family: "Open Sans", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
+    "Noto Sans KR", "Malgun Gothic", sans-serif;
   font-size: 16px;
   line-height: 1.7;
   -webkit-text-size-adjust: 100%;
@@ -31,8 +31,8 @@
 #rmdt-root h3,
 #rmdt-root summary,
 #rmdt-root div {
-  font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard",
-    "Noto Sans KR", "Helvetica Neue", Arial, sans-serif;
+  font-family: "Open Sans", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
+    "Noto Sans KR", "Malgun Gothic", sans-serif;
   letter-spacing: normal;
   text-transform: none;
   text-align: left;

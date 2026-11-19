@@ -169,23 +169,29 @@ listOpenAiModels()                                   // 이 키로 쓸 수 있�
 검증용 행은 `상태=TEST`로 두면 파이프라인이 집어가지 않는다(APPROVED/PUBLISHED만 처리).
 `상태=TEST`·`FAILED` 행은 그날 콘텐츠가 이미 있는 것으로 치지 않으므로 재생성도 막지 않는다.
 
-### 라이언멤버스 4단계 레슨 (2026-11-19 개편)
+### 라이언멤버스 5단계 레슨 (2026-11-20 개편)
 
-콘텐츠는 학원 고유 교육법 네 단계를 그대로 담는다. 프롬프트·스키마·검증·큐 컬럼·게시 본문이
-모두 이 순서를 따른다.
+콘텐츠는 학원 고유 교육법 다섯 단계를 그대로 담는다. 프롬프트·스키마·검증·큐 컬럼·게시 본문이
+모두 이 순서를 따른다. `SMALL_TALK`와 `BUSINESS` 모두 같은 5단계이고, 5단계의 대화 상황만
+일상 대화 / 업무 대화로 다르다.
 
 | 단계 | 필드 | 내용 |
 | --- | --- | --- |
-| Step 1 핵심 청크 | `chunks` (`CHUNKS_JSON`) | 바로 꺼내 쓰는 표현 3~4개 `{en, ko}` |
-| Step 2 어순 잡기 | `wordOrder` (`WORD_ORDER_JSON`) | 2문장. `thoughtKo`(한국어 생각) → `orderKo`(영어식 어순) → `en`(1차 영어 문장) |
-| Step 3 말하기 구조 | `structureType` + `structureSteps` (`STRUCTURE_JSON`) | `SMALL_TALK`=**AAA**(Answer·Add·Ask back 3단계), `BUSINESS`=**Message House**(Conclusion·Reason·Detail·Suggestion 4단계) |
-| Step 4 모델·내 말로 | `modelEn/Ko` + `substitutions` (`SUBSTITUTIONS_JSON`) + `yourTurnEn/Ko` | A/B 모델 대화, 단어만 바꾼 문장 2개, 오늘의 미션 |
+| STEP 1 오늘의 단어 3개 | `words` (`CHUNKS_JSON`) | 대화에 바로 쓰는 단어·표현 3개 `{en, ko}` |
+| STEP 2 그 단어로 한국어 문장 | `sentences[].ko` (`WORD_ORDER_JSON`) | 단어를 쓴 자연스러운 한국어 문장 3개 |
+| STEP 3 영어 어순으로 재정렬 | `sentences[].order` (`WORD_ORDER_JSON`) | 같은 문장을 의미 조각으로 쪼개 영어 어순으로. 각 조각 `{role, text}`, role은 `누가`·`한다`·`무엇을`·`어디서`·`언제`·`어떻게` |
+| STEP 4 통번역된 영어 문장 | `sentences[].en` (`WORD_ORDER_JSON`) | STEP 2·3 문장을 자연스러운 영어로. STEP 2와 같은 번호(①·②·③)로 짝을 이룬다 |
+| STEP 5 AAA 3문장 | `aaa` (`STRUCTURE_JSON`, `MODEL_EN/KO`) | 위 3문장 중 하나(`pick`)를 골라 **Answer → Add → Ask** 세 문장으로. `MODEL_EN/KO`에는 `Answer: … / Add: … / Ask: …` 형태로도 저장 |
 
-* 스키마는 `structureType`을 enum으로, `structureSteps[].label`을 7개 라벨 enum으로 고정한다.
-* 검증은 트랙과 구조가 어긋나면 저장하지 않는다(Small Talk에 Message House가 오면 실패).
-* `WORD_ORDER_JSON`·`STRUCTURE_JSON`·`SUBSTITUTIONS_JSON`은 `콘텐츠대기열`에 없으면
-  `ensureQueueHeaderColumns_`가 헤더만 추가한다(기존 데이터는 그대로).
-* 예전 행(세 컬럼이 비어 있음)도 게시는 된다 — Step 1·4만 있는 카드가 나온다.
+* 스키마는 `words`·`sentences` 개수를 3으로 고정하고, `order[].role`을 6개 enum으로, `aaa`는
+  `pick`(1~3) + `answer`/`add`/`ask`로 고정한다.
+* 검증은 단계 간 연결까지 본다: 단어 3개 중 2개 이상이 영어 문장 안에 실제로 나와야 하고,
+  `aaa.answer`는 고른 문장과 내용 단어를 공유해야 한다. 어순 조각은 `누가`가 `한다`보다
+  앞서야 하고 조각 안에 `/`가 들어가면 안 된다.
+* `WORD_ORDER_JSON`·`STRUCTURE_JSON`은 기존 컬럼을 그대로 쓴다(시트 마이그레이션 없음).
+  `SUBSTITUTIONS_JSON`은 새 콘텐츠에서 비운다.
+* 2026-11-20 이전에 생성된 행(옛 4단계 JSON)은 게시할 때 예전 4단계 본문으로 나간다
+  (`buildDailyTalkLegacyBlocks_`) — 이미 발행된 기사와 같은 모양.
 
 ### Wix CMS(`RyanDailyTalkContent`) 대응 — 게시 경로
 
@@ -216,7 +222,7 @@ Daily Talk 글은 Wix 블로그가 아니라 CMS 컬렉션 `RyanDailyTalkContent
   `magazineUrl` = `https://www.ryanmembers.com/rm-magazine/{slug}`.
 * `contentRich`(본문)와 `contentHtml`(같은 내용의 HTML)을 함께 채운다. 실제 페이지는
   `contentRich`를 렌더하고, 템플릿에 따라 `contentHtml`도 쓴다.
-* 본문은 `STEP 1 · KEY CHUNKS` ~ `STEP 4 · MODEL & YOUR TURN` 제목으로 나뉘고, 각 줄은
+* 본문은 `STEP 1 · KEY WORDS` ~ `STEP 5 · AAA IN ACTION` 제목으로 나뉘고, 각 줄은
   화면 스크립트가 다시 읽어 카드로 그린다(`wix/rm-magazine/`, 아래 4-2 참고).
 * 먼저 `slug`로 조회해서 **있으면 그 항목만 PATCH**(이 게시기가 쓰는 필드만), 없으면 INSERT.
   재실행해도 같은 날 같은 트랙이 두 번 생기지 않는다. CMS 편집기나 옛 블로그 동기화가
@@ -230,7 +236,7 @@ Daily Talk 글은 Wix 블로그가 아니라 CMS 컬렉션 `RyanDailyTalkContent
   Blog 쓰기 권한이 있는 API 키가 필요하고, 현재 키로는 401/403이 난다.
 * Wix 검색 노출은 켜기로 했으므로 `noindex` 같은 설정은 넣지 않는다.
 
-### 4-2. `/rm-magazine/{slug}` 화면 디자인 (2026-11-19)
+### 4-2. `/rm-magazine/{slug}` 화면 디자인 (2026-11-20 5단계 개편)
 
 게시되는 본문은 리치 텍스트라 카드·배지·간격을 담을 수 없다. 그래서 화면에서 다시 그린다.
 
@@ -238,14 +244,21 @@ Daily Talk 글은 Wix 블로그가 아니라 CMS 컬렉션 `RyanDailyTalkContent
 * Wix 사용자 지정 코드 두 개(모두 `선택 페이지 → Ryan Daily Talk 콘텐츠 (Item)`):
   * `RM Daily Talk · 기사 스타일` — **Head** — `rm-daily-talk.css`를 `<link>`로 호출
   * `RM Daily Talk · 기사 4단계 카드` — **Body - 끝** — `rm-daily-talk.js`를 `<script defer>`로 호출
+    (스니펫 이름은 그대로 두고 SHA만 올린다. 5단계도 이 스니펫이 그린다.)
 * 호출 주소는 **커밋 고정 jsDelivr** URL(`.../gh/batlifer-cmyk/ryan-members-app@<SHA>/wix/rm-magazine/...`).
   스타일을 고칠 때는 커밋을 올리고 스니펫의 SHA만 바꾼다.
 * 스크립트가 하는 일: ① 제목 아래 `contentId`/`slug` 줄 숨김 ② `STEP n` 단위로 카드 재구성
-  (Step 1 청크 / Step 2 어순 3단 / Step 3 AAA·Message House 스테이지 / Step 4 말풍선 대화·바꿔 말하기·미션)
-  ③ 한글 해석 접기 ④ 기사 하단 여백 132~148px + 플로팅 `#rmc-launch` 버튼 축소.
+  ③ 한글 해석 접기(옛 기사) ④ 기사 하단 여백 132~148px + 플로팅 `#rmc-launch` 버튼 축소.
+* 5단계 카드 모양:
+  * STEP 1 — 단어 3개, 영어 단어 + 한국어 뜻
+  * STEP 2 — ①·②·③ 번호가 붙은 한국어 문장 3개
+  * STEP 3 — 같은 번호로, 문장을 `누가`·`한다`·`무엇을`·`어디서`·`언제` 역할 칩으로 쪼개 `/`로 이어 붙임
+  * STEP 4 — 같은 번호의 영어 문장 3개(가장 크고 굵게)
+  * STEP 5 — 고른 문장 박스 + `ANSWER`·`ADD`·`ASK` 배지가 붙은 3문장
+* 4단계 기사(2026-11-20 이전 발행분)는 예전 카드(`KEY CHUNKS`/`WORD ORDER`/`AAA`/`MODEL & YOUR TURN`)로
+  그대로 그려진다. `STEP` 제목이 없는 옛 글은 아무것도 하지 않고 원문을 그대로 둔다.
 * 실패 시 동작: 파싱이 안 되면 원래 리치 텍스트를 그대로 두고 아무것도 숨기지 않는다(스크립트가
   없어도 글은 그대로 읽힌다). 원문을 숨긴 뒤에만 카드가 보인다.
-* 기존 글(2026-07·08 샘플)은 `STEP` 제목이 없으므로 카드가 생기지 않고 원문 그대로 보인다.
 
 ### 4-3. Daily Talk 전용 간단 신청·트랙 변경 (2026-11-20)
 

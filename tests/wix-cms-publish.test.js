@@ -4,6 +4,9 @@
  * The site serves Daily Talk at /rm-magazine/{slug} from the CMS collection
  * RyanDailyTalkContent, so these tests pin:
  *   - the queue -> CMS field mapping (name for name),
+ *   - the five-step lesson body written into contentRich / contentHtml
+ *     (2026-11-20) and the older four-step body still rendered for rows
+ *     generated before that date,
  *   - the slug / publishDate rules taken from the live items,
  *   - insert on a free slug and patch on an existing one (wix-data/v2),
  *   - error handling that never leaks the API key,
@@ -13,40 +16,66 @@
 const FAKE_KEY = ['dummy', 'wix', 'credential', 'value'].join('-');
 
 const ITEM = {
-  contentId: 'SMALL_TALK-20261119-making-lunch-plans',
-  sendDate: '2026-11-19',
+  contentId: 'SMALL_TALK-20261120-warm-coffee-morning',
+  sendDate: '2026-11-20',
   track: 'SMALL_TALK',
   level: 'BASIC',
   status: 'TEST',
-  topicEn: 'Making Lunch Plans',
-  topicKo: '점심 약속 잡기',
-  snackEn: "When you're at work, lunch is an easy small talk topic.",
-  snackKo: '직장에서 점심은 가볍게 대화하기 좋은 주제예요.',
+  topicEn: 'Warm Coffee Morning',
+  topicKo: '따뜻한 커피 아침',
+  snackEn: 'You walk to work on a cold morning and stop for a coffee. Today you say what you drink on the way.',
+  snackKo: '추운 아침에 걸어서 출근하다가 커피를 사요. 오늘은 출근길에 무엇을 마시는지 말해 봅니다.',
   chunksJson: JSON.stringify([
-    { en: "I'm thinking of getting lunch soon.", ko: '저 곧 점심 먹으러 갈까 해요.' },
-    { en: 'That sounds good to me.', ko: '저는 좋아요.' },
-    { en: 'Do you have any plans?', ko: '무슨 계획 있어요?' }
+    { en: 'warm coffee', ko: '따뜻한 커피' },
+    { en: 'on my way to work', ko: '출근길에' },
+    { en: 'grab', ko: '(음료를) 사서 들다' }
   ]),
   wordOrderJson: JSON.stringify([
-    { thoughtKo: '나는 / 곧 / 점심을 / 먹는다', orderKo: '나는 / 먹는다 / 점심을 / 곧', en: "I'm getting lunch soon." },
-    { thoughtKo: '우리는 / 같이 / 먹을 수 있다', orderKo: '우리는 / 먹을 수 있다 / 같이', en: 'We can eat together.' }
+    {
+      ko: '나는 오늘 아침 출근길에 따뜻한 커피를 마셨다',
+      order: [
+        { role: '누가', text: '나는' },
+        { role: '한다', text: '마셨다' },
+        { role: '무엇을', text: '따뜻한 커피를' },
+        { role: '어디서', text: '출근길에' },
+        { role: '언제', text: '오늘 아침' }
+      ],
+      en: 'I had a warm coffee on my way to work this morning.'
+    },
+    {
+      ko: '나는 출근길에 커피를 사서 들었다',
+      order: [
+        { role: '누가', text: '나는' },
+        { role: '한다', text: '사서 들었다' },
+        { role: '무엇을', text: '커피를' },
+        { role: '어디서', text: '출근길에' }
+      ],
+      en: 'I grabbed a coffee on my way to work.'
+    },
+    {
+      ko: '나는 아침에 따뜻한 커피가 필요하다',
+      order: [
+        { role: '누가', text: '나는' },
+        { role: '한다', text: '필요하다' },
+        { role: '무엇을', text: '따뜻한 커피가' },
+        { role: '언제', text: '아침에' }
+      ],
+      en: 'I need a warm coffee in the morning.'
+    }
   ]),
   structureJson: JSON.stringify({
     type: 'AAA',
+    pick: 1,
     steps: [
-      { label: 'Answer', en: "I'm thinking of getting lunch soon.", ko: '저 곧 점심 먹으러 갈까 해요.' },
-      { label: 'Add', en: 'There is a new place near the office.', ko: '사무실 근처에 새로 생긴 곳이 있어요.' },
-      { label: 'Ask back', en: 'Do you have any plans?', ko: '무슨 계획 있어요?' }
+      { label: 'Answer', en: 'Yeah, I had a warm coffee on my way to work.', ko: '네, 출근길에 따뜻한 커피를 마셨어요.' },
+      { label: 'Add', en: 'It was freezing outside.', ko: '밖이 정말 추웠거든요.' },
+      { label: 'Ask', en: 'How about you?', ko: '당신은요?' }
     ]
   }),
-  substitutionsJson: JSON.stringify([
-    { en: "I'm getting coffee soon.", ko: '저 곧 커피 마시러 갈까 해요.' },
-    { en: 'We can go together after work.', ko: '퇴근하고 같이 갈 수 있어요.' }
-  ]),
-  modelEn: "A: I'm thinking of getting lunch soon.\nB: That sounds good to me.",
-  modelKo: 'A: 저 곧 점심 먹으러 갈까 해요.\nB: 저는 좋아요.',
-  yourTurnEn: 'Ask one coworker about lunch today.',
-  yourTurnKo: '오늘 동료 한 명에게 점심 계획을 물어보세요.',
+  modelEn: 'Answer: Yeah, I had a warm coffee on my way to work.\nAdd: It was freezing outside.\nAsk: How about you?',
+  modelKo: 'Answer: 네, 출근길에 따뜻한 커피를 마셨어요.\nAdd: 밖이 정말 추웠거든요.\nAsk: 당신은요?',
+  yourTurnEn: 'Say your Answer, Add and Ask out loud three times today.',
+  yourTurnKo: '오늘 Answer → Add → Ask 세 문장을 소리 내어 세 번 말해 보세요.',
   sources: 'OPENAI:gpt-5.5',
   kakaoText: '',
   wixContentUrl: '',
@@ -54,20 +83,66 @@ const ITEM = {
   wixPublishedAt: ''
 };
 
+/** A row generated before 2026-11-20: the older four-step body. */
+const LEGACY_ITEM = {
+  contentId: 'SMALL_TALK-20261119-cold-morning-chat',
+  sendDate: '2026-11-19',
+  track: 'SMALL_TALK',
+  level: 'BASIC',
+  topicEn: 'Frosty Elevator Hello',
+  topicKo: '쌀쌀한 엘리베이터 인사',
+  snackEn: "You meet a neighbor in the elevator on a very cold morning. Try one expression today: It's freezing this morning.",
+  snackKo: '아주 추운 아침에 엘리베이터에서 이웃을 만났어요. 오늘은 간단한 표현 하나를 써 보세요.',
+  chunksJson: JSON.stringify([{ en: "It's freezing this morning.", ko: '오늘 아침 정말 춥네요.' }]),
+  wordOrderJson: JSON.stringify([
+    { thoughtKo: '오늘 아침은 / 정말 / 춥다', orderKo: '오늘 아침은 / 춥다 / 정말', en: "It's really cold this morning." }
+  ]),
+  structureJson: JSON.stringify({
+    type: 'AAA',
+    steps: [
+      { label: 'Answer', en: "Yeah, it's really cold.", ko: '네, 정말 춥네요.' },
+      { label: 'Add', en: 'I need warmer gloves.', ko: '더 따뜻한 장갑이 필요해요.' },
+      { label: 'Ask back', en: 'Are you staying warm?', ko: '따뜻하게 지내세요?' }
+    ]
+  }),
+  substitutionsJson: JSON.stringify([{ en: 'I need warmer gloves.', ko: '더 따뜻한 장갑이 필요하겠어요.' }]),
+  modelEn: "A: Good morning. It's freezing this morning.\nB: Yeah, it's really cold.",
+  modelKo: 'A: 좋은 아침이에요. 오늘 아침 정말 춥네요.\nB: 네, 정말 추워요.',
+  yourTurnEn: "Try saying, It's freezing this morning, to a neighbor.",
+  yourTurnKo: '오늘 이웃에게 오늘 아침 정말 춥네요라고 말해 보세요.',
+  sources: 'OPENAI:gpt-5.5'
+};
+
 const BUSINESS_ITEM = {
-  contentId: 'BUSINESS-20261119-updating-the-team',
+  contentId: 'BUSINESS-20261120-one-more-day',
   track: 'BUSINESS',
   level: 'INTERMEDIATE',
-  topicEn: 'Updating the team on a delay',
-  topicKo: '팀에 일정 지연 알리기',
-  chunksJson: '[{"en":"push the deadline","ko":"마감을 미루다"}]',
+  topicEn: 'One more day',
+  topicKo: '하루 더 필요한 상황',
+  chunksJson: JSON.stringify([
+    { en: 'one more day', ko: '하루 더' },
+    { en: 'push the launch', ko: '출시를 미루다' },
+    { en: 'keep you posted', ko: '계속 알려 주다' }
+  ]),
+  wordOrderJson: JSON.stringify([
+    {
+      ko: '우리는 출시에 하루가 더 필요합니다',
+      order: [
+        { role: '누가', text: '우리는' },
+        { role: '한다', text: '필요합니다' },
+        { role: '무엇을', text: '하루가 더' },
+        { role: '어디서', text: '출시에' }
+      ],
+      en: 'We need one more day for the launch.'
+    }
+  ]),
   structureJson: JSON.stringify({
-    type: 'MESSAGE_HOUSE',
+    type: 'AAA',
+    pick: 1,
     steps: [
-      { label: 'Conclusion', en: 'We need one more day.', ko: '하루가 더 필요합니다.' },
-      { label: 'Reason', en: 'The final check found two bugs.', ko: '마지막 점검에서 오류 두 개를 찾았습니다.' },
-      { label: 'Detail', en: 'Both are in the payment screen.', ko: '둘 다 결제 화면에 있습니다.' },
-      { label: 'Suggestion', en: 'Could we move the launch to Friday?', ko: '출시를 금요일로 옮겨도 될까요?' }
+      { label: 'Answer', en: 'We need one more day for the launch.', ko: '출시에 하루가 더 필요합니다.' },
+      { label: 'Add', en: 'The final check found two bugs.', ko: '마지막 점검에서 오류 두 개가 나왔습니다.' },
+      { label: 'Ask', en: 'Does Friday still work for you?', ko: '금요일도 괜찮으실까요?' }
     ]
   }),
   modelEn: 'We may need to push the deadline by a day.',
@@ -157,11 +232,15 @@ function stubSheet() {
   };
 }
 
+function richTexts(item, options) {
+  return buildDailyTalkCmsData_(item, options || {}).contentRich.nodes.map((node) => node.nodes[0].textData.text);
+}
+
 // --- field mapping ---------------------------------------------------------
 
 describe('Daily Talk CMS payload', () => {
   test('maps every queue field to its RyanDailyTalkContent field name', () => {
-    const data = buildDailyTalkCmsData_(ITEM, { slug: 'small-talk-2026-11-19-making-lunch-plans' });
+    const data = buildDailyTalkCmsData_(ITEM, { slug: 'small-talk-2026-11-20-warm-coffee-morning' });
     assert.equal(data.contentId, ITEM.contentId, 'contentId');
     assert.equal(data.topicEn, ITEM.topicEn, 'TOPIC_EN -> topicEn');
     assert.equal(data.topicKo, ITEM.topicKo, 'TOPIC_KO -> topicKo');
@@ -171,7 +250,7 @@ describe('Daily Talk CMS payload', () => {
     assert.equal(data.modelAnswerKo, ITEM.modelKo, 'MODEL_KO -> modelAnswerKo');
     assert.equal(data.yourTurnEn, ITEM.yourTurnEn, 'YOUR_TURN_EN -> yourTurnEn');
     assert.equal(data.yourTurnKo, ITEM.yourTurnKo, 'YOUR_TURN_KO -> yourTurnKo');
-    assert.ok(data.kakaoText.indexOf('점심 약속 잡기') !== -1, '카카오본문 -> kakaoText');
+    assert.ok(data.kakaoText.indexOf('따뜻한 커피 아침') !== -1, '카카오본문 -> kakaoText');
     assert.equal(data.generatedByAi, true, 'SOURCES OPENAI -> generatedByAi');
     assert.equal(data.status, 'PUBLISHED', 'status');
     assert.equal(data.track, 'SMALL_TALK', 'track');
@@ -179,7 +258,7 @@ describe('Daily Talk CMS payload', () => {
   });
 
   test('never sends a field the collection does not declare', () => {
-    const data = buildDailyTalkCmsData_(ITEM, { slug: 'small-talk-2026-11-19-making-lunch-plans' });
+    const data = buildDailyTalkCmsData_(ITEM, { slug: 'small-talk-2026-11-20-warm-coffee-morning' });
     const allowed = [
       'contentId', 'slug', 'title', 'track', 'level', 'status', 'publishDate', 'magazineUrl',
       'topicEn', 'topicKo', 'snackEn', 'snackKo', 'chunksJson', 'modelAnswerEn', 'modelAnswerKo',
@@ -194,99 +273,29 @@ describe('Daily Talk CMS payload', () => {
   });
 
   test('publishDate comes from CONTENT_ID as YYYY-MM-DD', () => {
-    assert.equal(buildDailyTalkCmsData_(ITEM).publishDate, '2026-11-19');
+    assert.equal(buildDailyTalkCmsData_(ITEM).publishDate, '2026-11-20');
     assert.equal(buildDailyTalkCmsData_({ contentId: 'X', sendDate: '2026-08-10' }).publishDate, '2026-08-10');
     assert.equal(buildDailyTalkCmsData_({ sendDate: '2026. 8. 10' }).publishDate, '2026-08-10');
   });
 
-  test('chunksJson is normalized to an [{en, ko}] JSON array', () => {
+  test('chunksJson carries the three words of step 1', () => {
     const data = buildDailyTalkCmsData_(ITEM);
     const chunks = JSON.parse(data.chunksJson);
     assert.equal(chunks.length, 3);
-    assert.deepEqual(chunks[0], { en: "I'm thinking of getting lunch soon.", ko: '저 곧 점심 먹으러 갈까 해요.' });
+    assert.deepEqual(chunks[0], { en: 'warm coffee', ko: '따뜻한 커피' });
     const fromLines = JSON.parse(buildDailyTalkCmsData_({ chunksJson: 'stay late: 야근하다\nwrap up: 마무리하다' }).chunksJson);
     assert.deepEqual(fromLines, [{ en: 'stay late', ko: '야근하다' }, { en: 'wrap up', ko: '마무리하다' }]);
     assert.equal(buildDailyTalkCmsData_({ chunksJson: '' }).chunksJson, '[]');
   });
 
   test('title follows the existing "[Small Talk] 주제" pattern', () => {
-    assert.equal(buildDailyTalkCmsData_(ITEM).title, '[Small Talk] 점심 약속 잡기');
-    assert.equal(buildDailyTalkCmsData_(BUSINESS_ITEM).title, '[Business Talk] 팀에 일정 지연 알리기');
-  });
-
-  test('contentRich carries every section the live page renders', () => {
-    const rich = buildDailyTalkCmsData_(ITEM).contentRich;
-    assert.ok(Array.isArray(rich.nodes));
-    const texts = rich.nodes.map((node) => node.nodes[0].textData.text);
-    assert.includes(texts, 'Making Lunch Plans');
-    assert.includes(texts, '점심 약속 잡기');
-    assert.includes(texts, 'STEP 1 · KEY CHUNKS');
-    assert.includes(texts, 'STEP 2 · WORD ORDER');
-    assert.includes(texts, 'STEP 3 · AAA');
-    assert.includes(texts, 'STEP 4 · MODEL & YOUR TURN');
-    assert.includes(texts, "I'm thinking of getting lunch soon.\n저 곧 점심 먹으러 갈까 해요.");
-    assert.includes(texts, '① 한국어 생각 — 나는 / 곧 / 점심을 / 먹는다');
-    assert.includes(texts, '② 영어식 어순 — 나는 / 먹는다 / 점심을 / 곧');
-    assert.includes(texts, '③ 영어 문장 — I\'m getting lunch soon.');
-    assert.includes(texts, 'Answer — 한 문장으로 먼저 답하기');
-    assert.includes(texts, 'Ask back — 상대에게 되묻기');
-    assert.includes(texts, '내 말로 바꿔 말하기');
-    assert.includes(texts, '오늘의 미션\nAsk one coworker about lunch today.\n오늘 동료 한 명에게 점심 계획을 물어보세요.');
-    assert.excludes(texts, 'Useful Chunks');
-    assert.excludes(texts, 'Model Answer');
-    const heading = rich.nodes[0];
-    assert.equal(heading.type, 'HEADING');
-    assert.equal(heading.headingData.level, 2);
-    assert.equal(heading.headingData.textStyle.textAlignment, 'AUTO');
-    assert.equal(heading.nodes[0].type, 'TEXT');
-    assert.deepEqual(heading.nodes[0].textData.decorations, []);
-    const paragraph = rich.nodes[1];
-    assert.equal(paragraph.type, 'PARAGRAPH');
-    assert.equal(paragraph.paragraphData.textStyle.textAlignment, 'AUTO');
-  });
-
-  test('the four steps appear in teaching order, once each', () => {
-    const texts = buildDailyTalkCmsData_(ITEM).contentRich.nodes.map((node) => node.nodes[0].textData.text);
-    const order = ['STEP 1 · KEY CHUNKS', 'STEP 2 · WORD ORDER', 'STEP 3 · AAA', 'STEP 4 · MODEL & YOUR TURN']
-      .map((title) => texts.indexOf(title));
-    assert.ok(order.every((index) => index > -1), 'every step heading exists');
-    assert.ok(order[0] < order[1] && order[1] < order[2] && order[2] < order[3], 'steps are in order');
-    assert.equal(texts.filter((text) => text.indexOf('STEP ') === 0).length, 4);
-  });
-
-  test('business content renders the message house instead of AAA', () => {
-    const texts = buildDailyTalkCmsData_(BUSINESS_ITEM).contentRich.nodes.map((node) => node.nodes[0].textData.text);
-    assert.includes(texts, 'STEP 3 · MESSAGE HOUSE');
-    assert.includes(texts, 'Conclusion — 핵심 결론부터 말하기');
-    assert.includes(texts, 'Suggestion — 다음 행동 제안하기');
-    assert.excludes(texts.join('|'), 'STEP 3 · AAA');
-  });
-
-  test('a queue row without step data still publishes what it has', () => {
-    const legacy = Object.assign({}, ITEM, { wordOrderJson: '', structureJson: '', substitutionsJson: '' });
-    const texts = buildDailyTalkCmsData_(legacy).contentRich.nodes.map((node) => node.nodes[0].textData.text);
-    assert.includes(texts, 'STEP 1 · KEY CHUNKS');
-    assert.includes(texts, 'STEP 4 · MODEL & YOUR TURN');
-    assert.excludes(texts.join('|'), 'STEP 2 · WORD ORDER');
-    assert.excludes(texts.join('|'), 'STEP 3 ·');
-  });
-
-  test('contentHtml mirrors the rich content and escapes markup', () => {
-    const html = buildDailyTalkCmsData_({ topicEn: 'Use <b>bold</b> & "quotes"', topicKo: '한글' }).contentHtml;
-    assert.includes(html, '<h2 class="dt-topic-en">Use &lt;b&gt;bold&lt;/b&gt; &amp; &quot;quotes&quot;</h2>');
-    assert.includes(html, '<p class="dt-topic-ko">한글</p>');
-  });
-
-  test('contentHtml keeps the step markers and line breaks', () => {
-    const html = buildDailyTalkCmsData_(ITEM).contentHtml;
-    assert.includes(html, 'STEP 1 · KEY CHUNKS');
-    assert.includes(html, "I'm thinking of getting lunch soon.<br>저 곧 점심 먹으러 갈까 해요.");
-    assert.includes(html, '<p class="dt-stage-label">Answer — 한 문장으로 먼저 답하기</p>');
+    assert.equal(buildDailyTalkCmsData_(ITEM).title, '[Small Talk] 따뜻한 커피 아침');
+    assert.equal(buildDailyTalkCmsData_(BUSINESS_ITEM).title, '[Business Talk] 하루 더 필요한 상황');
   });
 
   test('kakaoText links to the magazine item and keeps the opt-out footer', () => {
-    const data = buildDailyTalkCmsData_(ITEM, { slug: 'small-talk-2026-11-19-making-lunch-plans' });
-    assert.equal(data.magazineUrl, 'https://www.ryanmembers.com/rm-magazine/small-talk-2026-11-19-making-lunch-plans');
+    const data = buildDailyTalkCmsData_(ITEM, { slug: 'small-talk-2026-11-20-warm-coffee-morning' });
+    assert.equal(data.magazineUrl, 'https://www.ryanmembers.com/rm-magazine/small-talk-2026-11-20-warm-coffee-morning');
     assert.includes(data.kakaoText, '(광고)');
     assert.includes(data.kakaoText, data.magazineUrl);
     assert.includes(data.kakaoText, '수신거부');
@@ -298,12 +307,159 @@ describe('Daily Talk CMS payload', () => {
   });
 });
 
+// --- the five-step body ----------------------------------------------------
+
+describe('Daily Talk CMS body — five steps', () => {
+  test('contentRich carries the five step headings in teaching order, once each', () => {
+    const texts = richTexts(ITEM);
+    const titles = ['STEP 1 · KEY WORDS', 'STEP 2 · KOREAN SENTENCES', 'STEP 3 · ENGLISH WORD ORDER',
+      'STEP 4 · ENGLISH SENTENCES', 'STEP 5 · AAA IN ACTION'];
+    const positions = titles.map((title) => texts.indexOf(title));
+    assert.ok(positions.every((index) => index > -1), 'every step heading exists: ' + positions.join(','));
+    assert.ok(positions[0] < positions[1] && positions[1] < positions[2] &&
+      positions[2] < positions[3] && positions[3] < positions[4], 'steps are in order');
+    assert.equal(texts.filter((text) => /^STEP [1-5] · /.test(text)).length, 5);
+  });
+
+  test('step 1 lists the three words with their meanings', () => {
+    const texts = richTexts(ITEM);
+    assert.includes(texts, 'warm coffee\n따뜻한 커피');
+    assert.includes(texts, 'on my way to work\n출근길에');
+    assert.includes(texts, 'grab\n(음료를) 사서 들다');
+    assert.includes(texts, '오늘 대화에 바로 쓰는 단어 3개. 뜻과 함께 소리 내어 세 번씩 읽어 보세요.');
+  });
+
+  test('step 2 lists the same three sentences in Korean, numbered', () => {
+    const texts = richTexts(ITEM);
+    assert.includes(texts, '① 나는 오늘 아침 출근길에 따뜻한 커피를 마셨다');
+    assert.includes(texts, '② 나는 출근길에 커피를 사서 들었다');
+    assert.includes(texts, '③ 나는 아침에 따뜻한 커피가 필요하다');
+  });
+
+  test('step 3 writes each sentence as role-labelled Korean pieces in English order', () => {
+    const texts = richTexts(ITEM);
+    assert.includes(texts, '① 누가: 나는 / 한다: 마셨다 / 무엇을: 따뜻한 커피를 / 어디서: 출근길에 / 언제: 오늘 아침');
+    assert.includes(texts, '② 누가: 나는 / 한다: 사서 들었다 / 무엇을: 커피를 / 어디서: 출근길에');
+    assert.includes(texts, '통역하기 전에, 한국어를 영어 어순(누가 → 한다 → 무엇을 → 어디서 → 언제)으로 먼저 놓아 봅니다.');
+  });
+
+  test('step 4 lists the English translations under the same marks', () => {
+    const texts = richTexts(ITEM);
+    assert.includes(texts, '① I had a warm coffee on my way to work this morning.');
+    assert.includes(texts, '② I grabbed a coffee on my way to work.');
+    assert.includes(texts, '③ I need a warm coffee in the morning.');
+  });
+
+  test('step 5 names the picked sentence and writes Answer / Add / Ask', () => {
+    const texts = richTexts(ITEM);
+    assert.includes(texts, '오늘 문장 ①을 골라, 실제 대화에서는 이렇게 세 문장으로 말합니다. Answer → Add → Ask.');
+    assert.includes(texts, 'Answer — 한 문장으로 먼저 답하기\nYeah, I had a warm coffee on my way to work.\n네, 출근길에 따뜻한 커피를 마셨어요.');
+    assert.includes(texts, 'Add — 이유나 디테일을 한 문장 더하기\nIt was freezing outside.\n밖이 정말 추웠거든요.');
+    assert.includes(texts, 'Ask — 상대에게 되묻기\nHow about you?\n당신은요?');
+  });
+
+  test('the picked sentence drives the step 5 lead, not always ①', () => {
+    const second = Object.assign({}, ITEM, {
+      structureJson: JSON.stringify({
+        type: 'AAA',
+        pick: 2,
+        steps: JSON.parse(ITEM.structureJson).steps
+      })
+    });
+    const texts = richTexts(second);
+    assert.includes(texts, '오늘 문장 ②을 골라, 실제 대화에서는 이렇게 세 문장으로 말합니다. Answer → Add → Ask.');
+  });
+
+  test('the business track uses the same five steps', () => {
+    const texts = richTexts(BUSINESS_ITEM);
+    assert.includes(texts, 'STEP 1 · KEY WORDS');
+    assert.includes(texts, 'STEP 3 · ENGLISH WORD ORDER');
+    assert.includes(texts, 'STEP 5 · AAA IN ACTION');
+    assert.includes(texts, '① 누가: 우리는 / 한다: 필요합니다 / 무엇을: 하루가 더 / 어디서: 출시에');
+    assert.includes(texts, 'Answer — 한 문장으로 먼저 답하기\nWe need one more day for the launch.\n출시에 하루가 더 필요합니다.');
+    assert.excludes(texts.join('|'), 'MESSAGE HOUSE');
+  });
+
+  test('contentHtml mirrors the five steps and escapes markup', () => {
+    const html = buildDailyTalkCmsData_(ITEM).contentHtml;
+    assert.includes(html, '<h3 class="dt-step-title">STEP 1 · KEY WORDS</h3>');
+    assert.includes(html, '<p class="dt-word">warm coffee<br>따뜻한 커피</p>');
+    assert.includes(html, '<p class="dt-order">① 누가: 나는 / 한다: 마셨다 / 무엇을: 따뜻한 커피를 / 어디서: 출근길에 / 언제: 오늘 아침</p>');
+    assert.includes(html, '<p class="dt-english">① I had a warm coffee on my way to work this morning.</p>');
+    assert.includes(html, '<p class="dt-aaa">Ask — 상대에게 되묻기<br>How about you?<br>당신은요?</p>');
+
+    const escaped = buildDailyTalkCmsData_({ topicEn: 'Use <b>bold</b> & "quotes"', topicKo: '한글' }).contentHtml;
+    assert.includes(escaped, '<h2 class="dt-topic-en">Use &lt;b&gt;bold&lt;/b&gt; &amp; &quot;quotes&quot;</h2>');
+    assert.includes(escaped, '<p class="dt-topic-ko">한글</p>');
+  });
+
+  test('contentRich nodes are the Ricos shape the CMS accepts', () => {
+    const rich = buildDailyTalkCmsData_(ITEM).contentRich;
+    assert.ok(Array.isArray(rich.nodes));
+    const heading = rich.nodes[0];
+    assert.equal(heading.type, 'HEADING');
+    assert.equal(heading.headingData.level, 2);
+    assert.equal(heading.headingData.textStyle.textAlignment, 'AUTO');
+    assert.equal(heading.nodes[0].type, 'TEXT');
+    assert.deepEqual(heading.nodes[0].textData.decorations, []);
+    const paragraph = rich.nodes[1];
+    assert.equal(paragraph.type, 'PARAGRAPH');
+    assert.equal(paragraph.paragraphData.textStyle.textAlignment, 'AUTO');
+  });
+});
+
+// --- the older four-step body ---------------------------------------------
+
+describe('Daily Talk CMS body — rows generated before 2026-11-20', () => {
+  test('still renders the four old steps', () => {
+    const texts = richTexts(LEGACY_ITEM);
+    ['STEP 1 · KEY CHUNKS', 'STEP 2 · WORD ORDER', 'STEP 3 · AAA', 'STEP 4 · MODEL & YOUR TURN']
+      .forEach((title) => assert.includes(texts, title));
+    assert.includes(texts, '① 한국어 생각 — 오늘 아침은 / 정말 / 춥다');
+    assert.includes(texts, '② 영어식 어순 — 오늘 아침은 / 춥다 / 정말');
+    assert.includes(texts, 'Answer — 한 문장으로 먼저 답하기');
+    assert.includes(texts, '내 말로 바꿔 말하기');
+    assert.includes(texts, '오늘의 미션\nTry saying, It\'s freezing this morning, to a neighbor.\n오늘 이웃에게 오늘 아침 정말 춥네요라고 말해 보세요.');
+    assert.excludes(texts.join('|'), 'STEP 5');
+  });
+
+  test('a queue row without step data still publishes what it has', () => {
+    const bare = Object.assign({}, LEGACY_ITEM, { wordOrderJson: '', structureJson: '', substitutionsJson: '' });
+    const texts = richTexts(bare);
+    assert.includes(texts, 'STEP 1 · KEY CHUNKS');
+    assert.includes(texts, 'STEP 4 · MODEL & YOUR TURN');
+    assert.excludes(texts.join('|'), 'STEP 2 · WORD ORDER');
+    assert.excludes(texts.join('|'), 'STEP 3 ·');
+  });
+
+  test('a message-house row keeps its four stages', () => {
+    const messageHouse = Object.assign({}, LEGACY_ITEM, {
+      track: 'BUSINESS',
+      contentId: 'BUSINESS-20261119-updating-the-team',
+      structureJson: JSON.stringify({
+        type: 'MESSAGE_HOUSE',
+        steps: [
+          { label: 'Conclusion', en: 'We need one more day.', ko: '하루가 더 필요합니다.' },
+          { label: 'Reason', en: 'The final check found two bugs.', ko: '마지막 점검에서 오류 두 개를 찾았습니다.' },
+          { label: 'Detail', en: 'Both are in the payment screen.', ko: '둘 다 결제 화면에 있습니다.' },
+          { label: 'Suggestion', en: 'Could we move the launch to Friday?', ko: '출시를 금요일로 옮겨도 될까요?' }
+        ]
+      })
+    });
+    const texts = richTexts(messageHouse);
+    assert.includes(texts, 'STEP 3 · MESSAGE HOUSE');
+    assert.includes(texts, 'Conclusion — 핵심 결론부터 말하기');
+    assert.includes(texts, 'Suggestion — 다음 행동 제안하기');
+    assert.excludes(texts.join('|'), 'STEP 3 · AAA');
+  });
+});
+
 // --- slug ------------------------------------------------------------------
 
 describe('Daily Talk CMS slug', () => {
   test('derives {track}-{date}-{topic} from a generated CONTENT_ID', () => {
-    assert.equal(buildDailyTalkCmsSlug_(ITEM), 'small-talk-2026-11-19-making-lunch-plans');
-    assert.equal(buildDailyTalkCmsSlug_(BUSINESS_ITEM), 'business-talk-2026-11-19-updating-the-team');
+    assert.equal(buildDailyTalkCmsSlug_(ITEM), 'small-talk-2026-11-20-warm-coffee-morning');
+    assert.equal(buildDailyTalkCmsSlug_(BUSINESS_ITEM), 'business-talk-2026-11-20-one-more-day');
   });
 
   test('matches the shape of the slugs already in the collection', () => {
@@ -347,7 +503,7 @@ describe('publishDailyTalkToWix_ (CMS)', () => {
   test('inserts a new item and returns the magazine URL and CMS id', () => {
     const urlFetch = fakeUrlFetch([
       [200, { dataItems: [] }],
-      [200, { dataItem: { id: 'cms-item-1', data: { slug: 'small-talk-2026-11-19-making-lunch-plans' } } }]
+      [200, { dataItem: { id: 'cms-item-1', data: { slug: 'small-talk-2026-11-20-warm-coffee-morning' } } }]
     ]);
     const result = withServiceStubs({
       PropertiesService: fakeProperties({ WIX_API_KEY: FAKE_KEY }),
@@ -355,7 +511,7 @@ describe('publishDailyTalkToWix_ (CMS)', () => {
     }, () => publishDailyTalkToWix_(ITEM, settings));
 
     assert.equal(result.postId, 'cms-item-1');
-    assert.equal(result.url, 'https://www.ryanmembers.com/rm-magazine/small-talk-2026-11-19-making-lunch-plans');
+    assert.equal(result.url, 'https://www.ryanmembers.com/rm-magazine/small-talk-2026-11-20-warm-coffee-morning');
     assert.equal(result.publishedMode, 'CMS_MAGAZINE');
     assert.ok(result.publishedAt instanceof Date);
 
@@ -370,15 +526,15 @@ describe('publishDailyTalkToWix_ (CMS)', () => {
 
     const body = parseBody(insert);
     assert.equal(body.dataCollectionId, 'RyanDailyTalkContent');
-    assert.equal(body.dataItem.data.slug, 'small-talk-2026-11-19-making-lunch-plans');
+    assert.equal(body.dataItem.data.slug, 'small-talk-2026-11-20-warm-coffee-morning');
     assert.equal(body.dataItem.data.status, 'PUBLISHED');
-    assert.ok(body.dataItem.data.contentRich.nodes.length > 5);
+    assert.ok(body.dataItem.data.contentRich.nodes.length > 10);
   });
 
   test('queries by slug before writing, so a rerun never duplicates the item', () => {
     const urlFetch = fakeUrlFetch([
-      [200, { dataItems: [{ id: 'existing-1', data: { slug: 'small-talk-2026-11-19-making-lunch-plans' } }] }],
-      [200, { dataItem: { id: 'existing-1', data: { slug: 'small-talk-2026-11-19-making-lunch-plans' } } }]
+      [200, { dataItems: [{ id: 'existing-1', data: { slug: 'small-talk-2026-11-20-warm-coffee-morning' } }] }],
+      [200, { dataItem: { id: 'existing-1', data: { slug: 'small-talk-2026-11-20-warm-coffee-morning' } } }]
     ]);
     const result = withServiceStubs({
       PropertiesService: fakeProperties({ WIX_API_KEY: FAKE_KEY }),
@@ -388,7 +544,7 @@ describe('publishDailyTalkToWix_ (CMS)', () => {
     assert.equal(result.postId, 'existing-1');
     assert.equal(urlFetch.calls.length, 2);
     const queryBody = parseBody(urlFetch.calls[0]);
-    assert.deepEqual(queryBody.query.filter, { slug: 'small-talk-2026-11-19-making-lunch-plans' });
+    assert.deepEqual(queryBody.query.filter, { slug: 'small-talk-2026-11-20-warm-coffee-morning' });
     assert.equal(queryBody.query.paging.limit, 1);
 
     const patch = urlFetch.calls[1];
@@ -427,7 +583,7 @@ describe('publishDailyTalkToWix_ (CMS)', () => {
   test('a 200 answer without an item id is treated as a failure', () => {
     const urlFetch = fakeUrlFetch([
       [200, { dataItems: [] }],
-      [200, { dataItem: { data: { slug: 'small-talk-2026-11-19-making-lunch-plans' } } }]
+      [200, { dataItem: { data: { slug: 'small-talk-2026-11-20-warm-coffee-morning' } } }]
     ]);
     let error = null;
     try {
@@ -490,14 +646,14 @@ describe('publish result in 콘텐츠대기열', () => {
   test('writes WIX_CONTENT_URL, WIX_POST_ID, WIX_PUBLISHED_AT and 카카오본문', () => {
     const sheet = stubSheet();
     const headerUnit = { WIX_CONTENT_URL: 20, WIX_POST_ID: 21, WIX_PUBLISHED_AT: 22, 카카오본문: 16 };
-    const publishedAt = new Date('2026-11-19T10:00:00Z');
+    const publishedAt = new Date('2026-11-20T10:00:00Z');
     writeQueuePublishingResult_(sheet, headerUnit, 5, {
-      url: 'https://www.ryanmembers.com/rm-magazine/small-talk-2026-11-19-making-lunch-plans',
+      url: 'https://www.ryanmembers.com/rm-magazine/small-talk-2026-11-20-warm-coffee-morning',
       postId: 'cms-item-1',
       publishedAt: publishedAt,
       kakaoText: '본문'
     });
-    assert.equal(sheet.cells['5:20'], 'https://www.ryanmembers.com/rm-magazine/small-talk-2026-11-19-making-lunch-plans');
+    assert.equal(sheet.cells['5:20'], 'https://www.ryanmembers.com/rm-magazine/small-talk-2026-11-20-warm-coffee-morning');
     assert.equal(sheet.cells['5:21'], 'cms-item-1');
     assert.equal(sheet.cells['5:22'], publishedAt);
     assert.equal(sheet.cells['5:16'], '본문');
@@ -514,7 +670,7 @@ describe('publish result in 콘텐츠대기열', () => {
   });
 
   test('the published magazine URL passes the send-time URL guard', () => {
-    assert.equal(isValidWixPostUrl('https://www.ryanmembers.com/rm-magazine/small-talk-2026-11-19-making-lunch-plans'), true);
+    assert.equal(isValidWixPostUrl('https://www.ryanmembers.com/rm-magazine/small-talk-2026-11-20-warm-coffee-morning'), true);
     assert.equal(isValidWixPostUrl('https://www.ryanmembers.com/rm-magazine'), false);
     assert.equal(isValidWixPostUrl('https://www.ryanmembers.com/rm-magazine/'), false);
   });

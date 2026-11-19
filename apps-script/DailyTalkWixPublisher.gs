@@ -451,10 +451,32 @@ function buildDailyTalkCmsData_(item, options) {
 }
 
 /**
- * The card's teaching skeleton. Step 1-4 come from the Ryan Members method;
- * Step 3's stages depend on the track (AAA / Top-Down Message House).
+ * The card's teaching skeleton: five steps shared by both tracks.
+ * Step 5 (AAA) grows out of one of the three sentences in steps 2-4.
+ * The WORD_ORDER_* / STRUCTURE_HINTS values below are kept for articles
+ * published before 2026-11-20 (their contentRich carries the older four steps).
  */
 var RM_DAILY_TALK_LESSON = Object.freeze({
+  STEPS: {
+    words: 'STEP 1 · KEY WORDS',
+    korean: 'STEP 2 · KOREAN SENTENCES',
+    order: 'STEP 3 · ENGLISH WORD ORDER',
+    english: 'STEP 4 · ENGLISH SENTENCES',
+    aaa: 'STEP 5 · AAA IN ACTION'
+  },
+  LEADS: {
+    words: '오늘 대화에 바로 쓰는 단어 3개. 뜻과 함께 소리 내어 세 번씩 읽어 보세요.',
+    korean: 'STEP 1의 단어로 만든 오늘의 문장 3개입니다. 먼저 한국어로 뜻을 확인하세요.',
+    order: '통역하기 전에, 한국어를 영어 어순(누가 → 한다 → 무엇을 → 어디서 → 언제)으로 먼저 놓아 봅니다.',
+    english: '같은 문장을 자연스러운 영어로 통번역하면 이렇게 됩니다.',
+    aaa: '오늘 문장 {mark}을 골라, 실제 대화에서는 이렇게 세 문장으로 말합니다. Answer → Add → Ask.'
+  },
+  MARKS: ['①', '②', '③'],
+  AAA_HINTS: {
+    'Answer': '한 문장으로 먼저 답하기',
+    'Add': '이유나 디테일을 한 문장 더하기',
+    'Ask': '상대에게 되묻기'
+  },
   STRUCTURE_HINTS: {
     'Answer': '한 문장으로 먼저 답하기',
     'Add': '이유나 정보를 한두 문장 더하기',
@@ -469,9 +491,85 @@ var RM_DAILY_TALK_LESSON = Object.freeze({
 });
 
 /** One structured block of the article; tag is the richest HTML tag it needs. */
-function buildDailyTalkLessonBlocks_(item, chunks) {
+function buildDailyTalkLessonBlocks_(item, words) {
   var value = item || {};
-  var list = chunks || normalizeDailyTalkChunks_(value.chunksJson);
+  var list = words || normalizeDailyTalkChunks_(value.chunksJson);
+  var rows = parseDailyTalkSentenceRows_(value.wordOrderJson);
+  if (rows.length) {
+    return buildDailyTalkFiveStepBlocks_(value, list, rows, parseDailyTalkAaa_(value.structureJson));
+  }
+  return buildDailyTalkLegacyBlocks_(value, list);
+}
+
+/** The five steps as they are published (2026-11-20 onward). */
+function buildDailyTalkFiveStepBlocks_(value, words, rows, aaa) {
+  var blocks = [];
+
+  function push(tag, text, cls, marker) {
+    var body = String(text === null || text === undefined ? '' : text).trim();
+    if (!body) return;
+    blocks.push({ tag: tag, text: body, cls: cls || '', marker: marker || '' });
+  }
+
+  function markAt(index) {
+    return RM_DAILY_TALK_LESSON.MARKS[index] || String(index + 1) + '.';
+  }
+
+  push('h2', value.topicEn, 'dt-topic-en');
+  push('p', value.topicKo, 'dt-topic-ko');
+  push('p', value.snackEn, 'dt-snack-en');
+  push('p', value.snackKo, 'dt-snack-ko');
+
+  if (words.length) {
+    push('h3', RM_DAILY_TALK_LESSON.STEPS.words, 'dt-step-title', 'STEP1');
+    push('p', RM_DAILY_TALK_LESSON.LEADS.words, 'dt-lead');
+    words.forEach(function (word) {
+      push('p', word.en + (word.ko ? '\n' + word.ko : ''), 'dt-word', 'WORD');
+    });
+  }
+
+  if (rows.length) {
+    push('h3', RM_DAILY_TALK_LESSON.STEPS.korean, 'dt-step-title', 'STEP2');
+    push('p', RM_DAILY_TALK_LESSON.LEADS.korean, 'dt-lead');
+    rows.forEach(function (row, index) {
+      push('p', markAt(index) + ' ' + row.ko, 'dt-sentence', 'SENTENCE');
+    });
+
+    push('h3', RM_DAILY_TALK_LESSON.STEPS.order, 'dt-step-title', 'STEP3');
+    push('p', RM_DAILY_TALK_LESSON.LEADS.order, 'dt-lead');
+    rows.forEach(function (row, index) {
+      push('p', markAt(index) + ' ' + buildDailyTalkOrderLine_(row.order), 'dt-order', 'ORDER');
+    });
+
+    push('h3', RM_DAILY_TALK_LESSON.STEPS.english, 'dt-step-title', 'STEP4');
+    push('p', RM_DAILY_TALK_LESSON.LEADS.english, 'dt-lead');
+    rows.forEach(function (row, index) {
+      push('p', markAt(index) + ' ' + row.en, 'dt-english', 'ENGLISH');
+    });
+  }
+
+  if (aaa.steps.length) {
+    var pick = aaa.pick >= 1 && aaa.pick <= rows.length ? aaa.pick : 1;
+    push('h3', RM_DAILY_TALK_LESSON.STEPS.aaa, 'dt-step-title', 'STEP5');
+    push('p', RM_DAILY_TALK_LESSON.LEADS.aaa.replace('{mark}', markAt(pick - 1)), 'dt-lead');
+    aaa.steps.forEach(function (step) {
+      var hint = RM_DAILY_TALK_LESSON.AAA_HINTS[step.label] || '';
+      push('p', step.label + (hint ? ' — ' + hint : '') + '\n' + step.en + (step.ko ? '\n' + step.ko : ''), 'dt-aaa', 'AAA');
+    });
+  }
+
+  return blocks;
+}
+
+/** '누가: 나는 / 한다: 마셨다 / …' — the STEP 3 line as the page prints it. */
+function buildDailyTalkOrderLine_(pieces) {
+  return (pieces || []).map(function (piece) {
+    return piece.role ? piece.role + ': ' + piece.text : piece.text;
+  }).join(' / ');
+}
+
+/** The old four-step body, still used for rows generated before 2026-11-20. */
+function buildDailyTalkLegacyBlocks_(value, list) {
   var wordOrder = parseDailyTalkRowList_(value.wordOrderJson);
   var structure = parseDailyTalkStructure_(value.structureJson, value.track);
   var swaps = parseDailyTalkRowList_(value.substitutionsJson);
@@ -580,6 +678,45 @@ function parseDailyTalkStructure_(value, track) {
     };
   }).filter(function (step) { return step.label && step.en; });
   return { type: type, steps: steps };
+}
+
+/** WORD_ORDER_JSON -> [{ko, order:[{role,text}], en}]; empty when it is an old row. */
+function parseDailyTalkSentenceRows_(value) {
+  var parsed = parseChunks_(value);
+  return (parsed || []).map(function (row) {
+    if (!row || typeof row === 'string') return null;
+    var order = (Array.isArray(row.order) ? row.order : []).map(function (piece) {
+      return {
+        role: String((piece && piece.role) || '').trim(),
+        text: String((piece && piece.text) || '').trim()
+      };
+    }).filter(function (piece) { return piece.text; });
+    if (!order.length) return null;
+    return {
+      ko: String(row.ko || '').trim(),
+      order: order,
+      en: String(row.en || '').trim()
+    };
+  }).filter(function (row) { return row && row.ko && row.en; });
+}
+
+/** STRUCTURE_JSON -> {type:'AAA', pick, steps:[{label, en, ko}]}. */
+function parseDailyTalkAaa_(value) {
+  var raw = safeJsonParse(String(value === null || value === undefined ? '' : value), null);
+  var steps = (raw && Array.isArray(raw.steps) ? raw.steps : []).map(function (step) {
+    var label = String((step && step.label) || '').trim();
+    if (label === 'Ask back') label = 'Ask';
+    return {
+      label: label,
+      en: String((step && step.en) || '').trim(),
+      ko: String((step && step.ko) || '').trim()
+    };
+  }).filter(function (step) { return step.label && step.en; });
+  return {
+    type: RM_DAILY_TALK_AAA.TYPE,
+    pick: Number(raw && raw.pick) || 1,
+    steps: steps
+  };
 }
 
 function cmsHeadingNode_(text, level) {

@@ -2,10 +2,18 @@
  * Ryan Daily Talk — /rm-magazine/{slug} article renderer.
  *
  * The CMS field `contentRich` arrives as plain Wix rich text (h2 / h3 / p in a
- * fixed order). This script reads that text back into the four Ryan Members
- * lesson steps and rebuilds it as spaced, labelled cards. It only hides the
- * original text after the card version rendered, so a parse failure leaves the
- * page exactly as the CMS sent it.
+ * fixed order). This script reads that text back into the Ryan Members lesson
+ * steps and rebuilds it as spaced, labelled cards. It only hides the original
+ * text after the card version rendered, so a parse failure leaves the page
+ * exactly as the CMS sent it.
+ *
+ * Two lesson shapes live on the site right now:
+ *   - five steps (2026-11-20 onward): KEY WORDS -> KOREAN SENTENCES ->
+ *     ENGLISH WORD ORDER (누가 / 한다 / 무엇을 / 어디서 / 언제 chips) ->
+ *     ENGLISH SENTENCES -> AAA IN ACTION (Answer / Add / Ask),
+ *   - four steps (articles published before that): KEY CHUNKS -> WORD ORDER ->
+ *     AAA / MESSAGE HOUSE -> MODEL & YOUR TURN.
+ * Whichever the text carries is what gets drawn; nothing is guessed.
  *
  * Also hidden here: the contentId / slug lines the template prints under the
  * title. Added to the article: bottom padding so the floating price calculator
@@ -22,12 +30,17 @@
   var HANGUL = /[\uAC00-\uD7A3]/;
   var ID_LINE = /^(SMALL_TALK|BUSINESS)-\d{8}-[a-z0-9-]+$/i;
   var SLUG_LINE = /^(small-talk|business-talk)-\d{4}-\d{2}-\d{2}-[a-z0-9-]+$/i;
-  // Closing CTA targets. Both are existing, live URLs:
-  //  - the standalone Daily Talk page (`?dailytalk=1`, Wix opens the Apps Script
-  //    mode=dailytalk view in an overlay) where a visitor signs up or changes the
-  //    track with name + phone only, without creating a registration record,
-  //  - the Kakao channel friend link (without channel friendship nothing is
-  //    delivered, since BMS_TARGETING=I).
+
+  // STEP n: the label printed in the head, and the Korean line under it.
+  var STEP_INFO = {
+    1: { name: 'KEY WORDS', ko: '오늘의 단어 3개' },
+    2: { name: 'KOREAN SENTENCES', ko: '그 단어로 만든 한국어 문장' },
+    3: { name: 'ENGLISH WORD ORDER', ko: '영어 어순으로 재정렬' },
+    4: { name: 'ENGLISH SENTENCES', ko: '통번역한 영어 문장' },
+    5: { name: 'AAA IN ACTION', ko: '실제 대화 3문장' }
+  };
+  var MARKS = '①②③④';
+  var ROLE_LABELS = { '누가': '누가', '한다': '한다', '무엇을': '무엇을', '어디서': '어디서', '언제': '언제', '어떻게': '어떻게' };
   var CTA_LINKS = {
     signup: 'https://www.ryanmembers.com/?dailytalk=1',
     kakao: 'https://pf.kakao.com/_xkFxexfX/friend'
@@ -41,6 +54,11 @@
     'Detail': '구체적인 디테일 붙이기',
     'Suggestion': '다음 행동 제안하기'
   };
+  var AAA_HINTS = {
+    'Answer': '한 문장으로 먼저 답하기',
+    'Add': '이유나 디테일을 한 문장 더하기',
+    'Ask': '상대에게 되묻기'
+  };
 
   function clean(value) {
     return String(value == null ? '' : value)
@@ -51,8 +69,14 @@
   }
 
   function nodeText(el) {
-    var raw = el.innerText || el.textContent || '';
-    return clean(raw);
+    // Wix renders the CMS line breaks as real newlines inside one <span>, and
+    // its rich text keeps white-space: pre-wrap, so innerText carries them.
+    // Should a template ever drop pre-wrap, textContent still has the newline:
+    // prefer it then, or "warm coffee / 따뜻한 커피" would read as one line.
+    var rendered = clean(el.innerText || '');
+    var raw = clean(el.textContent || '');
+    if (raw.indexOf('\n') !== -1 && rendered.indexOf('\n') === -1) return raw;
+    return rendered || raw;
   }
 
   function textLines(text) {
@@ -84,12 +108,12 @@
 
   function splitSections(nodes) {
     var sections = [];
-    var current = { step: 0, nodes: [] };
+    var current = { step: 0, title: '', nodes: [] };
     nodes.forEach(function (node) {
-      var match = /^STEP\s*([1-4])\b[^]*$/i.exec(node.text);
+      var match = /^STEP\s*([1-6])\b[^]*$/i.exec(node.text);
       if (match && (node.tag === 'h3' || node.tag === 'h2')) {
         sections.push(current);
-        current = { step: Number(match[1]), nodes: [] };
+        current = { step: Number(match[1]), title: node.text, nodes: [] };
       } else {
         current.nodes.push(node);
       }
@@ -105,7 +129,94 @@
     return match ? match[1] : '';
   }
 
-  // --- section parsers -----------------------------------------------------
+  // --- section parsers (five steps) ---------------------------------------
+
+  /** STEP 1: "<word>\n<meaning>" paragraphs; the single-line one is the lead. */
+  function parseWords(nodes) {
+    var lead = '';
+    var words = [];
+    nodes.forEach(function (node) {
+      if (node.lines.length >= 2) {
+        words.push({ en: node.lines[0], ko: node.lines.slice(1).join(' ') });
+      } else if (!lead) {
+        lead = node.text;
+      } else if (!hasHangul(node.text)) {
+        words.push({ en: node.text, ko: '' });
+      }
+    });
+    return { lead: lead, words: words };
+  }
+
+  /** STEP 2 and STEP 4: "① sentence" paragraphs. */
+  function parseNumbered(nodes) {
+    var lead = '';
+    var rows = [];
+    nodes.forEach(function (node) {
+      var first = node.lines[0] || '';
+      var marked = /^([①②③④]|\d[.)])\s*(.*)$/.exec(first);
+      if (marked) {
+        rows.push({
+          index: MARKS.indexOf(marked[1]) >= 0 ? MARKS.indexOf(marked[1]) : Number(String(marked[1]).replace(/\D/g, '')) - 1,
+          text: marked[2].trim()
+        });
+        return;
+      }
+      if (!lead) lead = node.text;
+    });
+    return { lead: lead, rows: rows };
+  }
+
+  /** STEP 3: "① 누가: 나는 / 한다: 마셨다 / …" — one row of role chips. */
+  function parseOrder(nodes) {
+    var lead = '';
+    var rows = [];
+    nodes.forEach(function (node) {
+      var first = node.lines[0] || '';
+      var marked = /^([①②③④]|\d[.)])\s*(.*)$/.exec(first);
+      if (!marked) {
+        if (!lead) lead = node.text;
+        return;
+      }
+      var index = MARKS.indexOf(marked[1]) >= 0 ? MARKS.indexOf(marked[1]) : Number(String(marked[1]).replace(/\D/g, '')) - 1;
+      var pieces = marked[2].split(/\s*\/\s*/).map(function (part) {
+        var piece = /^(누가|한다|무엇을|어디서|언제|어떻게)\s*[:：]\s*(.+)$/.exec(part.trim());
+        if (piece) return { role: piece[1], text: piece[2].trim() };
+        return { role: '', text: part.trim() };
+      }).filter(function (piece) { return piece.text; });
+      if (pieces.length) rows.push({ index: index, pieces: pieces });
+    });
+    return { lead: lead, rows: rows };
+  }
+
+  /** STEP 5: "Answer — hint\n<en>\n<ko>" paragraphs plus the picked sentence. */
+  function parseAaa(nodes) {
+    var first = { lead: '', pick: 0, steps: [] };
+    var current = null;
+    nodes.forEach(function (node) {
+      var head = node.lines[0] || '';
+      var label = /^(Answer|Add|Ask(?:\s*back)?)\s*(?:[—–-]\s*(.*))?$/i.exec(head);
+      if (label) {
+        var name = /^ask/i.test(label[1]) ? 'Ask' : label[1];
+        current = {
+          label: name,
+          hint: (label[2] || '').trim() || AAA_HINTS[name] || '',
+          en: node.lines[1] || '',
+          ko: node.lines.slice(2).join(' ') || ''
+        };
+        first.steps.push(current);
+        return;
+      }
+      if (!first.lead) {
+        first.lead = node.text;
+        var picked = /문장\s*([①②③④])/.exec(node.text);
+        // 1-based: the mark the lead names (① -> 1).
+        if (picked) first.pick = MARKS.indexOf(picked[1]) + 1;
+      }
+    });
+    return first;
+  }
+
+  // --- section parsers (four steps, published before 2026-11-20) ----------
 
   function parseHero(nodes) {
     var hero = { titleEn: '', titleKo: '', snackEn: '', snackKo: '' };
@@ -152,7 +263,6 @@
       }
       var body = marked[2];
       var split = body.split(/\s*[—–]\s*/);
-      var label = split.length > 1 ? split[0].trim() : '';
       var value = (split.length > 1 ? split.slice(1).join(' — ') : body).trim();
       var index = '①②③'.indexOf(marked[1]) + 1;
       if (index === 1 || !current) {
@@ -162,7 +272,6 @@
       if (index === 1) current.thought = value;
       else if (index === 2) current.order = value;
       else current.en = value;
-      if (label && index === 1) current.thoughtLabel = label;
     });
     return { lead: lead, rows: rows };
   }
@@ -175,10 +284,9 @@
       var first = node.lines[0] || '';
       var labelMatch = /^(Answer|Add|Ask back|Conclusion|Reason|Detail|Suggestion)\s*(?:[—–]\s*(.*))?$/.exec(first);
       if (labelMatch) {
-        var hint = (labelMatch[2] || '').trim();
         current = {
           label: labelMatch[1],
-          hint: hint || STAGE_LABELS[labelMatch[1]] || '',
+          hint: (labelMatch[2] || '').trim() || STAGE_LABELS[labelMatch[1]] || '',
           en: node.lines[1] || '',
           ko: node.lines[2] || ''
         };
@@ -248,27 +356,133 @@
     return box;
   }
 
-  function renderCard(step, name, lead) {
+  function renderCard(step, lead, info) {
+    var meta = info || STEP_INFO[step] || { name: '', ko: '' };
     var card = make('section', 'rmdt-card');
     card.setAttribute('data-step', String(step));
     var head = make('div', 'rmdt-head');
     head.appendChild(make('span', 'rmdt-step', 'STEP ' + step));
-    head.appendChild(make('h3', 'rmdt-name', name));
+    var names = make('div', 'rmdt-names');
+    names.appendChild(make('h3', 'rmdt-name', meta.name));
+    if (meta.ko) names.appendChild(make('span', 'rmdt-sub', meta.ko));
+    head.appendChild(names);
     card.appendChild(head);
     if (lead) card.appendChild(make('p', 'rmdt-lead', lead));
     return card;
   }
 
-  function sectionName(text, fallback) {
-    var parts = String(text || '').split('·');
-    var name = parts.length > 1 ? parts.slice(1).join('·').trim() : String(text || '').trim();
+  /** "STEP 2 · WORD ORDER" -> "WORD ORDER" (legacy titles). */
+  function sectionName(title, fallback) {
+    var parts = String(title || '').split('·');
+    var name = parts.length > 1 ? parts.slice(1).join('·').trim() : String(title || '').trim();
     return (name || fallback).toUpperCase();
   }
+
+  function markBadge(index) {
+    return make('span', 'rmdt-mark', MARKS.charAt(index) || String(index + 1));
+  }
+
+  /** STEP 1 — three words, each with its Korean meaning. */
+  function renderWords(data) {
+    if (!data.words.length) return null;
+    var card = renderCard(1, data.lead);
+    var list = make('ul', 'rmdt-words');
+    data.words.forEach(function (word, index) {
+      var item = make('li', 'rmdt-word');
+      item.appendChild(make('span', 'rmdt-word-num', String(index + 1)));
+      var body = make('div', 'rmdt-word-body');
+      body.appendChild(make('span', 'rmdt-word-en', word.en));
+      if (word.ko) body.appendChild(make('span', 'rmdt-word-ko', word.ko));
+      item.appendChild(body);
+      list.appendChild(item);
+    });
+    card.appendChild(list);
+    return card;
+  }
+
+  /** STEP 2 / STEP 4 — numbered sentences, aligned by the same mark. */
+  function renderSentences(data, step, rowClass, textClass) {
+    if (!data.rows.length) return null;
+    var card = renderCard(step, data.lead);
+    var list = make('ol', rowClass);
+    data.rows.forEach(function (row) {
+      var item = make('li', rowClass + '-row');
+      item.appendChild(markBadge(row.index >= 0 ? row.index : list.children.length));
+      item.appendChild(make('span', textClass, row.text));
+      list.appendChild(item);
+    });
+    card.appendChild(list);
+    return card;
+  }
+
+  /** STEP 3 — the Korean pieces of each sentence as role chips, in English order. */
+  function renderOrder(data) {
+    if (!data.rows.length) return null;
+    var card = renderCard(3, data.lead);
+    var list = make('div', 'rmdt-orders');
+    data.rows.forEach(function (row, rowIndex) {
+      var box = make('div', 'rmdt-order');
+      box.appendChild(markBadge(row.index >= 0 ? row.index : rowIndex));
+      var chips = make('div', 'rmdt-chips');
+      row.pieces.forEach(function (piece, pieceIndex) {
+        // The slash travels with the chip after it, so a wrapped line never
+        // ends on a dangling "/".
+        var unit = make('span', 'rmdt-chip-unit');
+        if (pieceIndex) unit.appendChild(make('span', 'rmdt-chip-sep', '/'));
+        var chip = make('span', 'rmdt-chip');
+        if (piece.role) chip.appendChild(make('span', 'rmdt-chip-role', ROLE_LABELS[piece.role] || piece.role));
+        chip.appendChild(make('span', 'rmdt-chip-text', piece.text));
+        unit.appendChild(chip);
+        chips.appendChild(unit);
+      });
+      box.appendChild(chips);
+      list.appendChild(box);
+    });
+    card.appendChild(list);
+    return card;
+  }
+
+  /** STEP 5 — the picked sentence, then Answer / Add / Ask. */
+  function renderAaa(data, context) {
+    if (!data.steps.length) return null;
+    var card = renderCard(5, data.lead);
+    var picked = null;
+    var index = data.pick > 0 ? data.pick - 1 : -1;
+    if (index >= 0 && context) {
+      var koreanRow = context.korean.rows.filter(function (row) { return row.index === index; })[0];
+      var englishRow = context.english.rows.filter(function (row) { return row.index === index; })[0];
+      if (koreanRow || englishRow) {
+        picked = make('div', 'rmdt-pick');
+        picked.appendChild(make('span', 'rmdt-pick-label', '오늘 고른 문장 ' + MARKS.charAt(index)));
+        if (koreanRow) picked.appendChild(make('span', 'rmdt-pick-ko', koreanRow.text));
+        if (englishRow) picked.appendChild(make('span', 'rmdt-pick-en', englishRow.text));
+        card.appendChild(picked);
+      }
+    }
+
+    var list = make('div', 'rmdt-aaa');
+    data.steps.forEach(function (step, stepIndex) {
+      var block = make('div', 'rmdt-aaa-block');
+      block.setAttribute('data-role', step.label.toLowerCase());
+      var head = make('div', 'rmdt-aaa-head');
+      head.appendChild(make('span', 'rmdt-aaa-num', String(stepIndex + 1)));
+      head.appendChild(make('span', 'rmdt-aaa-badge', step.label.toUpperCase()));
+      if (step.hint) head.appendChild(make('span', 'rmdt-aaa-hint', step.hint));
+      block.appendChild(head);
+      if (step.en) block.appendChild(make('p', 'rmdt-aaa-en', step.en));
+      if (step.ko) block.appendChild(make('p', 'rmdt-aaa-ko', step.ko));
+      list.appendChild(block);
+    });
+    card.appendChild(list);
+    return card;
+  }
+
+  // --- four-step renderers (kept for articles published before 2026-11-20) -
 
   function renderChunks(section) {
     var data = parseChunks(section.nodes);
     if (!data.chunks.length) return null;
-    var card = renderCard(1, sectionName(section.title, 'KEY CHUNKS'), data.lead);
+    var card = renderCard(1, data.lead, { name: sectionName(section.title, 'KEY CHUNKS'), ko: '' });
     var list = make('ol', 'rmdt-chunks');
     data.chunks.forEach(function (chunk, index) {
       var item = make('li', 'rmdt-chunk');
@@ -286,7 +500,7 @@
   function renderWordOrder(section) {
     var data = parseWordOrder(section.nodes);
     if (!data.rows.length) return null;
-    var card = renderCard(2, sectionName(section.title, 'WORD ORDER'), data.lead);
+    var card = renderCard(2, data.lead, { name: sectionName(section.title, 'WORD ORDER'), ko: '' });
     data.rows.forEach(function (row) {
       var box = make('div', 'rmdt-wo');
       [
@@ -308,7 +522,7 @@
   function renderStages(section) {
     var data = parseStages(section.nodes);
     if (!data.stages.length) return null;
-    var card = renderCard(3, sectionName(section.title, 'AAA'), data.lead);
+    var card = renderCard(3, data.lead, { name: sectionName(section.title, 'AAA'), ko: '' });
     data.stages.forEach(function (stage, index) {
       var block = make('div', 'rmdt-stage');
       var label = make('div', 'rmdt-stage-label');
@@ -335,7 +549,7 @@
   function renderYourTurn(section) {
     var data = parseYourTurn(section.nodes);
     if (!data.dialogueEn.length && !data.swaps.length && !data.mission) return null;
-    var card = renderCard(4, sectionName(section.title, 'MODEL & YOUR TURN'), data.lead);
+    var card = renderCard(4, data.lead, { name: sectionName(section.title, 'MODEL & YOUR TURN'), ko: '' });
     if (data.dialogueEn.length) card.appendChild(renderBubbles(data.dialogueEn));
     if (data.dialogueKo.length) {
       var toggle = make('details', 'rmdt-ko-toggle');
@@ -400,6 +614,8 @@
     return box;
   }
 
+  // --- article -------------------------------------------------------------
+
   function buildArticle(root) {
     var nodes = collectNodes(root);
     if (nodes.length < 3) return null;
@@ -408,20 +624,15 @@
     var lesson = sections.filter(function (section) { return section.step > 0; });
     if (!lesson.length) return null;
 
+    var fiveStep = lesson.some(function (section) { return section.step >= 5; });
     var article = make('div', '', null);
     article.id = 'rmdt-root';
     var hero = parseHero(heroNodes);
     if (hero.titleEn || hero.titleKo || hero.snackEn) article.appendChild(renderHero(hero));
 
-    var rendered = 0;
-    lesson.forEach(function (section) {
-      var card = null;
-      if (section.step === 1) card = renderChunks(section);
-      else if (section.step === 2) card = renderWordOrder(section);
-      else if (section.step === 3) card = renderStages(section);
-      else if (section.step === 4) card = renderYourTurn(section);
-      if (card) { article.appendChild(card); rendered += 1; }
-    });
+    var cards = fiveStep ? buildFiveStepCards(lesson) : buildFourStepCards(lesson);
+    var rendered = cards.filter(Boolean).length;
+    cards.forEach(function (card) { if (card) article.appendChild(card); });
     if (!rendered) return null;
 
     article.appendChild(renderCta());
@@ -429,6 +640,34 @@
     var track = trackFromTitle();
     if (track) article.setAttribute('data-track', track.toLowerCase().replace(/\s+/g, '-'));
     return article;
+  }
+
+  function buildFiveStepCards(lesson) {
+    var byStep = {};
+    lesson.forEach(function (section) { byStep[section.step] = section; });
+    var words = byStep[1] ? parseWords(byStep[1].nodes) : { lead: '', words: [] };
+    var korean = byStep[2] ? parseNumbered(byStep[2].nodes) : { lead: '', rows: [] };
+    var order = byStep[3] ? parseOrder(byStep[3].nodes) : { lead: '', rows: [] };
+    var english = byStep[4] ? parseNumbered(byStep[4].nodes) : { lead: '', rows: [] };
+    var aaa = byStep[5] ? parseAaa(byStep[5].nodes) : { lead: '', pick: 0, steps: [] };
+
+    return [
+      renderWords(words),
+      renderSentences(korean, 2, 'rmdt-sentences', 'rmdt-sentence-text'),
+      renderOrder(order),
+      renderSentences(english, 4, 'rmdt-english', 'rmdt-english-text'),
+      renderAaa(aaa, { korean: korean, english: english })
+    ];
+  }
+
+  function buildFourStepCards(lesson) {
+    return lesson.map(function (section) {
+      if (section.step === 1) return renderChunks(section);
+      if (section.step === 2) return renderWordOrder(section);
+      if (section.step === 3) return renderStages(section);
+      if (section.step === 4) return renderYourTurn(section);
+      return null;
+    });
   }
 
   // --- page wiring ---------------------------------------------------------

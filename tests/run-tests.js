@@ -56,6 +56,9 @@ global.RM_DAILY_TALK_STATUS = sandbox.RM_DAILY_TALK_STATUS;
 global.RM_DAILY_TALK_GEN = sandbox.RM_DAILY_TALK_GEN;
 global.RM_DAILY_TALK_CONFIG = sandbox.RM_DAILY_TALK_CONFIG;
 global.RM_DAILY_TALK_TRACK_BRIEFS = sandbox.RM_DAILY_TALK_TRACK_BRIEFS;
+global.RM_DAILY_TALK_AAA = sandbox.RM_DAILY_TALK_AAA;
+global.RM_DAILY_TALK_ROLES = sandbox.RM_DAILY_TALK_ROLES;
+global.RM_DAILY_TALK_PRACTICE_CUE = sandbox.RM_DAILY_TALK_PRACTICE_CUE;
 global.ROOT = ROOT;
 // Tests that need to fake a Google or Wix service install the stub on this
 // sandbox object: functions defined in the .gs files read globals from it.

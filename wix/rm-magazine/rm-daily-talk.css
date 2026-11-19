@@ -99,12 +99,25 @@
 #rmdt-root .rmdt-card[data-step="2"] { --rmdt-tone: #1c5a78; --rmdt-tint: #e5eef3; }
 #rmdt-root .rmdt-card[data-step="3"] { --rmdt-tone: #8a5a13; --rmdt-tint: #f6eddd; }
 #rmdt-root .rmdt-card[data-step="4"] { --rmdt-tone: #4a3f7a; --rmdt-tint: #edebf6; }
+#rmdt-root .rmdt-card[data-step="5"] { --rmdt-tone: #7a2f4a; --rmdt-tint: #f7e9ee; }
 
 #rmdt-root .rmdt-head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 9px;
   margin-bottom: 4px;
+}
+#rmdt-root .rmdt-names {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+#rmdt-root .rmdt-sub {
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: #8b948d;
 }
 #rmdt-root .rmdt-step {
   flex: 0 0 auto;
@@ -132,6 +145,227 @@
   color: #8b948d;
 }
 
+/* --- step 1: the three words --------------------------------------------- */
+#rmdt-root .rmdt-words { list-style: none; margin: 0; padding: 0; }
+#rmdt-root .rmdt-word {
+  display: flex;
+  gap: 10px;
+  padding: 11px 0;
+  border-top: 1px solid #f1ece1;
+}
+#rmdt-root .rmdt-word:first-child { border-top: 0; padding-top: 2px; }
+#rmdt-root .rmdt-word-num {
+  flex: 0 0 auto;
+  width: 21px;
+  height: 21px;
+  margin-top: 3px;
+  border-radius: 50%;
+  background: var(--rmdt-tint);
+  color: var(--rmdt-tone);
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#rmdt-root .rmdt-word-body { min-width: 0; }
+#rmdt-root .rmdt-word-en {
+  display: block;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+  color: var(--rmdt-ink);
+}
+#rmdt-root .rmdt-word-ko {
+  display: block;
+  margin-top: 2px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--rmdt-muted);
+}
+
+/* --- steps 2 and 4: the same three sentences, Korean then English -------- */
+#rmdt-root .rmdt-sentences,
+#rmdt-root .rmdt-english { list-style: none; margin: 0; padding: 0; }
+#rmdt-root .rmdt-sentences-row,
+#rmdt-root .rmdt-english-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 0;
+  border-top: 1px solid #f1ece1;
+}
+#rmdt-root .rmdt-sentences-row:first-child,
+#rmdt-root .rmdt-english-row:first-child { border-top: 0; padding-top: 2px; }
+#rmdt-root .rmdt-mark {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  border-radius: 50%;
+  background: var(--rmdt-tint);
+  color: var(--rmdt-tone);
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#rmdt-root .rmdt-sentence-text {
+  font-size: 15.5px;
+  line-height: 1.6;
+  color: #2b3d35;
+}
+#rmdt-root .rmdt-english-text {
+  font-size: 16.5px;
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+  color: var(--rmdt-ink);
+}
+
+/* --- step 3: the same sentence in English word order --------------------- */
+#rmdt-root .rmdt-orders { display: flex; flex-direction: column; gap: 11px; }
+#rmdt-root .rmdt-order {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 12px 12px 11px;
+  background: #f9f7f1;
+  border: 1px solid #f0ead9;
+  border-radius: 14px;
+}
+#rmdt-root .rmdt-order .rmdt-mark { margin-top: 2px; }
+#rmdt-root .rmdt-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 5px;
+  min-width: 0;
+}
+#rmdt-root .rmdt-chip-unit {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+#rmdt-root .rmdt-chip {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  padding: 5px 9px 6px;
+  background: #ffffff;
+  border: 1px solid #e7e0cd;
+  border-radius: 10px;
+}
+#rmdt-root .rmdt-chip-role {
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  color: var(--rmdt-tone);
+}
+#rmdt-root .rmdt-chip-text {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: #2b3d35;
+  white-space: nowrap;
+}
+#rmdt-root .rmdt-chip-sep {
+  font-size: 12px;
+  font-weight: 600;
+  color: #c9bfa6;
+}
+
+/* --- step 5: Answer / Add / Ask ------------------------------------------ */
+#rmdt-root .rmdt-pick {
+  margin: 0 0 14px;
+  padding: 12px 13px;
+  border-radius: 13px;
+  background: var(--rmdt-tint);
+}
+#rmdt-root .rmdt-pick-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--rmdt-tone);
+}
+#rmdt-root .rmdt-pick-ko {
+  display: block;
+  margin-top: 5px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #5f6b64;
+}
+#rmdt-root .rmdt-pick-en {
+  display: block;
+  margin-top: 2px;
+  font-size: 15.5px;
+  font-weight: 700;
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+  color: var(--rmdt-ink);
+}
+#rmdt-root .rmdt-aaa { display: flex; flex-direction: column; gap: 9px; }
+#rmdt-root .rmdt-aaa-block {
+  padding: 12px 13px 13px;
+  border-radius: 13px;
+  background: #fbfaf6;
+  border: 1px solid #efeade;
+}
+#rmdt-root .rmdt-aaa-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+#rmdt-root .rmdt-aaa-num {
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  background: var(--rmdt-tint);
+  color: var(--rmdt-tone);
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#rmdt-root .rmdt-aaa-badge {
+  padding: 4px 9px 3px;
+  border-radius: 999px;
+  background: var(--rmdt-tone);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  line-height: 1.2;
+}
+#rmdt-root .rmdt-aaa-hint {
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: #8b948d;
+}
+#rmdt-root .rmdt-aaa-en {
+  margin: 9px 0 0;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+  color: var(--rmdt-ink);
+}
+#rmdt-root .rmdt-aaa-ko {
+  margin: 3px 0 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--rmdt-muted);
+}
+
+/* --- steps 1-4 of the articles published before 2026-11-20 ---------------- */
 /* --- step 1: chunks ------------------------------------------------------ */
 #rmdt-root .rmdt-chunks { list-style: none; margin: 0; padding: 0; }
 #rmdt-root .rmdt-chunk {
@@ -451,6 +685,12 @@
   #rmdt-root .rmdt-title-en { font-size: 24px; }
   #rmdt-root .rmdt-wo-line { grid-template-columns: 56px 1fr; gap: 7px; }
   #rmdt-root .rmdt-wo-tag { font-size: 10px; }
+  /* the word-order chips are the busiest row on a phone */
+  #rmdt-root .rmdt-order { padding: 11px 10px 10px; gap: 8px; }
+  #rmdt-root .rmdt-chip { padding: 4px 8px 5px; }
+  #rmdt-root .rmdt-chip-text { font-size: 13.5px; }
+  #rmdt-root .rmdt-chip-role { font-size: 9px; }
+  #rmdt-root .rmdt-english-text { font-size: 16px; }
   /* closing CTA: keep the primary button easy to hit with a thumb */
   #rmdt-root .rmdt-cta { padding: 20px 15px 18px; border-radius: 16px; }
   #rmdt-root .rmdt-cta-title { font-size: 18.5px; }

@@ -27,6 +27,22 @@ const ITEM = {
     { en: 'That sounds good to me.', ko: '저는 좋아요.' },
     { en: 'Do you have any plans?', ko: '무슨 계획 있어요?' }
   ]),
+  wordOrderJson: JSON.stringify([
+    { thoughtKo: '나는 / 곧 / 점심을 / 먹는다', orderKo: '나는 / 먹는다 / 점심을 / 곧', en: "I'm getting lunch soon." },
+    { thoughtKo: '우리는 / 같이 / 먹을 수 있다', orderKo: '우리는 / 먹을 수 있다 / 같이', en: 'We can eat together.' }
+  ]),
+  structureJson: JSON.stringify({
+    type: 'AAA',
+    steps: [
+      { label: 'Answer', en: "I'm thinking of getting lunch soon.", ko: '저 곧 점심 먹으러 갈까 해요.' },
+      { label: 'Add', en: 'There is a new place near the office.', ko: '사무실 근처에 새로 생긴 곳이 있어요.' },
+      { label: 'Ask back', en: 'Do you have any plans?', ko: '무슨 계획 있어요?' }
+    ]
+  }),
+  substitutionsJson: JSON.stringify([
+    { en: "I'm getting coffee soon.", ko: '저 곧 커피 마시러 갈까 해요.' },
+    { en: 'We can go together after work.', ko: '퇴근하고 같이 갈 수 있어요.' }
+  ]),
   modelEn: "A: I'm thinking of getting lunch soon.\nB: That sounds good to me.",
   modelKo: 'A: 저 곧 점심 먹으러 갈까 해요.\nB: 저는 좋아요.',
   yourTurnEn: 'Ask one coworker about lunch today.',
@@ -45,6 +61,15 @@ const BUSINESS_ITEM = {
   topicEn: 'Updating the team on a delay',
   topicKo: '팀에 일정 지연 알리기',
   chunksJson: '[{"en":"push the deadline","ko":"마감을 미루다"}]',
+  structureJson: JSON.stringify({
+    type: 'MESSAGE_HOUSE',
+    steps: [
+      { label: 'Conclusion', en: 'We need one more day.', ko: '하루가 더 필요합니다.' },
+      { label: 'Reason', en: 'The final check found two bugs.', ko: '마지막 점검에서 오류 두 개를 찾았습니다.' },
+      { label: 'Detail', en: 'Both are in the payment screen.', ko: '둘 다 결제 화면에 있습니다.' },
+      { label: 'Suggestion', en: 'Could we move the launch to Friday?', ko: '출시를 금요일로 옮겨도 될까요?' }
+    ]
+  }),
   modelEn: 'We may need to push the deadline by a day.',
   modelKo: '마감을 하루 미뤄야 할 것 같습니다.',
   yourTurnEn: 'Tell your team about a small delay.',
@@ -195,11 +220,20 @@ describe('Daily Talk CMS payload', () => {
     const texts = rich.nodes.map((node) => node.nodes[0].textData.text);
     assert.includes(texts, 'Making Lunch Plans');
     assert.includes(texts, '점심 약속 잡기');
-    assert.includes(texts, 'Today’s Language Snack');
-    assert.includes(texts, 'Useful Chunks');
-    assert.includes(texts, 'Model Answer');
-    assert.includes(texts, 'Your Turn');
-    assert.includes(texts, "I'm thinking of getting lunch soon.: 저 곧 점심 먹으러 갈까 해요.");
+    assert.includes(texts, 'STEP 1 · KEY CHUNKS');
+    assert.includes(texts, 'STEP 2 · WORD ORDER');
+    assert.includes(texts, 'STEP 3 · AAA');
+    assert.includes(texts, 'STEP 4 · MODEL & YOUR TURN');
+    assert.includes(texts, "I'm thinking of getting lunch soon.\n저 곧 점심 먹으러 갈까 해요.");
+    assert.includes(texts, '① 한국어 생각 — 나는 / 곧 / 점심을 / 먹는다');
+    assert.includes(texts, '② 영어식 어순 — 나는 / 먹는다 / 점심을 / 곧');
+    assert.includes(texts, '③ 영어 문장 — I\'m getting lunch soon.');
+    assert.includes(texts, 'Answer — 한 문장으로 먼저 답하기');
+    assert.includes(texts, 'Ask back — 상대에게 되묻기');
+    assert.includes(texts, '내 말로 바꿔 말하기');
+    assert.includes(texts, '오늘의 미션\nAsk one coworker about lunch today.\n오늘 동료 한 명에게 점심 계획을 물어보세요.');
+    assert.excludes(texts, 'Useful Chunks');
+    assert.excludes(texts, 'Model Answer');
     const heading = rich.nodes[0];
     assert.equal(heading.type, 'HEADING');
     assert.equal(heading.headingData.level, 2);
@@ -211,10 +245,43 @@ describe('Daily Talk CMS payload', () => {
     assert.equal(paragraph.paragraphData.textStyle.textAlignment, 'AUTO');
   });
 
+  test('the four steps appear in teaching order, once each', () => {
+    const texts = buildDailyTalkCmsData_(ITEM).contentRich.nodes.map((node) => node.nodes[0].textData.text);
+    const order = ['STEP 1 · KEY CHUNKS', 'STEP 2 · WORD ORDER', 'STEP 3 · AAA', 'STEP 4 · MODEL & YOUR TURN']
+      .map((title) => texts.indexOf(title));
+    assert.ok(order.every((index) => index > -1), 'every step heading exists');
+    assert.ok(order[0] < order[1] && order[1] < order[2] && order[2] < order[3], 'steps are in order');
+    assert.equal(texts.filter((text) => text.indexOf('STEP ') === 0).length, 4);
+  });
+
+  test('business content renders the message house instead of AAA', () => {
+    const texts = buildDailyTalkCmsData_(BUSINESS_ITEM).contentRich.nodes.map((node) => node.nodes[0].textData.text);
+    assert.includes(texts, 'STEP 3 · MESSAGE HOUSE');
+    assert.includes(texts, 'Conclusion — 핵심 결론부터 말하기');
+    assert.includes(texts, 'Suggestion — 다음 행동 제안하기');
+    assert.excludes(texts.join('|'), 'STEP 3 · AAA');
+  });
+
+  test('a queue row without step data still publishes what it has', () => {
+    const legacy = Object.assign({}, ITEM, { wordOrderJson: '', structureJson: '', substitutionsJson: '' });
+    const texts = buildDailyTalkCmsData_(legacy).contentRich.nodes.map((node) => node.nodes[0].textData.text);
+    assert.includes(texts, 'STEP 1 · KEY CHUNKS');
+    assert.includes(texts, 'STEP 4 · MODEL & YOUR TURN');
+    assert.excludes(texts.join('|'), 'STEP 2 · WORD ORDER');
+    assert.excludes(texts.join('|'), 'STEP 3 ·');
+  });
+
   test('contentHtml mirrors the rich content and escapes markup', () => {
     const html = buildDailyTalkCmsData_({ topicEn: 'Use <b>bold</b> & "quotes"', topicKo: '한글' }).contentHtml;
-    assert.includes(html, '<h2>Use &lt;b&gt;bold&lt;/b&gt; &amp; &quot;quotes&quot;</h2>');
-    assert.includes(html, '<p class="topic-ko">한글</p>');
+    assert.includes(html, '<h2 class="dt-topic-en">Use &lt;b&gt;bold&lt;/b&gt; &amp; &quot;quotes&quot;</h2>');
+    assert.includes(html, '<p class="dt-topic-ko">한글</p>');
+  });
+
+  test('contentHtml keeps the step markers and line breaks', () => {
+    const html = buildDailyTalkCmsData_(ITEM).contentHtml;
+    assert.includes(html, 'STEP 1 · KEY CHUNKS');
+    assert.includes(html, "I'm thinking of getting lunch soon.<br>저 곧 점심 먹으러 갈까 해요.");
+    assert.includes(html, '<p class="dt-stage-label">Answer — 한 문장으로 먼저 답하기</p>');
   });
 
   test('kakaoText links to the magazine item and keeps the opt-out footer', () => {

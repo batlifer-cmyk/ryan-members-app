@@ -289,27 +289,9 @@ function publishDailyTalkToWixBlog_(item, settings) {
 }
 
 function buildDailyTalkRichContent_(item) {
-  var nodes = [];
-  if (item.topicEn) nodes.push(headingNode_(item.topicEn, 2));
-  if (item.topicKo) nodes.push(paragraphNode_(item.topicKo));
-  if (item.snackEn) nodes.push(headingNode_('Today’s Language Snack', 3), paragraphNode_(item.snackEn));
-  if (item.snackKo) nodes.push(paragraphNode_(item.snackKo));
-
-  var chunks = parseChunks_(item.chunksJson);
-  if (chunks.length) {
-    nodes.push(headingNode_('Useful Chunks', 3));
-    chunks.forEach(function (chunk) {
-      nodes.push(paragraphNode_(typeof chunk === 'string' ? chunk : JSON.stringify(chunk)));
-    });
-  }
-
-  if (item.modelEn) nodes.push(headingNode_('Model Answer', 3), paragraphNode_(item.modelEn));
-  if (item.modelKo) nodes.push(paragraphNode_(item.modelKo));
-  if (item.yourTurnEn) nodes.push(headingNode_('Your Turn', 3), paragraphNode_(item.yourTurnEn));
-  if (item.yourTurnKo) nodes.push(paragraphNode_(item.yourTurnKo));
-  nodes.push(paragraphNode_('Ryan Members · English Opens a New World.'));
-
-  return { nodes: nodes };
+  var content = buildDailyTalkCmsRichContent_(item, normalizeDailyTalkChunks_(item.chunksJson));
+  content.nodes.push(paragraphNode_('Ryan Members · English Opens a New World.'));
+  return content;
 }
 
 // ---------------------------------------------------------------------------
@@ -468,39 +450,136 @@ function buildDailyTalkCmsData_(item, options) {
   };
 }
 
-/** Ricos nodes in the same shape the existing collection items use. */
-function buildDailyTalkCmsRichContent_(item, chunks) {
+/**
+ * The card's teaching skeleton. Step 1-4 come from the Ryan Members method;
+ * Step 3's stages depend on the track (AAA / Top-Down Message House).
+ */
+var RM_DAILY_TALK_LESSON = Object.freeze({
+  STRUCTURE_HINTS: {
+    'Answer': '한 문장으로 먼저 답하기',
+    'Add': '이유나 정보를 한두 문장 더하기',
+    'Ask back': '상대에게 되묻기',
+    'Conclusion': '핵심 결론부터 말하기',
+    'Reason': '근거 기둥 세우기',
+    'Detail': '구체적인 디테일 붙이기',
+    'Suggestion': '다음 행동 제안하기'
+  },
+  WORD_ORDER_LABELS: ['한국어 생각', '영어식 어순', '영어 문장'],
+  WORD_ORDER_MARKS: ['①', '②', '③']
+});
+
+/** One structured block of the article; tag is the richest HTML tag it needs. */
+function buildDailyTalkLessonBlocks_(item, chunks) {
   var value = item || {};
-  var nodes = [];
-  if (value.topicEn) nodes.push(cmsHeadingNode_(value.topicEn, 2));
-  if (value.topicKo) nodes.push(cmsParagraphNode_(value.topicKo));
-  if (value.snackEn || value.snackKo) {
-    nodes.push(cmsHeadingNode_('Today’s Language Snack', 3));
-    if (value.snackEn) nodes.push(cmsParagraphNode_(value.snackEn));
-    if (value.snackKo) nodes.push(cmsParagraphNode_(value.snackKo));
+  var list = chunks || normalizeDailyTalkChunks_(value.chunksJson);
+  var wordOrder = parseDailyTalkRowList_(value.wordOrderJson);
+  var structure = parseDailyTalkStructure_(value.structureJson, value.track);
+  var swaps = parseDailyTalkRowList_(value.substitutionsJson);
+  var blocks = [];
+
+  function push(tag, text, cls, marker) {
+    var body = String(text === null || text === undefined ? '' : text).trim();
+    if (!body) return;
+    blocks.push({ tag: tag, text: body, cls: cls || '', marker: marker || '' });
   }
 
-  var list = chunks || normalizeDailyTalkChunks_(value.chunksJson);
+  push('h2', value.topicEn, 'dt-topic-en');
+  push('p', value.topicKo, 'dt-topic-ko');
+  push('p', value.snackEn, 'dt-snack-en');
+  push('p', value.snackKo, 'dt-snack-ko');
+
   if (list.length) {
-    nodes.push(cmsHeadingNode_('Useful Chunks', 3));
+    push('h3', 'STEP 1 · KEY CHUNKS', 'dt-step-title', 'STEP1');
+    push('p', '오늘 바로 꺼내 쓸 핵심 표현 ' + list.length + '개. 소리 내어 세 번씩 읽어 보세요.', 'dt-lead');
     list.forEach(function (chunk) {
-      nodes.push(cmsParagraphNode_(chunk.ko ? chunk.en + ': ' + chunk.ko : chunk.en));
+      push('p', chunk.en + (chunk.ko ? '\n' + chunk.ko : ''), 'dt-chunk', 'CHUNK');
     });
   }
 
-  if (value.modelEn || value.modelKo) {
-    nodes.push(cmsHeadingNode_('Model Answer', 3));
-    if (value.modelEn) nodes.push(cmsParagraphNode_(value.modelEn));
-    if (value.modelKo) nodes.push(cmsParagraphNode_(value.modelKo));
+  if (wordOrder.length) {
+    push('h3', 'STEP 2 · WORD ORDER', 'dt-step-title', 'STEP2');
+    push('p', '한국어 생각을 그대로 옮기지 않고, 영어식 어순(주어 → 동사 → 대상 → 장소·시간)으로 먼저 바꿔 봅니다.', 'dt-lead');
+    wordOrder.forEach(function (row) {
+      push('p', RM_DAILY_TALK_LESSON.WORD_ORDER_MARKS[0] + ' ' + RM_DAILY_TALK_LESSON.WORD_ORDER_LABELS[0] + ' — ' + row.thoughtKo, 'dt-wo dt-wo-thought', 'WO_THOUGHT');
+      push('p', RM_DAILY_TALK_LESSON.WORD_ORDER_MARKS[1] + ' ' + RM_DAILY_TALK_LESSON.WORD_ORDER_LABELS[1] + ' — ' + row.orderKo, 'dt-wo dt-wo-order', 'WO_ORDER');
+      push('p', RM_DAILY_TALK_LESSON.WORD_ORDER_MARKS[2] + ' ' + RM_DAILY_TALK_LESSON.WORD_ORDER_LABELS[2] + ' — ' + row.en, 'dt-wo dt-wo-en', 'WO_EN');
+    });
   }
 
-  if (value.yourTurnEn || value.yourTurnKo) {
-    nodes.push(cmsHeadingNode_('Your Turn', 3));
-    if (value.yourTurnEn) nodes.push(cmsParagraphNode_(value.yourTurnEn));
-    if (value.yourTurnKo) nodes.push(cmsParagraphNode_(value.yourTurnKo));
+  if (structure.steps.length) {
+    var messageHouse = structure.type === 'MESSAGE_HOUSE';
+    push('h3', 'STEP 3 · ' + (messageHouse ? 'MESSAGE HOUSE' : 'AAA'), 'dt-step-title', 'STEP3');
+    push('p', messageHouse
+      ? 'Conclusion → Reason → Detail → Suggestion. 결론부터 말하고 근거 기둥으로 받친 뒤, 다음 행동을 제안하는 Top-Down 구조입니다.'
+      : 'Answer → Add → Ask back. 한 문장으로 답하고, 이유를 더하고, 되물어 대화를 이어 가는 구조입니다.', 'dt-lead');
+    structure.steps.forEach(function (step) {
+      var hint = RM_DAILY_TALK_LESSON.STRUCTURE_HINTS[step.label] || '';
+      push('p', step.label + (hint ? ' — ' + hint : ''), 'dt-stage-label', 'STAGE_LABEL');
+      push('p', step.en, 'dt-stage-en', 'STAGE_EN');
+      push('p', step.ko, 'dt-stage-ko', 'STAGE_KO');
+    });
   }
 
-  return { nodes: nodes };
+  if (value.modelEn || value.modelKo || swaps.length || value.yourTurnEn) {
+    push('h3', 'STEP 4 · MODEL & YOUR TURN', 'dt-step-title', 'STEP4');
+    if (value.modelEn || value.modelKo) {
+      push('p', '모델 대화 · A와 B를 나눠 읽어 보세요.', 'dt-lead');
+      push('p', value.modelEn, 'dt-dialogue dt-dialogue-en', 'DIALOGUE_EN');
+      push('p', value.modelKo, 'dt-dialogue dt-dialogue-ko', 'DIALOGUE_KO');
+    }
+    if (swaps.length) {
+      push('p', '내 말로 바꿔 말하기', 'dt-subhead', 'SUBHEAD');
+      swaps.forEach(function (row, index) {
+        push('p', (index + 1) + '. ' + row.en + (row.ko ? '\n' + row.ko : ''), 'dt-swap', 'SWAP');
+      });
+    }
+    if (value.yourTurnEn) {
+      push('p', '오늘의 미션\n' + value.yourTurnEn + (value.yourTurnKo ? '\n' + value.yourTurnKo : ''), 'dt-mission', 'MISSION');
+    }
+  }
+
+  return blocks;
+}
+
+/** Ricos nodes for the whole card, in the order the four steps are taught. */
+function buildDailyTalkCmsRichContent_(item, chunks) {
+  return {
+    nodes: buildDailyTalkLessonBlocks_(item, chunks).map(function (block) {
+      return block.tag === 'h3' ? cmsHeadingNode_(block.text, 3)
+        : block.tag === 'h2' ? cmsHeadingNode_(block.text, 2)
+          : cmsParagraphNode_(block.text);
+    })
+  };
+}
+
+/** Lesson rows from a JSON column; a plain string still counts as one English row. */
+function parseDailyTalkRowList_(value) {
+  var parsed = parseChunks_(value);
+  return (parsed || []).map(function (row) {
+    if (!row) return null;
+    if (typeof row === 'string') return { en: String(row).trim(), ko: '' };
+    return {
+      en: String(row.en || '').trim(),
+      ko: String(row.ko || '').trim(),
+      thoughtKo: String(row.thoughtKo || '').trim(),
+      orderKo: String(row.orderKo || '').trim()
+    };
+  }).filter(function (row) { return row && row.en; });
+}
+
+/** STRUCTURE_JSON -> {type, steps}; a row without it falls back to its track. */
+function parseDailyTalkStructure_(value, track) {
+  var raw = safeJsonParse(String(value === null || value === undefined ? '' : value), null);
+  var type = raw && raw.type ? String(raw.type).trim().toUpperCase() : dailyTalkStructureTypeFor(track);
+  if (type !== 'MESSAGE_HOUSE') type = 'AAA';
+  var steps = (raw && Array.isArray(raw.steps) ? raw.steps : []).map(function (step) {
+    return {
+      label: String((step && step.label) || '').trim(),
+      en: String((step && step.en) || '').trim(),
+      ko: String((step && step.ko) || '').trim()
+    };
+  }).filter(function (step) { return step.label && step.en; });
+  return { type: type, steps: steps };
 }
 
 function cmsHeadingNode_(text, level) {
@@ -525,37 +604,11 @@ function cmsTextNode_(text) {
 
 /** contentHtml mirror of the rich content, for templates that render the HTML field. */
 function buildDailyTalkCmsHtml_(item, chunks) {
-  var value = item || {};
-  var parts = [];
-  if (value.topicEn) parts.push('<h2>' + escapeDailyTalkHtml_(value.topicEn) + '</h2>');
-  if (value.topicKo) parts.push('<p class="topic-ko">' + escapeDailyTalkHtml_(value.topicKo) + '</p>');
-  if (value.snackEn || value.snackKo) {
-    parts.push('<h3>Today&rsquo;s Language Snack</h3>');
-    if (value.snackEn) parts.push('<p>' + escapeDailyTalkHtml_(value.snackEn) + '</p>');
-    if (value.snackKo) parts.push('<p>' + escapeDailyTalkHtml_(value.snackKo) + '</p>');
-  }
-
-  var list = chunks || normalizeDailyTalkChunks_(value.chunksJson);
-  if (list.length) {
-    parts.push('<h3>Useful Chunks</h3>');
-    list.forEach(function (chunk) {
-      parts.push('<p>' + escapeDailyTalkHtml_(chunk.ko ? chunk.en + ': ' + chunk.ko : chunk.en) + '</p>');
-    });
-  }
-
-  if (value.modelEn || value.modelKo) {
-    parts.push('<h3>Model Answer</h3>');
-    if (value.modelEn) parts.push('<p>' + escapeDailyTalkHtml_(value.modelEn) + '</p>');
-    if (value.modelKo) parts.push('<p>' + escapeDailyTalkHtml_(value.modelKo) + '</p>');
-  }
-
-  if (value.yourTurnEn || value.yourTurnKo) {
-    parts.push('<h3>Your Turn</h3>');
-    if (value.yourTurnEn) parts.push('<p>' + escapeDailyTalkHtml_(value.yourTurnEn) + '</p>');
-    if (value.yourTurnKo) parts.push('<p>' + escapeDailyTalkHtml_(value.yourTurnKo) + '</p>');
-  }
-
-  return parts.join('');
+  return buildDailyTalkLessonBlocks_(item, chunks).map(function (block) {
+    var cls = block.cls ? ' class="' + escapeDailyTalkHtml_(block.cls) + '"' : '';
+    var body = String(block.text).split('\n').map(escapeDailyTalkHtml_).join('<br>');
+    return '<' + block.tag + cls + '>' + body + '</' + block.tag + '>';
+  }).join('');
 }
 
 function escapeDailyTalkHtml_(text) {
@@ -782,6 +835,9 @@ function readQueueRows_(sheet) {
       snackEn: cell_(row, headerMap, 'SNACK_EN'),
       snackKo: cell_(row, headerMap, 'SNACK_KO'),
       chunksJson: cell_(row, headerMap, 'CHUNKS_JSON'),
+      wordOrderJson: cell_(row, headerMap, 'WORD_ORDER_JSON'),
+      structureJson: cell_(row, headerMap, 'STRUCTURE_JSON'),
+      substitutionsJson: cell_(row, headerMap, 'SUBSTITUTIONS_JSON'),
       modelEn: cell_(row, headerMap, 'MODEL_EN'),
       modelKo: cell_(row, headerMap, 'MODEL_KO'),
       yourTurnEn: cell_(row, headerMap, 'YOUR_TURN_EN'),

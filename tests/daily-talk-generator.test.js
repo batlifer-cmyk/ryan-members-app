@@ -16,8 +16,22 @@ const SAMPLE = {
     { en: 'I mostly stayed in.', ko: '거의 집에 있었어요.' },
     { en: 'What about you?', ko: '당신은요?' }
   ],
+  wordOrder: [
+    { thoughtKo: '나는 / 주말에 / 집에서 / 쉬었다', orderKo: '나는 / 쉬었다 / 집에서 / 주말에', en: 'I stayed home over the weekend.' },
+    { thoughtKo: '우리는 / 어제 / 산에 / 올라갔다', orderKo: '우리는 / 올라갔다 / 산에 / 어제', en: 'We hiked a mountain yesterday.' }
+  ],
+  structureType: 'AAA',
+  structureSteps: [
+    { label: 'Answer', en: 'I mostly stayed in.', ko: '거의 집에 있었어요.' },
+    { label: 'Add', en: 'I cooked and watched a few movies at home.', ko: '집에서 요리하고 영화 몇 편을 봤어요.' },
+    { label: 'Ask back', en: 'What about you?', ko: '당신은요?' }
+  ],
   modelEn: 'A: How was your weekend?\nB: I mostly stayed in and cooked. What about you?\nA: I went hiking near Dalmaji.',
   modelKo: 'A: 주말은 어떻게 보냈어요?\nB: 거의 집에 있으면서 요리했어요. 당신은요?\nA: 달맞이길 근처로 등산을 갔어요.',
+  substitutions: [
+    { en: 'I went to the beach on Saturday.', ko: '토요일에 해변에 다녀왔어요.' },
+    { en: 'I met some friends for dinner.', ko: '친구들을 만나 저녁을 먹었어요.' }
+  ],
   yourTurnEn: 'Ask one coworker how their weekend was today.',
   yourTurnKo: '오늘 동료 한 명에게 주말이 어땠는지 물어보세요.'
 };
@@ -67,8 +81,34 @@ describe('buildContentPrompt', () => {
 
   test('asks for every queue field in plain language', () => {
     const prompt = buildContentPrompt('SMALL_TALK', { level: 'BASIC' });
-    ['topicEn', 'topicKo', 'snackEn', 'snackKo', 'chunks', 'modelEn', 'modelKo', 'yourTurnEn', 'yourTurnKo']
+    ['topicEn', 'topicKo', 'snackEn', 'snackKo', 'chunks', 'modelEn', 'modelKo', 'yourTurnEn', 'yourTurnKo',
+      'wordOrder', 'structureType', 'structureSteps', 'substitutions']
       .forEach((field) => assert.includes(prompt.user, field));
+  });
+
+  test('teaches the four steps in order', () => {
+    const prompt = buildContentPrompt('SMALL_TALK', { level: 'BASIC' });
+    const system = prompt.system;
+    assert.includes(system, 'Step 1 Key Chunks');
+    assert.includes(system, 'Step 2 Word Order');
+    assert.includes(system, 'Step 3 Speaking Structure');
+    assert.includes(system, 'Step 4 Model & Your Turn');
+    assert.includes(system, 'subject / verb / object / place & time');
+    assert.ok(system.indexOf('Step 1') < system.indexOf('Step 2'));
+    assert.ok(system.indexOf('Step 2') < system.indexOf('Step 3'));
+    assert.ok(system.indexOf('Step 3') < system.indexOf('Step 4'));
+  });
+
+  test('small talk grows with AAA and business with the message house', () => {
+    const small = buildContentPrompt('SMALL_TALK', {});
+    assert.equal(small.structureType, 'AAA');
+    assert.includes(small.system, 'AAA: Answer, then Add a reason or detail, then Ask back');
+    assert.includes(small.user, 'Answer, Add, Ask back');
+
+    const business = buildContentPrompt('BUSINESS', {});
+    assert.equal(business.structureType, 'MESSAGE_HOUSE');
+    assert.includes(business.system, 'Conclusion first, then Reason, then Detail, then Suggestion');
+    assert.includes(business.user, 'Conclusion, Reason, Detail, Suggestion');
   });
 });
 
@@ -82,6 +122,22 @@ describe('buildDailyTalkContentSchema', () => {
     assert.includes(schema.required, 'chunks');
     assert.equal(schema.properties.chunks.minItems, 3);
     assert.equal(schema.properties.chunks.items.additionalProperties, false);
+  });
+
+  test('requires the step 2-4 structures with fixed sizes', () => {
+    const schema = buildDailyTalkContentSchema();
+    ['wordOrder', 'structureType', 'structureSteps', 'substitutions'].forEach((field) => {
+      assert.includes(schema.required, field);
+    });
+    assert.equal(schema.properties.wordOrder.minItems, 2);
+    assert.equal(schema.properties.wordOrder.maxItems, 2);
+    assert.deepEqual(schema.properties.wordOrder.items.required, ['thoughtKo', 'orderKo', 'en']);
+    assert.deepEqual(schema.properties.structureType.enum, ['AAA', 'MESSAGE_HOUSE']);
+    assert.equal(schema.properties.structureSteps.minItems, 3);
+    assert.equal(schema.properties.structureSteps.maxItems, 4);
+    assert.includes(schema.properties.structureSteps.items.properties.label.enum, 'Ask back');
+    assert.includes(schema.properties.structureSteps.items.properties.label.enum, 'Suggestion');
+    assert.equal(schema.properties.substitutions.minItems, 2);
   });
 });
 
@@ -198,6 +254,83 @@ describe('validateGeneratedContent', () => {
     assert.equal(result.ok, false);
     assert.equal(result.errors.filter((error) => error.message === '비어 있습니다.').length, 8);
   });
+
+  test('rejects a word order row that is not Korean -> Korean order -> English', () => {
+    const missing = normalizeGeneratedContent(Object.assign({}, SAMPLE, { wordOrder: [SAMPLE.wordOrder[0]] }), {});
+    assert.ok(validateGeneratedContent(missing).errors.some((error) => error.field === 'wordOrder'));
+
+    const englishThought = normalizeGeneratedContent(Object.assign({}, SAMPLE, {
+      wordOrder: [{ thoughtKo: 'I stayed home', orderKo: '나는 쉬었다 집에서', en: 'I stayed home.' }]
+    }), {});
+    assert.ok(validateGeneratedContent(englishThought).errors.some((error) => error.field === 'wordOrder[0].thoughtKo'));
+
+    const hangulSentence = normalizeGeneratedContent(Object.assign({}, SAMPLE, {
+      wordOrder: [{ thoughtKo: '나는 / 쉬었다', orderKo: '나는 / 쉬었다', en: '나는 쉬었다' }]
+    }), {});
+    assert.ok(validateGeneratedContent(hangulSentence).errors.some((error) => error.field === 'wordOrder[0].en'));
+  });
+
+  test('accepts AAA for small talk and the message house for business', () => {
+    const small = normalizeGeneratedContent(SAMPLE, { track: 'SMALL_TALK' });
+    assert.equal(validateGeneratedContent(small).ok, true);
+    assert.equal(small.structureType, 'AAA');
+
+    const business = normalizeGeneratedContent({
+      topicEn: 'Updating the team',
+      topicKo: '팀에 상황 공유하기',
+      snackEn: 'Tell the team about a delay before they ask.',
+      snackKo: '물어보기 전에 팀에 지연을 먼저 알립니다.',
+      chunks: [
+        { en: 'I have a quick update.', ko: '간단히 공유드릴 게 있어요.' },
+        { en: 'We need one more day.', ko: '하루가 더 필요합니다.' },
+        { en: 'I will keep you posted.', ko: '계속 알려 드릴게요.' }
+      ],
+      wordOrder: [
+        { thoughtKo: '우리 팀은 / 금요일까지 / 결과를 / 확인한다', orderKo: '우리 팀은 / 확인한다 / 결과를 / 금요일까지', en: 'Our team will check the result by Friday.' },
+        { thoughtKo: '저는 / 내일 / 보고서를 / 보낸다', orderKo: '저는 / 보낸다 / 보고서를 / 내일', en: 'I will send the report tomorrow.' }
+      ],
+      structureType: 'MESSAGE_HOUSE',
+      structureSteps: [
+        { label: 'Conclusion', en: 'We need one more day for the launch.', ko: '출시에 하루가 더 필요합니다.' },
+        { label: 'Reason', en: 'The final check found two bugs.', ko: '마지막 점검에서 오류 두 개를 찾았습니다.' },
+        { label: 'Detail', en: 'Both are in the payment screen.', ko: '둘 다 결제 화면에 있습니다.' },
+        { label: 'Suggestion', en: 'Could we move the launch to Friday?', ko: '출시를 금요일로 옮겨도 될까요?' }
+      ],
+      modelEn: 'A: I have a quick update.\nB: Sure, go ahead.',
+      modelKo: 'A: 간단히 공유드릴 게 있어요.\nB: 네, 말씀하세요.',
+      substitutions: [
+        { en: 'Could we move the meeting to Friday?', ko: '회의를 금요일로 옮겨도 될까요?' },
+        { en: 'Could we start a day later?', ko: '하루 늦게 시작해도 될까요?' }
+      ],
+      yourTurnEn: 'Tell your team about one small delay today.',
+      yourTurnKo: '오늘 팀에 작은 지연을 하나 알려 보세요.'
+    }, { track: 'BUSINESS' });
+    const result = validateGeneratedContent(business);
+    assert.equal(result.ok, true, JSON.stringify(result.errors));
+  });
+
+  test('rejects a track whose structure does not match its scaffold', () => {
+    const wrongType = normalizeGeneratedContent(Object.assign({}, SAMPLE, { structureType: 'MESSAGE_HOUSE' }), { track: 'SMALL_TALK' });
+    assert.ok(validateGeneratedContent(wrongType).errors.some((error) => error.field === 'structureType'));
+
+    const wrongOrder = normalizeGeneratedContent(Object.assign({}, SAMPLE, {
+      structureSteps: [SAMPLE.structureSteps[1], SAMPLE.structureSteps[0], SAMPLE.structureSteps[2]]
+    }), { track: 'SMALL_TALK' });
+    assert.ok(validateGeneratedContent(wrongOrder).errors.some((error) => error.field === 'structureSteps[0].label'));
+
+    const businessAsAaa = normalizeGeneratedContent(Object.assign({}, SAMPLE, { structureType: 'AAA' }), { track: 'BUSINESS' });
+    assert.ok(validateGeneratedContent(businessAsAaa).errors.some((error) => error.field === 'structureType'));
+  });
+
+  test('rejects a swap list that is not exactly two bilingual rows', () => {
+    const one = normalizeGeneratedContent(Object.assign({}, SAMPLE, { substitutions: [SAMPLE.substitutions[0]] }), {});
+    assert.ok(validateGeneratedContent(one).errors.some((error) => error.field === 'substitutions'));
+
+    const hangul = normalizeGeneratedContent(Object.assign({}, SAMPLE, {
+      substitutions: [{ en: '해변에 다녀왔어요', ko: '해변에 다녀왔어요' }, SAMPLE.substitutions[1]]
+    }), {});
+    assert.ok(validateGeneratedContent(hangul).errors.some((error) => error.field === 'substitutions[0].en'));
+  });
 });
 
 describe('buildContentId', () => {
@@ -253,6 +386,23 @@ describe('buildQueueRowValues', () => {
     const chunks = JSON.parse(row[headerMap.CHUNKS_JSON - 1]);
     assert.equal(chunks.length, 3);
     assert.equal(chunks[0].en, SAMPLE.chunks[0].en);
+  });
+
+  test('writes the step 2-4 lesson columns the publisher reads', () => {
+    const wide = Object.assign({}, headerMap, {
+      WORD_ORDER_JSON: 20, STRUCTURE_JSON: 21, SUBSTITUTIONS_JSON: 22
+    });
+    const row = buildQueueRowValues(wide, content, { contentId: 'C1' });
+    const wordOrder = JSON.parse(row[19]);
+    assert.equal(wordOrder.length, 2);
+    assert.equal(wordOrder[0].orderKo, SAMPLE.wordOrder[0].orderKo);
+    const structure = JSON.parse(row[20]);
+    assert.equal(structure.type, 'AAA');
+    assert.equal(structure.steps.length, 3);
+    assert.equal(structure.steps[2].label, 'Ask back');
+    const swaps = JSON.parse(row[21]);
+    assert.equal(swaps.length, 2);
+    assert.equal(swaps[0].en, SAMPLE.substitutions[0].en);
   });
 
   test('writes a Kakao teaser with the ad label and without a URL yet', () => {
@@ -358,6 +508,16 @@ describe('isStorableGeneratedItem', () => {
     assert.equal(isStorableGeneratedItem(null), false);
     assert.equal(isStorableGeneratedItem({ contentId: '', content: normalizeGeneratedContent(SAMPLE, {}) }), false);
     assert.equal(isStorableGeneratedItem({ contentId: 'C1', content: normalizeGeneratedContent({}, {}) }), false);
+  });
+});
+
+describe('dailyTalkStructureTypeFor / dailyTalkStructureLabels', () => {
+  test('small talk grows with AAA, business with the message house', () => {
+    assert.equal(dailyTalkStructureTypeFor('SMALL_TALK'), 'AAA');
+    assert.equal(dailyTalkStructureTypeFor('BUSINESS'), 'MESSAGE_HOUSE');
+    assert.equal(dailyTalkStructureTypeFor(''), 'AAA');
+    assert.deepEqual(dailyTalkStructureLabels('AAA'), ['Answer', 'Add', 'Ask back']);
+    assert.deepEqual(dailyTalkStructureLabels('MESSAGE_HOUSE'), ['Conclusion', 'Reason', 'Detail', 'Suggestion']);
   });
 });
 

@@ -44,8 +44,33 @@ var RM_DAILY_TALK_GEN = Object.freeze({
   ],
   // Columns the publication step writes; added only when a sheet lacks them.
   PUBLISH_HEADERS: ['WIX_CONTENT_URL', 'WIX_POST_ID', 'WIX_PUBLISHED_AT', 'KAKAO_LINK_SENT_AT'],
-  CONTENT_FIELDS: ['topicEn', 'topicKo', 'snackEn', 'snackKo', 'modelEn', 'modelKo', 'yourTurnEn', 'yourTurnKo']
+  // The Ryan Members four-step lesson. These columns are added to an existing
+  // 콘텐츠대기열 by ensureQueueHeaderColumns_ and read by the Wix publisher.
+  STEP_HEADERS: ['WORD_ORDER_JSON', 'STRUCTURE_JSON', 'SUBSTITUTIONS_JSON'],
+  CONTENT_FIELDS: ['topicEn', 'topicKo', 'snackEn', 'snackKo', 'modelEn', 'modelKo', 'yourTurnEn', 'yourTurnKo'],
+  // Step 2 needs two sentences, Step 3 grows per track, Step 4 adds two swaps.
+  WORD_ORDER_COUNT: 2,
+  SUBSTITUTION_COUNT: 2
 });
+
+/**
+ * Ryan Members teaching method: every Daily Talk card walks the same four
+ * steps. Step 3 (the speaking structure) grows differently per track — AAA for
+ * small talk (Answer / Add / Ask back), Top-Down Message House for business
+ * (Conclusion / Reason / Detail / Suggestion).
+ */
+var RM_DAILY_TALK_STRUCTURE_LABELS = Object.freeze({
+  AAA: ['Answer', 'Add', 'Ask back'],
+  MESSAGE_HOUSE: ['Conclusion', 'Reason', 'Detail', 'Suggestion']
+});
+
+function dailyTalkStructureTypeFor(track) {
+  return normalizeTrack(track) === RM_TRACKS.BUSINESS ? 'MESSAGE_HOUSE' : 'AAA';
+}
+
+function dailyTalkStructureLabels(type) {
+  return RM_DAILY_TALK_STRUCTURE_LABELS[type === 'MESSAGE_HOUSE' ? 'MESSAGE_HOUSE' : 'AAA'];
+}
 
 var RM_DAILY_TALK_TRACK_BRIEFS = Object.freeze({
   SMALL_TALK: 'Daily Small Talk: everyday conversation an adult learner can use the same day ' +
@@ -87,18 +112,57 @@ function buildDailyTalkContentSchema() {
       ko: { type: 'string' }
     }
   };
+  var wordOrderSchema = {
+    type: 'object',
+    additionalProperties: false,
+    required: ['thoughtKo', 'orderKo', 'en'],
+    properties: {
+      thoughtKo: { type: 'string' },
+      orderKo: { type: 'string' },
+      en: { type: 'string' }
+    }
+  };
+  var stepSchema = {
+    type: 'object',
+    additionalProperties: false,
+    required: ['label', 'en', 'ko'],
+    properties: {
+      label: {
+        type: 'string',
+        enum: RM_DAILY_TALK_STRUCTURE_LABELS.AAA.concat(RM_DAILY_TALK_STRUCTURE_LABELS.MESSAGE_HOUSE)
+      },
+      en: { type: 'string' },
+      ko: { type: 'string' }
+    }
+  };
   return {
     type: 'object',
     additionalProperties: false,
-    required: RM_DAILY_TALK_GEN.CONTENT_FIELDS.concat(['chunks']),
+    required: RM_DAILY_TALK_GEN.CONTENT_FIELDS.concat([
+      'chunks', 'wordOrder', 'structureType', 'structureSteps', 'substitutions'
+    ]),
     properties: {
       topicEn: { type: 'string' },
       topicKo: { type: 'string' },
       snackEn: { type: 'string' },
       snackKo: { type: 'string' },
       chunks: { type: 'array', minItems: 3, maxItems: 4, items: chunkSchema },
+      wordOrder: {
+        type: 'array',
+        minItems: RM_DAILY_TALK_GEN.WORD_ORDER_COUNT,
+        maxItems: RM_DAILY_TALK_GEN.WORD_ORDER_COUNT,
+        items: wordOrderSchema
+      },
+      structureType: { type: 'string', enum: ['AAA', 'MESSAGE_HOUSE'] },
+      structureSteps: { type: 'array', minItems: 3, maxItems: 4, items: stepSchema },
       modelEn: { type: 'string' },
       modelKo: { type: 'string' },
+      substitutions: {
+        type: 'array',
+        minItems: RM_DAILY_TALK_GEN.SUBSTITUTION_COUNT,
+        maxItems: RM_DAILY_TALK_GEN.SUBSTITUTION_COUNT,
+        items: chunkSchema
+      },
       yourTurnEn: { type: 'string' },
       yourTurnKo: { type: 'string' }
     }
@@ -116,14 +180,27 @@ function buildContentPrompt(track, options) {
   var level = String(opts.level || RM_DAILY_TALK_GEN.DEFAULT_LEVEL).trim().toUpperCase();
   var recent = (opts.recentTopics || []).filter(Boolean).slice(0, RM_DAILY_TALK_GEN.RECENT_TOPIC_LOOKBACK);
   var seed = String(opts.seed || '').trim();
+  var structureType = dailyTalkStructureTypeFor(normalizedTrack);
+  var labels = dailyTalkStructureLabels(structureType);
 
   var system = [
-    'You write Ryan Daily Talk, the weekday English-learning message sent to Korean adult learners on KakaoTalk by',
-    'Ryan Members, an English conversation academy in Busan. Brand line: "English Opens a New World."',
+    'You write Ryan Daily Talk, the weekday English-learning card that Ryan Members, an English conversation academy in Busan,',
+    'sends to Korean adult learners on KakaoTalk. Brand line: "English Opens a New World."',
     'The reader is a busy Korean adult at ' + level + ' level (CEFR A2-B1): they understand everyday English but',
     'freeze when they have to speak. Write warm, practical, natural English they can actually say today.',
-    'Never use markdown, emoji, hashtags, or quotation marks around whole fields. Return JSON only.'
-  ].join(' ');
+    '',
+    'Every card teaches ONE situation through the Ryan Members four-step method, in this exact order:',
+    'Step 1 Key Chunks: 3-4 ready-made chunks the learner can pull out today.',
+    'Step 2 Word Order: take the Korean thought, rearrange it into English word order',
+    '(subject / verb / object / place & time), then say the first English sentence.',
+    'Step 3 Speaking Structure: start with one sentence and grow it in fixed stages —',
+    structureType === 'AAA'
+      ? 'SMALL_TALK uses AAA: Answer, then Add a reason or detail, then Ask back.'
+      : 'BUSINESS uses the Top-Down Message House: Conclusion first, then Reason, then Detail, then Suggestion.',
+    'Step 4 Model & Your Turn: a short model dialogue, then the learner swaps in their own words and says it.',
+    '',
+    'Never use markdown, emoji, hashtags or quotation marks around whole fields. Return JSON only.'
+  ].join('\n');
 
   var lines = [
     'Track: ' + brief,
@@ -132,20 +209,35 @@ function buildContentPrompt(track, options) {
     (seed ? 'Topic seed (use it or a close variation): ' + seed : ''),
     recent.length ? 'Do NOT reuse these recent topics: ' + recent.join(' | ') : '',
     '',
-    'Write one item with these fields (all in the JSON schema):',
+    'One situation, one lesson. Fill every field of the JSON schema:',
     '- topicEn: a short catchy English title, 2-6 words, no ending period.',
     '- topicKo: the same title in natural Korean (no English parentheses).',
-    '- snackEn: 2-3 sentences (max 45 words) that introduce one key expression in a real situation.',
+    '- snackEn: 2 sentences (max 40 words) that set today\'s situation and name the one expression to try today.',
     '- snackKo: a faithful, natural Korean translation of snackEn.',
-    '- chunks: 3-4 expressions Korean learners can drop straight into conversation. Each has "en" (max 12 words) and "ko" (natural Korean). Mix one opener, one response and one follow-up where it fits.',
-    '- modelEn: a 3-4 line mini dialogue using the chunks, each line starting with "A: " or "B: ".',
-    '- modelKo: the Korean translation of modelEn, same A/B line breaks.',
-    '- yourTurnEn: one speaking mission for today, max 25 words, starting with a verb (Try, Ask, Tell, Practice...).',
+    '- chunks: 3-4 expressions the learner can drop straight into this conversation. Each has "en" (max 12 words)',
+    '  and "ko" (natural Korean). Cover one opener, one response and one follow-up.',
+    '- wordOrder: exactly ' + RM_DAILY_TALK_GEN.WORD_ORDER_COUNT + ' items. Each item is one sentence built in three moves:',
+    '  "thoughtKo" = the Korean thought in Korean words separated by " / " (for example 나는 / 오늘 아침 / 커피를 / 마시고 싶다);',
+    '  "orderKo" = the SAME Korean words rearranged in English word order, also separated by " / "',
+    '  (for example 나는 / 마시고 싶다 / 커피를 / 오늘 아침);',
+    '  "en" = the finished English sentence (max 14 words, spoken English).',
+    '- structureType: "' + structureType + '" for this track.',
+    '- structureSteps: exactly ' + labels.length + ' steps labeled ' + labels.join(', ') + ' — in that order. Each step has:',
+    '  "en" = the sentence(s) the learner says at that stage (max 30 words), "ko" = natural Korean of the same.',
+    (structureType === 'AAA'
+      ? '  Answer is one short sentence; Add is one or two sentences of reason or extra detail; Ask back returns a question to the other person.'
+      : '  Conclusion states the point first; Reason is the supporting pillar; Detail is one concrete specific; Suggestion proposes the next step.'),
+    '- modelEn: a 4-6 line dialogue using the chunks and the structure, each line starting with "A: " or "B: ".',
+    '- modelKo: the Korean translation of modelEn, same A/B lines in the same order.',
+    '- substitutions: exactly ' + RM_DAILY_TALK_GEN.SUBSTITUTION_COUNT + ' items. Each takes one chunk and swaps in the learner\'s own detail:',
+    '  "en" = the new sentence, "ko" = its Korean meaning.',
+    '- yourTurnEn: one speaking mission for today, max 20 words, starting with a verb (Try, Ask, Tell, Practice...).',
     '- yourTurnKo: the Korean translation of yourTurnEn.',
     '',
     'Hard rules:',
     '- Write spoken English: use contractions (I\'m, it\'s, we\'ll, don\'t) and avoid textbook stiffness.',
     '- English fields contain English only (no Hangul). Korean fields contain Korean (Hangul) only.',
+    '- The wordOrder sentence, the structureSteps and the model must all belong to the same situation.',
     '- Keep every expression polite and safe for a workplace and a family chat.',
     '- No brand names, no prices, no politics, no religion, no medical or legal advice.',
     '- The topic must be different from the recent topics above and useful this week.'
@@ -154,6 +246,7 @@ function buildContentPrompt(track, options) {
   return {
     track: normalizedTrack,
     level: level,
+    structureType: structureType,
     schemaName: 'ryan_daily_talk_' + normalizedTrack.toLowerCase(),
     schema: buildDailyTalkContentSchema(),
     system: system,
@@ -218,8 +311,15 @@ function normalizeGeneratedContent(parsed, context) {
   var raw = parsed || {};
   var ctx = context || {};
   var chunks = Array.isArray(raw.chunks) ? raw.chunks : [];
+  var wordOrder = Array.isArray(raw.wordOrder) ? raw.wordOrder : [];
+  var steps = Array.isArray(raw.structureSteps) ? raw.structureSteps : [];
+  var substitutions = Array.isArray(raw.substitutions) ? raw.substitutions : [];
+  var track = normalizeTrack(ctx.track) === RM_TRACKS.BUSINESS ? RM_TRACKS.BUSINESS : RM_TRACKS.SMALL_TALK;
+  var structureType = String(raw.structureType || dailyTalkStructureTypeFor(track)).trim().toUpperCase();
+  if (structureType !== 'MESSAGE_HOUSE') structureType = 'AAA';
+
   return {
-    track: normalizeTrack(ctx.track) === RM_TRACKS.BUSINESS ? RM_TRACKS.BUSINESS : RM_TRACKS.SMALL_TALK,
+    track: track,
     level: String(ctx.level || RM_DAILY_TALK_GEN.DEFAULT_LEVEL).trim().toUpperCase(),
     topicEn: cleanText_(raw.topicEn),
     topicKo: cleanText_(raw.topicKo),
@@ -229,8 +329,29 @@ function normalizeGeneratedContent(parsed, context) {
       if (typeof chunk === 'string') return { en: cleanText_(chunk), ko: '' };
       return { en: cleanText_(chunk && chunk.en), ko: cleanText_(chunk && chunk.ko) };
     }),
+    wordOrder: wordOrder.map(function (row) {
+      if (typeof row === 'string') return { thoughtKo: cleanText_(row), orderKo: '', en: '' };
+      return {
+        thoughtKo: cleanText_(row && row.thoughtKo),
+        orderKo: cleanText_(row && row.orderKo),
+        en: cleanText_(row && row.en)
+      };
+    }),
+    structureType: structureType,
+    structureSteps: steps.map(function (step) {
+      if (typeof step === 'string') return { label: cleanText_(step), en: '', ko: '' };
+      return {
+        label: cleanText_(step && step.label),
+        en: cleanText_(step && step.en),
+        ko: cleanText_(step && step.ko)
+      };
+    }),
     modelEn: cleanText_(raw.modelEn, { keepLines: true }),
     modelKo: cleanText_(raw.modelKo, { keepLines: true }),
+    substitutions: substitutions.map(function (row) {
+      if (typeof row === 'string') return { en: cleanText_(row), ko: '' };
+      return { en: cleanText_(row && row.en), ko: cleanText_(row && row.ko) };
+    }),
     yourTurnEn: cleanText_(raw.yourTurnEn),
     yourTurnKo: cleanText_(raw.yourTurnKo)
   };
@@ -279,7 +400,82 @@ function validateGeneratedContent(content) {
     if (ko && !RM_HANGUL_PATTERN.test(ko)) fail('chunks[' + index + '].ko', '한글 뜻에 한글이 없습니다.');
   });
 
+  validateWordOrderRows_(value.wordOrder, fail);
+  validateStructureSteps_(value, fail);
+  validateSubstitutions_(value.substitutions, fail);
+
   return { ok: errors.length === 0, errors: errors };
+}
+
+/** Step 2: two sentences, each Korean thought -> English word order -> English. */
+function validateWordOrderRows_(rows, fail) {
+  var list = Array.isArray(rows) ? rows : [];
+  if (list.length !== RM_DAILY_TALK_GEN.WORD_ORDER_COUNT) {
+    fail('wordOrder', '어순 훈련은 ' + RM_DAILY_TALK_GEN.WORD_ORDER_COUNT + '문장이어야 합니다.');
+  }
+  list.forEach(function (row, index) {
+    var prefix = 'wordOrder[' + index + ']';
+    var thoughtKo = String((row && row.thoughtKo) || '');
+    var orderKo = String((row && row.orderKo) || '');
+    var en = String((row && row.en) || '');
+    if (!thoughtKo.trim()) fail(prefix + '.thoughtKo', '한국어 생각이 비어 있습니다.');
+    if (!orderKo.trim()) fail(prefix + '.orderKo', '영어식 어순이 비어 있습니다.');
+    if (!en.trim()) fail(prefix + '.en', '영어 문장이 비어 있습니다.');
+    if (thoughtKo && !RM_HANGUL_PATTERN.test(thoughtKo)) fail(prefix + '.thoughtKo', '한국어 생각에 한글이 없습니다.');
+    if (orderKo && !RM_HANGUL_PATTERN.test(orderKo)) fail(prefix + '.orderKo', '영어식 어순에 한글이 없습니다.');
+    if (en && RM_HANGUL_PATTERN.test(en)) fail(prefix + '.en', '영어 문장에 한글이 있습니다.');
+    if (en && !RM_LATIN_PATTERN.test(en)) fail(prefix + '.en', '영어 문장에 영어가 없습니다.');
+  });
+}
+
+/** Step 3: the track's own scaffolding, in the track's own order. */
+function validateStructureSteps_(value, fail) {
+  var content = value || {};
+  var expectedType = dailyTalkStructureTypeFor(content.track);
+  var type = String(content.structureType || '').trim().toUpperCase();
+  if (type !== expectedType) {
+    fail('structureType', content.track === RM_TRACKS.BUSINESS
+      ? 'Business Talk은 MESSAGE_HOUSE여야 합니다.'
+      : 'Small Talk은 AAA여야 합니다.');
+  }
+
+  var expected = dailyTalkStructureLabels(expectedType);
+  var steps = Array.isArray(content.structureSteps) ? content.structureSteps : [];
+  if (steps.length !== expected.length) {
+    fail('structureSteps', expectedType === 'AAA'
+      ? 'AAA는 Answer / Add / Ask back 3단계여야 합니다.'
+      : 'Message House는 Conclusion / Reason / Detail / Suggestion 4단계여야 합니다.');
+  }
+  steps.forEach(function (step, index) {
+    var prefix = 'structureSteps[' + index + ']';
+    var label = String((step && step.label) || '').trim();
+    var en = String((step && step.en) || '');
+    var ko = String((step && step.ko) || '');
+    if (expected[index] && label.toLowerCase() !== expected[index].toLowerCase()) {
+      fail(prefix + '.label', expected[index] + ' 순서여야 합니다.');
+    }
+    if (!en.trim()) fail(prefix + '.en', '영어 문장이 비어 있습니다.');
+    if (!ko.trim()) fail(prefix + '.ko', '한글 문장이 비어 있습니다.');
+    if (RM_HANGUL_PATTERN.test(en)) fail(prefix + '.en', '영어 문장에 한글이 있습니다.');
+    if (ko && !RM_HANGUL_PATTERN.test(ko)) fail(prefix + '.ko', '한글 문장에 한글이 없습니다.');
+  });
+}
+
+/** Step 4: two "say it my way" swaps on top of the model dialogue. */
+function validateSubstitutions_(rows, fail) {
+  var list = Array.isArray(rows) ? rows : [];
+  if (list.length !== RM_DAILY_TALK_GEN.SUBSTITUTION_COUNT) {
+    fail('substitutions', '바꿔 말하기는 ' + RM_DAILY_TALK_GEN.SUBSTITUTION_COUNT + '개여야 합니다.');
+  }
+  list.forEach(function (row, index) {
+    var prefix = 'substitutions[' + index + ']';
+    var en = String((row && row.en) || '');
+    var ko = String((row && row.ko) || '');
+    if (!en.trim()) fail(prefix + '.en', '영어 문장이 비어 있습니다.');
+    if (!ko.trim()) fail(prefix + '.ko', '한글 뜻이 비어 있습니다.');
+    if (RM_HANGUL_PATTERN.test(en)) fail(prefix + '.en', '영어 문장에 한글이 있습니다.');
+    if (ko && !RM_HANGUL_PATTERN.test(ko)) fail(prefix + '.ko', '한글 뜻에 한글이 없습니다.');
+  });
 }
 
 /** 'How was your weekend?' -> 'how-was-your-weekend' (max 4 words). */
@@ -347,6 +543,12 @@ function buildQueueRowValues(headerMap, content, meta) {
   put('SNACK_EN', value.snackEn || '');
   put('SNACK_KO', value.snackKo || '');
   put('CHUNKS_JSON', JSON.stringify(value.chunks || []));
+  put('WORD_ORDER_JSON', JSON.stringify(value.wordOrder || []));
+  put('STRUCTURE_JSON', JSON.stringify({
+    type: value.structureType || dailyTalkStructureTypeFor(value.track),
+    steps: value.structureSteps || []
+  }));
+  put('SUBSTITUTIONS_JSON', JSON.stringify(value.substitutions || []));
   put('MODEL_EN', value.modelEn || '');
   put('MODEL_KO', value.modelKo || '');
   put('YOUR_TURN_EN', value.yourTurnEn || '');
@@ -595,14 +797,15 @@ function isRetryableOpenAiStatus_(code) {
   return code === 429 || code === 500 || code === 502 || code === 503 || code === 504;
 }
 
-/** Adds the publication columns the pipeline writes when a sheet lacks them. */
+/** Adds the publication + lesson columns the pipeline writes when a sheet lacks them. */
 function ensureQueueHeaderColumns_(sheet) {
   var headerRow = RM_DAILY_TALK_GEN.QUEUE_HEADER_ROW;
   var lastColumn = Math.max(sheet.getLastColumn(), 1);
   var headers = sheet.getRange(headerRow, 1, 1, lastColumn).getDisplayValues()[0].map(function (header) {
     return String(header).trim();
   });
-  var missing = RM_DAILY_TALK_GEN.PUBLISH_HEADERS.filter(function (header) {
+  var wanted = RM_DAILY_TALK_GEN.PUBLISH_HEADERS.concat(RM_DAILY_TALK_GEN.STEP_HEADERS);
+  var missing = wanted.filter(function (header) {
     return headers.indexOf(header) === -1;
   });
   if (!missing.length) return headers;

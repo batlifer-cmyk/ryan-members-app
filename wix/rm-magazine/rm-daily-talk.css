@@ -362,7 +362,8 @@
   font-weight: 800;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: #8b948d;
+  color: #6f7a73;
+  text-align: center;
 }
 #rmdt-root .rmdt-cta-title {
   margin: 9px 0 0;
@@ -421,7 +422,7 @@
   margin: 10px 0 0;
   font-size: 11.5px;
   line-height: 1.5;
-  color: #8b948d;
+  color: #6f7a73;
   text-align: center;
 }
 #rmdt-root .rmdt-cta-sub {
@@ -433,7 +434,7 @@
   color: #6b7670;
   text-align: center;
 }
-#rmdt-root .rmdt-cta-sub-label { color: #8b948d; }
+#rmdt-root .rmdt-cta-sub-label { color: #6f7a73; }
 #rmdt-root .rmdt-cta-sub a {
   color: var(--rmdt-green);
   font-weight: 700;

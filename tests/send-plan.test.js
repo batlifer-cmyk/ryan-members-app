@@ -113,6 +113,41 @@ describe('parseSolapiResponse', () => {
     assert.equal(result.results[0].reason, 'NO_MESSAGE_LIST');
   });
 
+  test('pairs by send order when SOLAPI omits the recipient number', () => {
+    // Real 2026-11-19 response shape: messageId/statusCode/customFields only, no `to`.
+    const result = parseSolapiResponse({
+      groupInfo: { _id: 'G4V20261119170024XRFLZEECO4WRR31', count: { registeredSuccess: 2 } },
+      messageList: [
+        { messageId: 'M-1', statusCode: '2000', statusMessage: '정상 접수' },
+        { messageId: 'M-2', statusCode: '2000', statusMessage: '정상 접수' }
+      ]
+    }, ['010-1111-1111', '010-2222-2222']);
+
+    assert.equal(result.verified, true);
+    assert.equal(result.pairedByIndex, true);
+    assert.equal(result.groupId, 'G4V20261119170024XRFLZEECO4WRR31');
+    const first = result.results.find((r) => r.phone === '010-1111-1111');
+    const second = result.results.find((r) => r.phone === '010-2222-2222');
+    assert.equal(first.ok, true);
+    assert.equal(first.messageId, 'M-1');
+    assert.equal(second.ok, true);
+    assert.equal(second.messageId, 'M-2');
+  });
+
+  test('does not pair by order when the counts differ or a real failure is returned', () => {
+    const short = parseSolapiResponse({
+      messageList: [{ messageId: 'M-1', statusCode: '2000' }]
+    }, ['010-1111-1111', '010-2222-2222']);
+    assert.equal(short.results.every((r) => r.ok === false), true);
+    assert.equal(short.results[0].reason, 'NOT_IN_RESPONSE');
+
+    const failed = parseSolapiResponse({
+      failedMessageList: [{ to: '01022222222', statusCode: '3001', statusMessage: '카카오 친구 아님' }],
+      messageList: [{ messageId: 'M-1', statusCode: '2000' }]
+    }, ['010-1111-1111', '010-2222-2222']);
+    assert.equal(failed.results.find((r) => r.phone === '010-2222-2222').ok, false);
+  });
+
   test('accepts a JSON string body', () => {
     const result = parseSolapiResponse(JSON.stringify({ messageList: [{ to: '01011111111', statusCode: 2000 }] }), ['010-1111-1111']);
     assert.equal(result.results[0].ok, true);

@@ -525,6 +525,12 @@ function buildAlreadySentKeySet(logRows) {
  * Parses a SOLAPI send response into per-recipient outcomes.
  * Only statusCode 2000 counts as accepted; anything else is a failure so the
  * pipeline never marks an undelivered message as sent.
+ *
+ * SOLAPI does not always echo the recipient number back: the real send-many
+ * response carries messageId/statusCode/customFields but no `to`. When no entry
+ * in the response has a recipient and the entry count matches the number of
+ * recipients we sent, the entries are paired with the send order instead. Any
+ * other mismatch stays unverified rather than being guessed.
  */
 function parseSolapiResponse(response, expectedPhones) {
   var parsed = typeof response === 'string' ? safeJsonParse(response, {}) : (response || {});
@@ -541,13 +547,20 @@ function parseSolapiResponse(response, expectedPhones) {
       results: expected.map(function (phone) {
         return { phone: phone, status: 'UNVERIFIED', ok: false, messageId: '', reason: 'NO_MESSAGE_LIST' };
       }),
+      groupId: String(group._id || group.groupId || ''),
       registeredSuccess: Number(count.registeredSuccess || 0),
       registeredFailed: Number(count.registeredFailed || 0)
     };
   }
 
-  list.forEach(function (entry) {
-    var phone = normalizePhone(entry && (entry.to || entry.phone));
+  var entryPhones = list.map(function (entry) {
+    return normalizePhone(entry && (entry.to || entry.phone));
+  });
+  var hasRecipientField = entryPhones.some(function (phone) { return !!phone; });
+  var pairByIndex = !hasRecipientField && list.length === expected.length;
+
+  list.forEach(function (entry, index) {
+    var phone = entryPhones[index] || (pairByIndex ? expected[index] : '');
     if (!phone) return;
     var statusCode = Number(entry.statusCode);
     var messageId = String(entry.messageId || entry._id || '');
@@ -571,7 +584,15 @@ function parseSolapiResponse(response, expectedPhones) {
     results.push({ phone: phone, ok: false, status: 'FAILED', statusCode: 0, messageId: '', reason: 'NOT_IN_RESPONSE' });
   });
 
-  return { verified: true, results: results, registeredSuccess: null, registeredFailed: null };
+  var groupInfo = parsed.groupInfo || {};
+  return {
+    verified: true,
+    results: results,
+    groupId: String(groupInfo._id || groupInfo.groupId || ''),
+    pairedByIndex: pairByIndex,
+    registeredSuccess: null,
+    registeredFailed: null
+  };
 }
 
 /** Accepts only an absolute http(s) Wix post URL. */

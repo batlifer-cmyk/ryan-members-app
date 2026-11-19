@@ -28,7 +28,7 @@ var RM_DAILY_TALK_CONFIG = Object.freeze({
   WIX_MEMBER_ID: '13661272-2b5b-f6ec-d5dc-e8caa85bc8a6',
   WIX_CATEGORY_URL: 'https://www.ryanmembers.com/blog/categories/daily-talk',
   SOLAPI_SEND_URL: 'https://api.solapi.com/messages/v4/send-many/detail',
-  SOLAPI_PF_ID: 'KA01PF260722185348723BIBV44r241y',
+  SOLAPI_PF_ID: 'KA01PF260722185348723BlBV44r241y',
   BMS_TARGETING: 'I',
   KAKAO_CHANNEL_URL: 'https://pf.kakao.com/_xkFxexfX/friend',
   TEST_MODE: true,
@@ -157,7 +157,7 @@ function sendDailyTalkTestToOwner(wixUrlOverride) {
     targeting: RM_DAILY_TALK_CONFIG.BMS_TARGETING,
     sentCount: result.sentCount,
     failedCount: result.failedCount,
-    providerMessageId: outcome.messageId || '',
+    providerMessageId: outcome.messageId || String(detail.groupId || ''),
     providerStatus: outcome.status || '',
     providerStatusCode: outcome.statusCode || 0,
     reason: outcome.reason || ''
@@ -287,6 +287,7 @@ function dispatchKakaoMessages_(item, targets, settings, testMode) {
 
   var byPhone = {};
   parsed.results.forEach(function (result) { byPhone[result.phone] = result; });
+  var providerGroupId = String(parsed.groupId || '');
 
   var logRows = [];
   var sentKeys = [];
@@ -312,7 +313,7 @@ function dispatchKakaoMessages_(item, targets, settings, testMode) {
       target.track || item.track || '',
       status,
       item.wixContentUrl,
-      outcome.messageId || '',
+      outcome.messageId || providerGroupId,
       String(outcome.statusCode || ''),
       outcome.reason || '',
       testMode ? 'TEST' : 'LIVE'
@@ -327,7 +328,7 @@ function dispatchKakaoMessages_(item, targets, settings, testMode) {
     sentKeys: sentKeys,
     sentAt: sentAt,
     verified: parsed.verified,
-    detail: JSON.stringify({ results: parsed.results })
+    detail: JSON.stringify({ results: parsed.results, groupId: providerGroupId })
   };
 }
 

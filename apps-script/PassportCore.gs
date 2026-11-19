@@ -456,6 +456,17 @@ function buildSendKey(contentId, phone) {
 }
 
 /**
+ * `alreadySentKeys` arrives either as an array of send keys (tests, callers that
+ * build their own list) or as the key map returned by readSendLogIndex_. Both
+ * shapes mean the same thing: these contentId+phone pairs are already sent.
+ */
+function normalizeAlreadySentKeys_(value) {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  return Object.keys(value).filter(function (key) { return value[key]; });
+}
+
+/**
  * Plans a single run.
  * items: [{ contentId, track, targets:[{name,phone,track}], alreadySentKeys:[] }]
  * Output targets are unique per contentId+phone so a `BOTH` recipient receives
@@ -471,7 +482,7 @@ function buildSendPlan(items, options) {
   (items || []).forEach(function (item) {
     var contentId = String(item && item.contentId ? item.contentId : '').trim();
     var alreadySent = {};
-    ((item && item.alreadySentKeys) || []).forEach(function (key) { alreadySent[key] = true; });
+    normalizeAlreadySentKeys_(item && item.alreadySentKeys).forEach(function (key) { alreadySent[key] = true; });
     var track = normalizeTrack(item && item.track) || RM_TRACKS.SMALL_TALK;
     var list = selectRecipientsForTrack((item && item.targets) || [], track);
 

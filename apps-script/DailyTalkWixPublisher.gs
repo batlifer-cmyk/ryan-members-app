@@ -96,7 +96,7 @@ function runDailyTalkPipeline(options) {
           contentId: item.contentId,
           track: item.track,
           targets: testMode ? testRecipients_(settings) : audience,
-          alreadySentKeys: Object.assign({}, logIndex.keys, sessionSentKeys)
+          alreadySentKeys: Object.keys(Object.assign({}, logIndex.keys, sessionSentKeys))
         }], { maxRecipients: Number(settings.MAX_RECIPIENTS_PER_RUN) || RM_DAILY_TALK_CONFIG.MAX_RECIPIENTS_PER_RUN });
 
         if (!plan.targets.length) {

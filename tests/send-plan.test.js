@@ -54,6 +54,20 @@ describe('buildSendPlan', () => {
   test('accepts an empty plan', () => {
     assert.deepEqual(buildSendPlan([]), { targets: [], skipped: [] });
   });
+
+  test('accepts the send-log key map returned by readSendLogIndex_', () => {
+    const keyMap = {};
+    keyMap[buildSendKey('C1', '010-1111-1111')] = true;
+    keyMap[buildSendKey('C1', '010-2222-2222')] = false;
+    const plan = buildSendPlan([{
+      contentId: 'C1',
+      track: 'SMALL_TALK',
+      targets: audience,
+      alreadySentKeys: keyMap
+    }]);
+    assert.deepEqual(plan.targets.map((t) => t.phone), ['010-3333-3333']);
+    assert.ok(plan.skipped.some((skip) => skip.reason === 'ALREADY_SENT' && skip.phone === '010-1111-1111'));
+  });
 });
 
 describe('buildAlreadySentKeySet', () => {

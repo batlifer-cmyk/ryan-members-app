@@ -376,7 +376,9 @@
 
     var button = make('a', 'rmdt-cta-btn', null);
     button.setAttribute('href', CTA_LINKS.passport);
-    button.appendChild(make('span', 'rmdt-cta-btn-label', 'Daily Talk 무료로 받기'));
+    // Korean-only label: the site's Latin type is a serif, and mixing it with
+    // the Korean sans inside a button reads as two fonts in one word.
+    button.appendChild(make('span', 'rmdt-cta-btn-label', '무료로 받기'));
     button.appendChild(make('span', 'rmdt-cta-btn-arrow', '→'));
     box.appendChild(button);
 

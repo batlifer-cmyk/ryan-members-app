@@ -56,6 +56,7 @@
   font-weight: 500;
   letter-spacing: 0.01em;
   font-variant-ligatures: none;
+  font-feature-settings: "liga" 0, "clig" 0, "dlig" 0, "calt" 0;
   margin: 0 0 4px;
   color: var(--rmdt-ink);
 }

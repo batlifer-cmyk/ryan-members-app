@@ -15,7 +15,8 @@ const path = require('path');
 const vm = require('vm');
 
 const ROOT = path.resolve(__dirname, '..');
-const CORE_FILE = path.join(ROOT, 'apps-script', 'PassportCore.gs');
+const SOURCE_FILES = ['PassportCore.gs', 'DailyTalkContentGenerator.gs']
+  .map((name) => path.join(ROOT, 'apps-script', name));
 
 const sandbox = {
   console,
@@ -39,10 +40,11 @@ const sandbox = {
 };
 vm.createContext(sandbox);
 
-const coreSource = fs.readFileSync(CORE_FILE, 'utf8');
-vm.runInContext(coreSource, sandbox, { filename: 'apps-script/PassportCore.gs' });
+SOURCE_FILES.forEach((file) => {
+  vm.runInContext(fs.readFileSync(file, 'utf8'), sandbox, { filename: path.relative(ROOT, file) });
+});
 
-// Expose every function declared in PassportCore.gs as a global for the tests.
+// Expose every function declared in the Apps Script sources as a global for the tests.
 Object.keys(sandbox).forEach((key) => {
   if (typeof sandbox[key] === 'function') global[key] = sandbox[key];
 });
@@ -51,6 +53,8 @@ global.RM_TRACKS = sandbox.RM_TRACKS;
 global.RM_TRACK_LABELS = sandbox.RM_TRACK_LABELS;
 global.RM_REGISTRATION_TYPES = sandbox.RM_REGISTRATION_TYPES;
 global.RM_DAILY_TALK_STATUS = sandbox.RM_DAILY_TALK_STATUS;
+global.RM_DAILY_TALK_GEN = sandbox.RM_DAILY_TALK_GEN;
+global.RM_DAILY_TALK_TRACK_BRIEFS = sandbox.RM_DAILY_TALK_TRACK_BRIEFS;
 global.ROOT = ROOT;
 
 // --- tiny test framework ---------------------------------------------------

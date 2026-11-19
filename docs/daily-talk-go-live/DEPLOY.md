@@ -128,6 +128,47 @@ clasp push
 
 ---
 
+## 4-1. 매일 콘텐츠 자동 생성 (OpenAI)
+
+`apps-script/DailyTalkContentGenerator.gs`가 설정 시트 값만 보고 오늘 콘텐츠를 만든다.
+발송은 하지 않고 `콘텐츠대기열`에 행만 추가한다.
+
+### 설정 시트 키
+
+| 키 | 현재 값 | 의미 |
+| --- | --- | --- |
+| `OPENAI_MODEL` | `gpt-5.5` | 생성 모델. 2026-12-11 `gpt-5` 종료로 교체 |
+| `TRACKS_TO_GENERATE` | `SMALL_TALK,BUSINESS` | 매일 만들 트랙 |
+| `DEFAULT_LEVEL` | `BASIC` | 학습자 난이도 |
+| `AUTO_GENERATE` | `TRUE` | 파이프라인 실행 때 당일 빠진 트랙 자동 생성 |
+| `AUTO_APPROVE` | `TRUE` | 생성 즉시 `APPROVED`(발송 가능). `FALSE`면 `DRAFT` |
+
+### 동작 규칙
+
+* 하루에 트랙별 행이 이미 있으면 **다시 만들지 않는다**(재실행해도 중복 없음). 강제 생성은 `force:true`.
+* 모델이 없거나 실패하면 `gpt-5.4` → `gpt-5.5-2026-04-23` → `gpt-4.1` 순으로 넘어간다.
+* 영어 필드에 한글, 한글 필드에 영어가 섞이거나 청크가 3~4개가 아니면 그 항목은 저장하지 않고 실패로 남긴다.
+* `OPENAI_API_KEY`는 Script Properties에서만 읽는다. 시트·로그·응답에 값이 나가지 않는다.
+* `콘텐츠대기열`에 없던 게시 컬럼 4개(`WIX_CONTENT_URL`, `WIX_POST_ID`, `WIX_PUBLISHED_AT`,
+  `KAKAO_LINK_SENT_AT`)를 헤더로 한 번만 채운다(데이터는 건드리지 않는다).
+
+### 실행
+
+```text
+generateTodayDailyTalkContent()                      // 오늘 빠진 트랙만 생성 (메뉴와 동일)
+generateDailyTalkContent({ dryRun: true })           // 저장 없이 결과만 확인
+generateDailyTalkContent({ tracks: 'BUSINESS', status: 'TEST' })  // 테스트 행
+generateDailyTalkContentIfNeeded()                   // AUTO_GENERATE 확인 후 생성 (파이프라인이 호출)
+checkDailyTalkGeneratorSetup()                       // 키·모델·설정 존재 여부만 반환
+listOpenAiModels()                                   // 이 키로 쓸 수 있는 모델 id 목록
+```
+
+생성 결과는 `콘텐츠대기열` 3행 헤더 기준 19개 컬럼에 그대로 들어가고,
+`CHUNKS_JSON`·`카카오본문`·`SOURCES`(`OPENAI:<모델>`)까지 채워진다.
+검증용 행은 `상태=TEST`로 두면 파이프라인이 집어가지 않는다(APPROVED/PUBLISHED만 처리).
+
+---
+
 ## 5. Wix `?passport=1` 임베드 교체 (Phase 6)
 
 현재 미리보기는 GitHub CDN(githack) 체인을 가리킨다. 수용 테스트가 끝난 뒤에만 바꾼다.

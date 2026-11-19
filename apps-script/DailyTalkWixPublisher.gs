@@ -54,6 +54,17 @@ function runDailyTalkPipeline(options) {
     var ss = SpreadsheetApp.openById(rmDailyTalkOperationsSpreadsheetId_());
     var settings = loadDailyTalkSettings_(ss);
     var testMode = isTestMode_(settings);
+
+    // AUTO_GENERATE: make sure today's content exists before the send step.
+    var generation = null;
+    if (isAutoGenerateEnabled_(settings)) {
+      try {
+        generation = generateDailyTalkContentIfNeeded({ ss: ss, settings: settings });
+      } catch (generationError) {
+        generation = { ok: false, error: String(generationError && generationError.message ? generationError.message : generationError) };
+      }
+    }
+
     var queue = getDailyTalkSheet_(ss, RM_DAILY_TALK_CONFIG.QUEUE_SHEET);
     var queueHeaderUnit = queueHeaderMap_(queue);
     var items = readQueueRows_(queue);
@@ -109,6 +120,10 @@ function runDailyTalkPipeline(options) {
       ok: true,
       testMode: testMode,
       audienceSize: audience.length,
+      generated: generation ? (generation.generated || []).map(function (item) {
+        return { contentId: item.contentId, track: item.track, model: item.model, status: item.status };
+      }) : [],
+      generationError: generation && generation.ok === false ? (generation.error || generation.failures) : null,
       processed: results.length,
       results: results
     };
@@ -535,6 +550,8 @@ function onOpen() {
     SpreadsheetApp.getUi()
       .createMenu('Ryan Daily Talk')
       .addItem('발송 파이프라인 실행', 'runDailyTalkPipeline')
+      .addItem('오늘 콘텐츠 생성', 'generateTodayDailyTalkContent')
+      .addItem('콘텐츠 생성 설정 점검', 'checkDailyTalkGeneratorSetup')
       .addItem('운영자 테스트 발송', 'sendDailyTalkTestToOwner')
       .addItem('발송대상 새로고침', 'refreshDailyTalkAudienceMirror')
       .addItem('시트 구조 확인', 'inspectDailyTalkSheets')

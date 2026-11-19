@@ -634,6 +634,107 @@ function buildKakaoMessageText(item, footer) {
   return lines.join('\n');
 }
 
+// ---------------------------------------------------------------------------
+// Daily Talk only (standalone sign-up / track change)
+// ---------------------------------------------------------------------------
+
+/**
+ * Consent text for the standalone Daily Talk page (`?dailytalk=1`).
+ *
+ * It is the English Passport consent without the "영어여권 발급 후" clause,
+ * because this page is also opened by visitors who never issued a passport
+ * (and by existing subscribers who only change their track). The wording is
+ * otherwise identical, and it keeps its own version so the sheet shows which
+ * surface the consent was given on.
+ */
+var RM_DAILY_TALK_ONLY_CONSENT_TEXT = '라이언멤버스의 평일 영어 학습 콘텐츠를 카카오톡으로 받겠습니다. 광고성 정보 수신에 동의하며, 카카오톡 채널 차단을 통해 언제든 중단할 수 있습니다.';
+var RM_DAILY_TALK_ONLY_CONSENT_VERSION = '2026-11-20-dailytalk-only-v1';
+
+/** Normalizes one standalone Daily Talk submission (pure). */
+function sanitizeDailyTalkOnlyPayload(input, options) {
+  var source = input || {};
+  var opts = options || {};
+  var submittedAt = String(opts.submittedAt || '');
+  var consent = toBoolean(source.dailyTalkConsent) || toBoolean(source.consent);
+
+  return {
+    studentName: String(source.studentName === null || source.studentName === undefined ? '' : source.studentName).trim(),
+    phone: normalizePhone(source.phone),
+    phoneRaw: String(source.phone === null || source.phone === undefined ? '' : source.phone).trim(),
+    dailyTalkTrack: normalizeTrack(source.dailyTalkTrack),
+    dailyTalkOptIn: consent,
+    dailyTalkConsentAt: consent ? submittedAt : '',
+    dailyTalkConsentVersion: consent ? String(opts.consentVersion || '') : '',
+    dailyTalkStatus: consent ? RM_DAILY_TALK_STATUS.ACTIVE : RM_DAILY_TALK_STATUS.INACTIVE,
+    source: 'DAILY_TALK_ONLY',
+    userAgent: String(source.userAgent === null || source.userAgent === undefined ? '' : source.userAgent).slice(0, 500),
+    submittedAt: submittedAt
+  };
+}
+
+/** Validates a sanitized standalone submission. */
+function validateDailyTalkOnlyPayload(payload) {
+  var errors = [];
+  var value = payload || {};
+
+  if (!value.studentName) {
+    errors.push({ field: 'studentName', message: '이름을 입력해 주세요.' });
+  } else if (value.studentName.length > 40) {
+    errors.push({ field: 'studentName', message: '이름이 너무 깁니다.' });
+  }
+
+  if (!value.phone) {
+    errors.push({ field: 'phone', message: '휴대폰 번호를 정확히 입력해 주세요.' });
+  } else if (!isDailyTalkPhone(value.phone)) {
+    errors.push({ field: 'phone', message: '010으로 시작하는 휴대폰 번호를 입력해 주세요.' });
+  }
+
+  if (!normalizeTrack(value.dailyTalkTrack)) {
+    errors.push({ field: 'dailyTalkTrack', message: '받을 Daily Talk를 선택해 주세요.' });
+  }
+
+  if (value.dailyTalkOptIn !== true) {
+    errors.push({ field: 'dailyTalkConsent', message: '카카오톡 수신에 동의해 주세요.' });
+  }
+
+  if (value.dailyTalkOptIn === true && !value.dailyTalkConsentVersion) {
+    errors.push({ field: 'dailyTalkConsentVersion', message: '수신동의 버전이 없습니다.' });
+  }
+
+  return { ok: errors.length === 0, errors: errors, value: value };
+}
+
+/**
+ * The only cells a standalone submission may write, built from the row that is
+ * already in `학생연락처`.
+ *
+ * Everything else on that row (등록상태, 수업 정보, 메모, 카카오 친구 추가
+ * 확인, 마지막 발송일 …) is left exactly as it is: the writer only touches the
+ * keys returned here. A non-empty student name is never replaced, so a track
+ * change cannot rename a student by a typo in this small form.
+ */
+function buildDailyTalkOnlyContactFields(payload, existing) {
+  var value = payload || {};
+  var current = existing || {};
+  var currentName = String(current.studentName === null || current.studentName === undefined ? '' : current.studentName).trim();
+  var submittedName = String(value.studentName || '').trim();
+
+  var fields = {
+    'dailyTalkOptIn': value.dailyTalkOptIn === true,
+    'dailyTalkTrack': normalizeTrack(value.dailyTalkTrack),
+    'dailyTalkConsentAt': value.dailyTalkConsentAt,
+    'dailyTalkConsentVersion': value.dailyTalkConsentVersion,
+    'dailyTalkStatus': value.dailyTalkOptIn === true ? RM_DAILY_TALK_STATUS.ACTIVE : RM_DAILY_TALK_STATUS.INACTIVE
+  };
+  if (!currentName) fields['학생명'] = submittedName;
+
+  return {
+    fields: fields,
+    storedName: currentName || submittedName,
+    nameKept: !!currentName && currentName !== submittedName
+  };
+}
+
 function safeJsonParse(text, fallback) {
   try {
     return JSON.parse(text);

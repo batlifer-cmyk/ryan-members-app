@@ -92,6 +92,10 @@ function doGet(e) {
     });
   }
 
+  if (params.mode === 'dailytalk' || params.dailytalk === '1') {
+    return renderDailyTalkOnly_();
+  }
+
   var html = HtmlService.createTemplateFromFile('Index').evaluate()
     .setTitle('Ryan Members English Passport')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover')
@@ -102,6 +106,39 @@ function doGet(e) {
 /** Include helper for HtmlService templates. */
 function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
+}
+
+/**
+ * Standalone Ryan Daily Talk page: name, phone, track and consent only.
+ * Served both by the Wix `?dailytalk=1` overlay (`/exec?mode=dailytalk`) and by
+ * opening the /exec URL with `?dailytalk=1` directly.
+ */
+function renderDailyTalkOnly_() {
+  var template = HtmlService.createTemplateFromFile('DailyTalk');
+  template.pageConfig = getDailyTalkOnlyPageConfig_();
+  return template.evaluate()
+    .setTitle('Ryan Daily Talk 신청')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+function getDailyTalkOnlyPageConfig_() {
+  return {
+    consentText: RM_DAILY_TALK_ONLY_CONSENT_TEXT,
+    consentVersion: RM_DAILY_TALK_ONLY_CONSENT_VERSION,
+    kakaoFriendUrl: RM_PASSPORT_CONFIG.KAKAO_FRIEND_URL,
+    trackLabels: RM_TRACK_LABELS,
+    timezone: RM_PASSPORT_CONFIG.TIMEZONE,
+    serverTime: nowIso_()
+  };
+}
+
+/**
+ * Non-secret configuration for the standalone Daily Talk page.
+ * Kept separate from getPublicConfig so the passport page contract is unchanged.
+ */
+function getDailyTalkOnlyConfig() {
+  return Object.assign({ ok: true }, getDailyTalkOnlyPageConfig_());
 }
 
 /** Non-secret configuration for the page (called through google.script.run). */
@@ -204,6 +241,98 @@ function submitPassport(input) {
 }
 
 /**
+ * Standalone Ryan Daily Talk sign-up / track change.
+ *
+ * Writes ONLY the Daily Talk columns of the matching `학생연락처` row (upserted
+ * by phone). It never touches `_DB_등록신청`: a visitor who only wants the
+ * weekday Kakao lesson must not create a registration record.
+ */
+function submitDailyTalkOnly(input) {
+  var now = new Date();
+  var payload = sanitizeDailyTalkOnlyPayload(input || {}, {
+    consentVersion: RM_DAILY_TALK_ONLY_CONSENT_VERSION,
+    submittedAt: now.toISOString()
+  });
+  var validation = validateDailyTalkOnlyPayload(payload);
+  if (!validation.ok) {
+    return {
+      ok: false,
+      errorCode: 'VALIDATION_FAILED',
+      message: validation.errors[0].message,
+      errors: validation.errors
+    };
+  }
+
+  var lock = LockService.getScriptLock();
+  var lockHeld = false;
+  var lockUnavailable = false;
+  try {
+    lockHeld = lock.tryLock(20000);
+  } catch (lockError) {
+    lockUnavailable = true;
+    logPassportError_('submitDailyTalkOnly.lock', lockError, {});
+  }
+  if (!lockHeld && !lockUnavailable) {
+    return { ok: false, errorCode: 'BUSY', message: '접수가 잠시 몰리고 있습니다. 잠시 후 다시 시도해 주세요.' };
+  }
+
+  try {
+    var ss = SpreadsheetApp.openById(rmRegistrationSpreadsheetId_());
+    var sheet = getRequiredSheet_(ss, rmContactSheetName_());
+    var map = ensureHeaderColumns_(sheet, RM_CONTACT_COLUMN_SPEC);
+
+    var row = findContactRowByPhone_(sheet, map, payload.phone);
+    var existing = row ? readContactRow_(sheet, map, row) : {};
+    var built = buildDailyTalkOnlyContactFields(payload, existing);
+    var action = row ? 'UPDATED' : 'ADDED';
+
+    if (!row) {
+      row = Math.max(sheet.getLastRow() + 1, 2);
+      if (row > sheet.getMaxRows()) {
+        sheet.insertRowsAfter(sheet.getMaxRows(), Math.max(100, row - sheet.getMaxRows()));
+      }
+      sheet.getRange(row, map['학생명']).setValue(built.storedName);
+      if (map['전화번호']) sheet.getRange(row, map['전화번호']).setValue(payload.phone);
+      if (map['수동입력']) sheet.getRange(row, map['수동입력']).setValue(payload.phone);
+    }
+
+    // Only the keys built by buildDailyTalkOnlyContactFields are written, so
+    // 등록상태·수업 정보·카카오 확인·마지막 발송일 stay untouched.
+    Object.keys(built.fields).forEach(function (field) {
+      if (!map[field]) return;
+      sheet.getRange(row, map[field]).setValue(built.fields[field]);
+    });
+
+    invalidateAudienceCache_();
+
+    return {
+      ok: true,
+      mode: 'DAILY_TALK_ONLY',
+      action: action,
+      studentName: built.storedName,
+      nameKept: built.nameKept,
+      dailyTalkTrack: payload.dailyTalkTrack,
+      dailyTalkTrackLabel: RM_TRACK_LABELS[payload.dailyTalkTrack] || payload.dailyTalkTrack,
+      dailyTalkStatus: payload.dailyTalkStatus,
+      consentVersion: payload.dailyTalkConsentVersion,
+      registrationRecorded: false,
+      kakaoFriendUrl: RM_PASSPORT_CONFIG.KAKAO_FRIEND_URL,
+      message: action === 'ADDED' ? '신청이 완료되었습니다.' : '트랙이 변경되었습니다.'
+    };
+  } catch (error) {
+    logPassportError_('submitDailyTalkOnly', error, { phone: maskPhone(payload.phone) });
+    return {
+      ok: false,
+      errorCode: 'SERVER_ERROR',
+      message: '접수 중 문제가 생겼습니다. 잠시 후 다시 시도해 주세요.',
+      detail: String(error && error.message ? error.message : error)
+    };
+  } finally {
+    if (lockHeld) lock.releaseLock();
+  }
+}
+
+/**
  * Records that the student pressed the Kakao channel button.
  * This is a click event, NOT proof of a friend add: kakaoChannelAdded stays
  * false until an official Kakao callback confirms it
@@ -288,6 +417,9 @@ function doPost(e) {
     var action = String(payload.action || 'submitPassport');
     if (action === 'markKakaoChannelClick') {
       return jsonOutput_(markKakaoChannelClick(payload.submissionId, payload.phone));
+    }
+    if (action === 'submitDailyTalkOnly') {
+      return jsonOutput_(submitDailyTalkOnly(payload));
     }
     return jsonOutput_(submitPassport(payload));
   } catch (error) {
@@ -472,6 +604,20 @@ function findRowByValue_(sheet, column, value) {
     if (String(keys[i][0]) === target) return i + 2;
   }
   return 0;
+}
+
+/** Reads only the fields a standalone Daily Talk submit needs. */
+function readContactRow_(sheet, map, rowNumber) {
+  function cell(field) {
+    if (!map[field]) return '';
+    return sheet.getRange(rowNumber, map[field]).getValue();
+  }
+  return {
+    studentName: cell('학생명'),
+    phone: cell('전화번호'),
+    kakaoChannelAdded: cell('kakaoChannelAdded'),
+    lastDailyTalkSentAt: cell('lastDailyTalkSentAt')
+  };
 }
 
 function findContactRowByPhone_(sheet, map, phone) {

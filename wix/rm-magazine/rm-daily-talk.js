@@ -23,13 +23,13 @@
   var ID_LINE = /^(SMALL_TALK|BUSINESS)-\d{8}-[a-z0-9-]+$/i;
   var SLUG_LINE = /^(small-talk|business-talk)-\d{4}-\d{2}-\d{2}-[a-z0-9-]+$/i;
   // Closing CTA targets. Both are existing, live URLs:
-  //  - the English Passport (English Passport form with the Daily Talk consent
-  //    and track choice; a re-submit with the same phone updates that student's
-  //    track, which is how a track change is made today),
+  //  - the standalone Daily Talk page (`?dailytalk=1`, Wix opens the Apps Script
+  //    mode=dailytalk view in an overlay) where a visitor signs up or changes the
+  //    track with name + phone only, without creating a registration record,
   //  - the Kakao channel friend link (without channel friendship nothing is
   //    delivered, since BMS_TARGETING=I).
   var CTA_LINKS = {
-    passport: 'https://www.ryanmembers.com/?passport=1',
+    signup: 'https://www.ryanmembers.com/?dailytalk=1',
     kakao: 'https://pf.kakao.com/_xkFxexfX/friend'
   };
   var STAGE_LABELS = {
@@ -375,19 +375,19 @@
     box.appendChild(make('p', 'rmdt-cta-copy', '오늘 같은 레슨을 평일 아침 카카오톡으로 무료로 보내드립니다.'));
 
     var button = make('a', 'rmdt-cta-btn', null);
-    button.setAttribute('href', CTA_LINKS.passport);
+    button.setAttribute('href', CTA_LINKS.signup);
     // Korean-only label: the site's Latin type is a serif, and mixing it with
     // the Korean sans inside a button reads as two fonts in one word.
     button.appendChild(make('span', 'rmdt-cta-btn-label', '무료로 받기'));
     button.appendChild(make('span', 'rmdt-cta-btn-arrow', '→'));
     box.appendChild(button);
 
-    box.appendChild(make('p', 'rmdt-cta-note', '영어여권에서 신청합니다. 휴대폰 번호만 있으면 됩니다.'));
+    box.appendChild(make('p', 'rmdt-cta-note', '이름과 휴대폰 번호만 있으면 바로 신청됩니다.'));
 
     var sub = make('p', 'rmdt-cta-sub', null);
     sub.appendChild(make('span', 'rmdt-cta-sub-label', '이미 신청했다면 '));
     var trackLink = make('a', '', '트랙 변경');
-    trackLink.setAttribute('href', CTA_LINKS.passport);
+    trackLink.setAttribute('href', CTA_LINKS.signup);
     sub.appendChild(trackLink);
     sub.appendChild(make('span', 'rmdt-cta-sep', ' · '));
     var kakaoLink = make('a', '', '카카오톡 채널 추가');

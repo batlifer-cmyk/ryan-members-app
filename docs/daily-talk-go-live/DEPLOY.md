@@ -32,6 +32,7 @@
    * `EnglishPassportBackend.gs` ← `apps-script/EnglishPassportBackend.gs`
    * `DailyTalkWixPublisher.gs` ← `apps-script/DailyTalkWixPublisher.gs`
    * `Index` (HTML) ← `apps-script/Index.html`
+   * `DailyTalk` (HTML) ← `apps-script/DailyTalk.html` (`?mode=dailytalk` 전용 신청 화면)
    * `QRCode` (HTML) ← `apps-script/QRCode.html`
    * 기본으로 생긴 `Code.gs`는 비우거나 지운다.
 4. `프로젝트 설정` → **"appsscript.json 매니페스트 파일 표시"** 를 켜고
@@ -246,19 +247,39 @@ Daily Talk 글은 Wix 블로그가 아니라 CMS 컬렉션 `RyanDailyTalkContent
   없어도 글은 그대로 읽힌다). 원문을 숨긴 뒤에만 카드가 보인다.
 * 기존 글(2026-07·08 샘플)은 `STEP` 제목이 없으므로 카드가 생기지 않고 원문 그대로 보인다.
 
+### 4-3. Daily Talk 전용 간단 신청·트랙 변경 (2026-11-20)
+
+영어여권을 거치지 않고 이름·휴대폰 번호·트랙·수신동의만으로 신청하거나 트랙을 바꾸는 화면.
+
+| 항목 | 값 |
+| --- | --- |
+| 공개 주소(사용자에게 보여 주는 링크) | `https://www.ryanmembers.com/?dailytalk=1` |
+| 실제 화면 | `<배포>/exec?mode=dailytalk` (또는 `/exec?dailytalk=1`) |
+| 파일 | `apps-script/DailyTalk.html`, `EnglishPassportBackend.gs`(`submitDailyTalkOnly`) |
+| 저장 | `학생연락처`만 전화번호 기준 업서트. `_DB_등록신청`은 **절대 쓰지 않는다** |
+| 기록 컬럼 | `dailyTalkOptIn`·`dailyTalkTrack`·`dailyTalkConsentAt`·`dailyTalkConsentVersion`·`dailyTalkStatus` (이름은 빈 칸일 때만 채움) |
+| 보존 | 같은 번호의 다른 셀(등록상태·수업 정보·`kakaoChannelAdded`·`lastDailyTalkSentAt`)은 그대로 둔다 |
+| 동의 버전 | `2026-11-20-dailytalk-only-v1` (영어여권의 `2026-07-25-v2`와 별도) |
+
+완료 화면에는 카카오톡 채널 추가 버튼(`https://pf.kakao.com/_xkFxexfX/friend`)이 바로 나온다.
+채널 버튼 클릭은 `kakaoChannelClickAt`만 기록하고 `kakaoChannelAdded`는 콜백 전까지 FALSE다.
+
+Wix 연결은 사용자 지정 코드 `Ryan Members English Passport Preview`
+(`wix/custom-code/rm-overlay.html`)가 `?passport=1`과 `?dailytalk=1`을 모두 감지해
+전체화면 iframe으로 열고, 같은 X 버튼으로 닫는다.
+
 ---
 
-## 5. Wix `?passport=1` 임베드 교체 (Phase 6)
+## 5. Wix `?passport=1` / `?dailytalk=1` 임베드 (Phase 6)
 
 현재 미리보기는 GitHub CDN(githack) 체인을 가리킨다. 수용 테스트가 끝난 뒤에만 바꾼다.
 
-* Wix 편집기 → 해당 페이지의 `HTML 임베드`(또는 `커스텀 코드`) → `?passport=1` 분기에서
-  iframe `src`를 위에서 받은 **`/exec` URL**로 교체.
-* 교체 전 값을 반드시 적어 둔다(롤백용).
-* 일반 페이지는 건드리지 않는다.
+* Wix → 설정 → **사용자 지정 코드**의 `Ryan Members English Passport Preview`
+  (모든 페이지 / Body 끝) 스니펫을 `wix/custom-code/rm-overlay.html` 내용으로 교체한다.
+* 이 스니펫이 `?passport=1`이면 `/exec`, `?dailytalk=1`이면 `/exec?mode=dailytalk`를 연다.
+* 사용자 지정 코드는 **저장만으로는 라이브에 적용되지 않는다** — 사이트 **게시(Publish)**까지 해야 한다.
+* 교체 전 값을 반드시 적어 둔다(롤백용). 일반 페이지는 건드리지 않는다.
 * Apps Script는 `XFrameOptionsMode.ALLOWALL`로 서빙하므로 Wix iframe 안에서 뜬다.
-
-Wix API 키가 없어도 이 단계는 위 편집기 조작만으로 끝난다(코드 수정 불필요).
 
 ---
 
@@ -306,6 +327,8 @@ TEST_PHONE으로만 보낸다.
    * 잘못 들어간 신청 행: `_DB_등록신청`에서 `제출ID`로 찾아 행 삭제
    * 연락처: `dailyTalk*` 7개 컬럼과 `kakaoChannelClickAt`만 변경되므로 해당 셀만 되돌린다
      (`kakaoChannelAdded=true`는 콜백 전용이라 제출로는 절대 바뀌지 않는다)
+   * Daily Talk 전용 신청이 새 번호로 만든 행: `학생연락처`에서 그 번호 행을 삭제한다
+     (기존 번호는 `dailyTalk*` 5개 셀만 바뀌었으므로 그 셀만 되돌린다)
 4. **발송**: `TEST_MODE=true`로 두면 실학생 발송이 즉시 멈춘다. 트리거도 함께 중지.
 
 ---

@@ -19,12 +19,12 @@ Wix CMS 컬렉션 `RyanDailyTalkContent`의 `contentRich`(리치 텍스트)를 �
    카드로 다시 그립니다. 파싱에 실패하면 **원래 리치 텍스트를 그대로 둡니다**(안전한 기본값).
 3. 원문을 숨긴 뒤에만 카드가 보이므로, 스크립트가 없거나 실패해도 글은 읽힙니다.
 4. 카드 아래에는 `Ryan Daily Talk` CTA 카드가 하나 붙습니다. 버튼 하나와 작은 링크 두 개로
-   구성되고, 셋 다 **이미 있는 실서비스 주소**만 가리킵니다(새 신청 폼을 만들지 않음).
+   구성되고, 셋 다 **이미 있는 실서비스 주소**만 가리킵니다(새 도메인·새 폼을 만들지 않음).
 
 | 요소 | 링크 | 이유 |
 | --- | --- | --- |
-| `Daily Talk 무료로 받기` (메인 버튼) | `https://www.ryanmembers.com/?passport=1` | 영어여권 폼에 Daily Talk 선택 동의·트랙 선택이 들어 있어, 이 폼이 유일한 실제 신청 경로 |
-| `트랙 변경` | 같은 영어여권 주소 | 같은 휴대폰 번호로 다시 제출하면 `학생연락처`의 그 행이 갱신된다(`upsertContactRow_`) |
+| `Daily Talk 무료로 받기` (메인 버튼) | `https://www.ryanmembers.com/?dailytalk=1` | 이름·휴대폰·트랙만 받는 전용 화면(`/exec?mode=dailytalk`). 비수강생도 바로 신청할 수 있고 `_DB_등록신청`에 기록을 남기지 않는다 |
+| `트랙 변경` | 같은 전용 주소 | 같은 번호로 제출하면 `학생연락처`의 Daily Talk 셀만 바뀐다(`submitDailyTalkOnly`) |
 | `카카오톡 채널 추가` | `https://pf.kakao.com/_xkFxexfX/friend` | `BMS_TARGETING=I`라 채널 친구가 아니면 발송되지 않음 |
 
 ## Wix 설정 (사용자 지정 코드)

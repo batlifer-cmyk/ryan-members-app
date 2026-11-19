@@ -16,9 +16,9 @@ const js = fs.readFileSync(path.join(DIR, 'rm-daily-talk.js'), 'utf8');
 const css = fs.readFileSync(path.join(DIR, 'rm-daily-talk.css'), 'utf8');
 
 describe('rm-daily-talk closing CTA', () => {
-  test('points the sign-up button at the live English Passport form', () => {
-    assert.includes(js, "passport: 'https://www.ryanmembers.com/?passport=1'");
-    assert.includes(js, "button.setAttribute('href', CTA_LINKS.passport)");
+  test('points the sign-up button at the standalone Daily Talk page', () => {
+    assert.includes(js, "signup: 'https://www.ryanmembers.com/?dailytalk=1'");
+    assert.includes(js, "button.setAttribute('href', CTA_LINKS.signup)");
   });
 
   test('points the channel link at the live Kakao friend URL', () => {
@@ -31,6 +31,11 @@ describe('rm-daily-talk closing CTA', () => {
     assert.includes(js, "make('a', 'rmdt-cta-btn'");
     assert.includes(js, "'트랙 변경'");
     assert.includes(js, "'카카오톡 채널 추가'");
+  });
+
+  test('sends the track-change link to the same standalone page', () => {
+    assert.includes(js, "trackLink.setAttribute('href', CTA_LINKS.signup)");
+    assert.excludes(js, '?passport=1');
   });
 
   test('sits inside the rendered article, after the last step card', () => {

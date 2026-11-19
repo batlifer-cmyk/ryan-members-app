@@ -416,25 +416,14 @@
   var attempts = 0;
   function tick() {
     attempts += 1;
-    var done = false;
-    try { done = apply(); } catch (error) { done = false; }
-    if (done || attempts > 60) {
+    // Wix re-renders the CMS item once or twice while the page settles, which
+    // drops the inserted article. Keep checking (cheap when all is well) so the
+    // card version comes back instead of the raw rich text staying on screen.
+    if (!document.getElementById('rmdt-root')) {
+      try { apply(); } catch (error) { /* keep the CMS text as it is */ }
+    } else if (attempts > 120) {
       window.clearInterval(timer);
-      if (done) watch();
     }
-  }
-
-  function watch() {
-    if (!window.MutationObserver) return;
-    var t = null;
-    var observer = new MutationObserver(function () {
-      if (t) return;
-      t = window.setTimeout(function () {
-        t = null;
-        if (!document.getElementById('rmdt-root')) apply();
-      }, 400);
-    });
-    observer.observe(document.body, { childList: true, subtree: true });
   }
 
   var timer = window.setInterval(tick, 350);

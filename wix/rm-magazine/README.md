@@ -44,6 +44,14 @@ Wix CMS 컬렉션 `RyanDailyTalkContent`의 `contentRich`(리치 텍스트)를 �
 `<COMMIT_SHA>`는 이 파일이 들어 있는 커밋입니다. 스타일을 고칠 때는 커밋을 올리고
 스니펫의 SHA만 바꿉니다(커밋 고정 URL이라 캐시가 안전합니다).
 
+현재 라이브(2026-11-20):
+
+| 파일 | 스니펫 | SHA |
+| --- | --- | --- |
+| `rm-daily-talk.js` (CTA → `?dailytalk=1`) | `RM Daily Talk · 기사 4단계 카드` | `5a2f84c4fe07c03c560e936b2db8ccd454820851` |
+| `rm-daily-talk.css` | `RM Daily Talk · 기사 스타일` | `81124ef26cf69e99697f2c74cf4627fea7dfdcee` (CSS는 위 커밋에서도 동일) |
+| — | `Ryan Members English Passport Preview` | `wix/custom-code/rm-overlay.html` (`?passport=1` / `?dailytalk=1` 전체화면 오버레이) |
+
 ## 확인
 
 ```bash

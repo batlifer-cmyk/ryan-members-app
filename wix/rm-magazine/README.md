@@ -51,8 +51,11 @@ Wix CMS 컬렉션 `RyanDailyTalkContent`의 `contentRich`(리치 텍스트)를 �
 
 | 파일 | 스니펫 | SHA |
 | --- | --- | --- |
-| `rm-daily-talk.js` (CTA → `?dailytalk=1`) | `RM Daily Talk · 기사 4단계 카드` | `5a2f84c4fe07c03c560e936b2db8ccd454820851` |
-| `rm-daily-talk.css` | `RM Daily Talk · 기사 스타일` | `81124ef26cf69e99697f2c74cf4627fea7dfdcee` (CSS는 위 커밋에서도 동일) |
+| `rm-daily-talk.js` (5단계 + CTA → `?dailytalk=1`) | `RM Daily Talk · 기사 4단계 카드` | `42c9272db277645127187c1f7b285e3851d42bad` |
+| `rm-daily-talk.css` (5단계 칩·AAA 배지 포함) | `RM Daily Talk · 기사 스타일` | `42c9272db277645127187c1f7b285e3851d42bad` |
+
+스니펫 이름(`RM Daily Talk · 기사 4단계 카드`)은 2026-11-20 5단계 개편 뒤에도 바꾸지 않고 SHA만
+올렸습니다. 이 스니펫 하나가 5단계 기사와 옛 4단계 기사를 모두 그립니다.
 | — | `Ryan Members English Passport Preview` | `wix/custom-code/rm-overlay.html` (`?passport=1` / `?dailytalk=1` 전체화면 오버레이) |
 
 ## 확인

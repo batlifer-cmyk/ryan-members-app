@@ -347,6 +347,102 @@
   color: rgba(255, 255, 255, 0.82);
 }
 
+/* --- closing CTA --------------------------------------------------------- */
+#rmdt-root .rmdt-cta {
+  margin: 26px 0 0;
+  padding: 22px 18px 20px;
+  border: 1px solid #ece6d8;
+  border-radius: 18px;
+  background: linear-gradient(158deg, #fbf9f3 0%, #f3efe3 100%);
+  text-align: center;
+}
+#rmdt-root .rmdt-cta-kicker {
+  display: block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #8b948d;
+}
+#rmdt-root .rmdt-cta-title {
+  margin: 9px 0 0;
+  font-size: 20px;
+  line-height: 1.35;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--rmdt-ink);
+  text-align: center;
+}
+#rmdt-root .rmdt-cta-copy {
+  margin: 8px auto 0;
+  max-width: 420px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: #5f6b64;
+  text-align: center;
+}
+#rmdt-root .rmdt-cta-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  max-width: 360px;
+  margin: 17px auto 0;
+  padding: 14px 18px;
+  border-radius: 14px;
+  background: var(--rmdt-green);
+  color: #ffffff !important;
+  font-size: 15.5px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  text-align: center;
+  text-decoration: none !important;
+  box-shadow: 0 7px 18px rgba(16, 69, 58, 0.2);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+#rmdt-root .rmdt-cta-btn:active {
+  transform: translateY(1px);
+  box-shadow: 0 4px 12px rgba(16, 69, 58, 0.18);
+}
+#rmdt-root .rmdt-cta-btn-label {
+  font-size: inherit;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #ffffff;
+}
+#rmdt-root .rmdt-cta-btn-arrow {
+  font-size: 15px;
+  line-height: 1;
+  color: #ffffff;
+}
+#rmdt-root .rmdt-cta-note {
+  margin: 10px 0 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: #8b948d;
+  text-align: center;
+}
+#rmdt-root .rmdt-cta-sub {
+  margin: 13px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid #e9e2d2;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: #6b7670;
+  text-align: center;
+}
+#rmdt-root .rmdt-cta-sub-label { color: #8b948d; }
+#rmdt-root .rmdt-cta-sub a {
+  color: var(--rmdt-green);
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+#rmdt-root .rmdt-cta-sep { color: #b8b2a3; }
+
 /* --- page level (mobile) ------------------------------------------------- */
 @media (max-width: 749px) {
   #rmdt-root { padding-bottom: 148px; }
@@ -354,6 +450,16 @@
   #rmdt-root .rmdt-title-en { font-size: 24px; }
   #rmdt-root .rmdt-wo-line { grid-template-columns: 56px 1fr; gap: 7px; }
   #rmdt-root .rmdt-wo-tag { font-size: 10px; }
+  /* closing CTA: keep the primary button easy to hit with a thumb */
+  #rmdt-root .rmdt-cta { padding: 20px 15px 18px; border-radius: 16px; }
+  #rmdt-root .rmdt-cta-title { font-size: 18.5px; }
+  #rmdt-root .rmdt-cta-copy { font-size: 13px; }
+  #rmdt-root .rmdt-cta-btn {
+    padding: 15px 16px;
+    font-size: 15px;
+    min-height: 48px;
+  }
+  #rmdt-root .rmdt-cta-sub { font-size: 12px; }
   /* the price-calculator launcher must not sit on the last lines */
   #rmc-launch {
     font-size: 12.5px !important;

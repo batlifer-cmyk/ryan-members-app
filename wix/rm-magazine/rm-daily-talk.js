@@ -9,7 +9,8 @@
  *
  * Also hidden here: the contentId / slug lines the template prints under the
  * title. Added to the article: bottom padding so the floating price calculator
- * never covers the last lines.
+ * never covers the last lines, and one closing CTA card (Ryan Daily Talk free
+ * sign-up / track change) sitting under the last step card.
  */
 (function () {
   'use strict';
@@ -21,6 +22,16 @@
   var HANGUL = /[\uAC00-\uD7A3]/;
   var ID_LINE = /^(SMALL_TALK|BUSINESS)-\d{8}-[a-z0-9-]+$/i;
   var SLUG_LINE = /^(small-talk|business-talk)-\d{4}-\d{2}-\d{2}-[a-z0-9-]+$/i;
+  // Closing CTA targets. Both are existing, live URLs:
+  //  - the English Passport (English Passport form with the Daily Talk consent
+  //    and track choice; a re-submit with the same phone updates that student's
+  //    track, which is how a track change is made today),
+  //  - the Kakao channel friend link (without channel friendship nothing is
+  //    delivered, since BMS_TARGETING=I).
+  var CTA_LINKS = {
+    passport: 'https://www.ryanmembers.com/?passport=1',
+    kakao: 'https://pf.kakao.com/_xkFxexfX/friend'
+  };
   var STAGE_LABELS = {
     'Answer': '한 문장으로 먼저 답하기',
     'Add': '이유나 정보를 한두 문장 더하기',
@@ -354,6 +365,39 @@
     return card;
   }
 
+  // --- closing CTA ---------------------------------------------------------
+
+  function renderCta() {
+    var box = make('aside', 'rmdt-cta');
+    box.setAttribute('aria-label', 'Ryan Daily Talk 무료 신청');
+    box.appendChild(make('span', 'rmdt-cta-kicker', 'Ryan Daily Talk'));
+    box.appendChild(make('p', 'rmdt-cta-title', '매일 아침, 영어 한 조각.'));
+    box.appendChild(make('p', 'rmdt-cta-copy', '오늘 같은 레슨을 평일 아침 카카오톡으로 무료로 보내드립니다.'));
+
+    var button = make('a', 'rmdt-cta-btn', null);
+    button.setAttribute('href', CTA_LINKS.passport);
+    button.appendChild(make('span', 'rmdt-cta-btn-label', 'Daily Talk 무료로 받기'));
+    button.appendChild(make('span', 'rmdt-cta-btn-arrow', '→'));
+    box.appendChild(button);
+
+    box.appendChild(make('p', 'rmdt-cta-note', '영어여권에서 신청합니다. 휴대폰 번호만 있으면 됩니다.'));
+
+    var sub = make('p', 'rmdt-cta-sub', null);
+    sub.appendChild(make('span', 'rmdt-cta-sub-label', '이미 신청했다면 '));
+    var trackLink = make('a', '', '트랙 변경');
+    trackLink.setAttribute('href', CTA_LINKS.passport);
+    sub.appendChild(trackLink);
+    sub.appendChild(make('span', 'rmdt-cta-sep', ' · '));
+    var kakaoLink = make('a', '', '카카오톡 채널 추가');
+    kakaoLink.setAttribute('href', CTA_LINKS.kakao);
+    kakaoLink.setAttribute('target', '_blank');
+    kakaoLink.setAttribute('rel', 'noopener noreferrer');
+    sub.appendChild(kakaoLink);
+    box.appendChild(sub);
+
+    return box;
+  }
+
   function buildArticle(root) {
     var nodes = collectNodes(root);
     if (nodes.length < 3) return null;
@@ -377,6 +421,8 @@
       if (card) { article.appendChild(card); rendered += 1; }
     });
     if (!rendered) return null;
+
+    article.appendChild(renderCta());
 
     var track = trackFromTitle();
     if (track) article.setAttribute('data-track', track.toLowerCase().replace(/\s+/g, '-'));

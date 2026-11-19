@@ -8,8 +8,8 @@ Wix CMS 컬렉션 `RyanDailyTalkContent`의 `contentRich`(리치 텍스트)를 �
 
 | 파일 | 역할 |
 | --- | --- |
-| `rm-daily-talk.css` | 기사 카드·타이포·간격, 하단 여백, 플로팅 수강료 계산기 버튼 크기 조정 |
-| `rm-daily-talk.js` | 리치 텍스트를 Step 1~4로 파싱해 카드로 재구성, `contentId`/`slug` 노출 숨김 |
+| `rm-daily-talk.css` | 기사 카드·타이포·간격, 하단 CTA 카드, 하단 여백, 플로팅 수강료 계산기 버튼 크기 조정 |
+| `rm-daily-talk.js` | 리치 텍스트를 Step 1~4로 파싱해 카드로 재구성, `contentId`/`slug` 노출 숨김, 글 맨 아래 Daily Talk CTA 삽입 |
 
 동작 원리:
 
@@ -18,6 +18,14 @@ Wix CMS 컬렉션 `RyanDailyTalkContent`의 `contentRich`(리치 텍스트)를 �
 2. 스크립트가 그 텍스트를 읽어 ① 핵심 청크 ② 어순 훈련 ③ AAA/Message House ④ 모델·미션
    카드로 다시 그립니다. 파싱에 실패하면 **원래 리치 텍스트를 그대로 둡니다**(안전한 기본값).
 3. 원문을 숨긴 뒤에만 카드가 보이므로, 스크립트가 없거나 실패해도 글은 읽힙니다.
+4. 카드 아래에는 `Ryan Daily Talk` CTA 카드가 하나 붙습니다. 버튼 하나와 작은 링크 두 개로
+   구성되고, 셋 다 **이미 있는 실서비스 주소**만 가리킵니다(새 신청 폼을 만들지 않음).
+
+| 요소 | 링크 | 이유 |
+| --- | --- | --- |
+| `Daily Talk 무료로 받기` (메인 버튼) | `https://www.ryanmembers.com/?passport=1` | 영어여권 폼에 Daily Talk 선택 동의·트랙 선택이 들어 있어, 이 폼이 유일한 실제 신청 경로 |
+| `트랙 변경` | 같은 영어여권 주소 | 같은 휴대폰 번호로 다시 제출하면 `학생연락처`의 그 행이 갱신된다(`upsertContactRow_`) |
+| `카카오톡 채널 추가` | `https://pf.kakao.com/_xkFxexfX/friend` | `BMS_TARGETING=I`라 채널 친구가 아니면 발송되지 않음 |
 
 ## Wix 설정 (사용자 지정 코드)
 

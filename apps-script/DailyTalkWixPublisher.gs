@@ -3,8 +3,8 @@
  *
  * Ryan Daily Talk publication + send pipeline.
  *
- *   generate (queue)  ->  publish to the Wix Blog "Ryan Daily Talk" category
- *   -> store the final Wix post URL  ->  send the URL as a SOLAPI Kakao Brand
+ *   generate (queue)  ->  publish to the Wix CMS collection RyanDailyTalkContent
+ *   (/rm-magazine/{slug})  ->  store the final magazine URL  ->  send the URL as a SOLAPI Kakao Brand
  *   Message (targeting I, SMS fallback off)  ->  update lastDailyTalkSentAt and
  *   the send log.
  *
@@ -27,6 +27,11 @@ var RM_DAILY_TALK_CONFIG = Object.freeze({
   WIX_CATEGORY_ID: '736b3232-2c06-4ff8-bf2d-970a5d838cba',
   WIX_MEMBER_ID: '13661272-2b5b-f6ec-d5dc-e8caa85bc8a6',
   WIX_CATEGORY_URL: 'https://www.ryanmembers.com/blog/categories/daily-talk',
+  WIX_DATA_API_BASE: 'https://www.wixapis.com/wix-data/v2',
+  WIX_PUBLICATION_MODE: 'CMS_MAGAZINE',
+  WIX_CMS_COLLECTION_ID: 'RyanDailyTalkContent',
+  WIX_CMS_PUBLISHED_STATUS: 'PUBLISHED',
+  WIX_MAGAZINE_BASE_URL: 'https://www.ryanmembers.com/rm-magazine',
   SOLAPI_SEND_URL: 'https://api.solapi.com/messages/v4/send-many/detail',
   SOLAPI_PF_ID: 'KA01PF260722185348723BlBV44r241y',
   BMS_TARGETING: 'I',
@@ -181,8 +186,61 @@ function sendDailyTalkTestToOwner(wixUrlOverride) {
   return summary;
 }
 
-/** Publishes one queue item to the Ryan Daily Talk Wix Blog category. */
+/**
+ * Publishes one queue item to Wix.
+ *
+ * The Daily Talk pages live at /rm-magazine/{slug}, fed by the Wix CMS
+ * collection RyanDailyTalkContent, so CMS_MAGAZINE is the path the site uses.
+ * WIX_PUBLICATION_MODE=BLOG keeps the old Blog API path for a rollback only;
+ * the API key in Script Properties has no Blog scope (401/403).
+ */
 function publishDailyTalkToWix_(item, settings) {
+  if (resolveWixPublicationMode_(settings) === 'BLOG') return publishDailyTalkToWixBlog_(item, settings);
+  return publishDailyTalkToWixCms_(item, settings);
+}
+
+/**
+ * Inserts (or updates, when the slug already exists) one item in the Wix CMS
+ * collection and returns the public magazine URL plus the CMS item id.
+ */
+function publishDailyTalkToWixCms_(item, settings) {
+  var apiKey = getScriptProperty_('WIX_API_KEY');
+  if (!apiKey) throw new Error('Script Properties에 WIX_API_KEY가 없습니다.');
+
+  var config = resolveWixCmsConfig_(settings);
+  if (!config.collectionId) throw new Error('WIX_CMS_COLLECTION_ID가 비어 있습니다.');
+
+  var now = new Date();
+  var slug = buildDailyTalkCmsSlug_(item, { now: now });
+  var data = buildDailyTalkCmsData_(item, {
+    slug: slug,
+    baseUrl: config.baseUrl,
+    now: now,
+    footerText: settings && settings.FOOTER_TEXT
+  });
+
+  var existingId = findDailyTalkCmsItemIdBySlug_(config, slug, apiKey);
+  var saved = existingId
+    ? patchDailyTalkCmsItem_(config, existingId, data, apiKey)
+    : insertDailyTalkCmsItem_(config, data, apiKey);
+
+  var itemId = String((saved && saved.id) || existingId || '').trim();
+  if (!itemId) throw new Error('Wix CMS 저장 응답에 item id가 없습니다.');
+  var savedSlug = String((saved && saved.data && saved.data.slug) || '').trim();
+  if (savedSlug && savedSlug !== slug) throw new Error('Wix CMS 슬러그가 요청과 다릅니다: ' + savedSlug);
+
+  return {
+    postId: itemId,
+    url: data.magazineUrl,
+    publishedAt: now,
+    slug: slug,
+    kakaoText: data.kakaoText,
+    publishedMode: 'CMS_MAGAZINE'
+  };
+}
+
+/** Legacy path: Wix Blog draft-posts (needs Blog write scope; not used by default). */
+function publishDailyTalkToWixBlog_(item, settings) {
   var apiKey = getScriptProperty_('WIX_API_KEY');
   if (!apiKey) throw new Error('Script Properties에 WIX_API_KEY가 없습니다.');
 
@@ -252,6 +310,320 @@ function buildDailyTalkRichContent_(item) {
   nodes.push(paragraphNode_('Ryan Members · English Opens a New World.'));
 
   return { nodes: nodes };
+}
+
+// ---------------------------------------------------------------------------
+// Wix CMS (RyanDailyTalkContent -> /rm-magazine/{slug})
+// ---------------------------------------------------------------------------
+
+/**
+ * Which Wix path publishes. CMS_MAGAZINE is the site's real one; BLOG is kept
+ * only for a rollback and needs a Blog-scoped API key.
+ */
+function resolveWixPublicationMode_(settings) {
+  var raw = String((settings && settings.WIX_PUBLICATION_MODE) || RM_DAILY_TALK_CONFIG.WIX_PUBLICATION_MODE).trim().toUpperCase();
+  return raw === 'BLOG' ? 'BLOG' : 'CMS_MAGAZINE';
+}
+
+/** Site id, CMS collection id and magazine base URL from the 설정 sheet. */
+function resolveWixCmsConfig_(settings) {
+  var sheet = settings || {};
+  return {
+    siteId: String(sheet.WIX_SITE_ID || RM_DAILY_TALK_CONFIG.WIX_SITE_ID).trim(),
+    collectionId: String(sheet.WIX_CMS_COLLECTION_ID || RM_DAILY_TALK_CONFIG.WIX_CMS_COLLECTION_ID).trim(),
+    baseUrl: String(sheet.WIX_MAGAZINE_BASE_URL || RM_DAILY_TALK_CONFIG.WIX_MAGAZINE_BASE_URL).replace(/\/+$/, '')
+  };
+}
+
+/**
+ * /rm-magazine slug. Existing items look like
+ * 'small-talk-2026-07-24-surf-fashion' -> '{track}-{publishDate}-{topic words}'.
+ * A generated CONTENT_ID ('SMALL_TALK-20261119-making-lunch-plans') carries the
+ * same information, so the slug is derived from it and is stable per day.
+ */
+function buildDailyTalkCmsSlug_(item, options) {
+  var value = item || {};
+  var explicit = String(value.slug || '').trim().toLowerCase();
+  if (explicit) return explicit;
+
+  var track = normalizeTrack(value.track) === RM_TRACKS.BUSINESS ? 'business-talk' : 'small-talk';
+  var dateKey = resolveDailyTalkPublishDateKey_(value, options) || '0000-00-00';
+  var digits = dateKey.replace(/-/g, '');
+
+  var core = String(value.contentId || '').trim()
+    .replace(/^(SMALL_TALK|SMALL-TALK|BUSINESS)[-_]?/i, '')
+    .replace(/^[-_]+/, '');
+  if (digits && core.indexOf(digits) === 0) core = core.slice(digits.length).replace(/^[-_]+/, '');
+  core = slugifyTopic(core) || slugifyTopic(value.topicEn) || 'daily-talk';
+
+  return (track + '-' + dateKey + '-' + core).replace(/[^a-z0-9-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+}
+
+/** 'YYYY-MM-DD' from an explicit override, the CONTENT_ID, the send date or now. */
+function resolveDailyTalkPublishDateKey_(item, options) {
+  var value = item || {};
+  var opts = options || {};
+  var explicit = normalizeDailyTalkDateKey_(opts.dateKey || value.dateKey || value.publishDate);
+  if (explicit) return explicit;
+
+  var fromId = /(\d{8})/.exec(String(value.contentId || ''));
+  if (fromId) return normalizeDailyTalkDateKey_(fromId[1]);
+
+  var fromSendDate = normalizeDailyTalkDateKey_(value.sendDate);
+  if (fromSendDate) return fromSendDate;
+
+  return normalizeDailyTalkDateKey_(opts.now);
+}
+
+/** Accepts a Date, 'YYYY-MM-DD', 'YYYYMMDD' or 'YYYY. M. D.' and returns 'YYYY-MM-DD'. */
+function normalizeDailyTalkDateKey_(value) {
+  if (!value) return '';
+  if (Object.prototype.toString.call(value) === '[object Date]') {
+    return Utilities.formatDate(value, RM_PASSPORT_CONFIG.TIMEZONE, 'yyyy-MM-dd');
+  }
+  var text = String(value).trim();
+  var parts = /(\d{4})\D{1,3}(\d{1,2})\D{1,3}(\d{1,2})/.exec(text);
+  if (parts) return parts[1] + '-' + padDailyTalkNumber_(parts[2]) + '-' + padDailyTalkNumber_(parts[3]);
+
+  var digits = text.replace(/[^0-9]/g, '');
+  if (digits.length < 8) return '';
+  return digits.slice(0, 4) + '-' + digits.slice(4, 6) + '-' + digits.slice(6, 8);
+}
+
+function padDailyTalkNumber_(value) {
+  var text = String(value).replace(/[^0-9]/g, '');
+  return text.length >= 2 ? text : ('0' + text);
+}
+
+/** 'small-talk' -> 'Small Talk' for the magazine title prefix. */
+function dailyTalkCmsTrackLabel_(track) {
+  return normalizeTrack(track) === RM_TRACKS.BUSINESS ? 'Business Talk' : 'Small Talk';
+}
+
+/** '[Small Talk] 점심 약속 잡기' — the title pattern the existing items use. */
+function buildDailyTalkCmsTitle_(item) {
+  var value = item || {};
+  var topic = String(value.topicKo || value.topicEn || value.contentId || '').trim();
+  return '[' + dailyTalkCmsTrackLabel_(value.track) + '] ' + topic;
+}
+
+/** Chunks as a normalized [{en, ko}] array regardless of how the sheet holds them. */
+function normalizeDailyTalkChunks_(value) {
+  var parsed = parseChunks_(value);
+  var out = [];
+  (parsed || []).forEach(function (chunk) {
+    if (!chunk) return;
+    if (typeof chunk === 'string') {
+      var parts = chunk.split(/\s*[:：]\s*/);
+      var en = String(parts.shift() || '').trim();
+      var ko = parts.join(': ').trim();
+      if (en) out.push({ en: en, ko: ko });
+      return;
+    }
+    var chunkEn = String(chunk.en || chunk.english || '').trim();
+    var chunkKo = String(chunk.ko || chunk.korean || '').trim();
+    if (chunkEn) out.push({ en: chunkEn, ko: chunkKo });
+  });
+  return out;
+}
+
+/**
+ * CMS item payload for one queue row. Field names follow the RyanDailyTalkContent
+ * schema exactly; the queue headers they come from are listed in DEPLOY.md.
+ */
+function buildDailyTalkCmsData_(item, options) {
+  var value = item || {};
+  var opts = options || {};
+  var baseUrl = String(opts.baseUrl || RM_DAILY_TALK_CONFIG.WIX_MAGAZINE_BASE_URL).replace(/\/+$/, '');
+  var slug = String(opts.slug || buildDailyTalkCmsSlug_(value, opts)).trim();
+  var url = baseUrl + '/' + slug;
+  var track = normalizeTrack(value.track) === RM_TRACKS.BUSINESS ? RM_TRACKS.BUSINESS : RM_TRACKS.SMALL_TALK;
+  var chunks = normalizeDailyTalkChunks_(value.chunksJson);
+  var level = String(value.level || RM_DAILY_TALK_GEN.DEFAULT_LEVEL).trim().toUpperCase();
+
+  return {
+    contentId: String(value.contentId || '').trim(),
+    slug: slug,
+    title: buildDailyTalkCmsTitle_(value),
+    track: track,
+    level: level || RM_DAILY_TALK_GEN.DEFAULT_LEVEL,
+    status: String(opts.status || RM_DAILY_TALK_CONFIG.WIX_CMS_PUBLISHED_STATUS).trim().toUpperCase(),
+    publishDate: resolveDailyTalkPublishDateKey_(value, opts) || '0000-00-00',
+    magazineUrl: url,
+    topicEn: String(value.topicEn || '').trim(),
+    topicKo: String(value.topicKo || '').trim(),
+    snackEn: String(value.snackEn || '').trim(),
+    snackKo: String(value.snackKo || '').trim(),
+    chunksJson: JSON.stringify(chunks),
+    modelAnswerEn: String(value.modelEn || value.modelAnswerEn || '').trim(),
+    modelAnswerKo: String(value.modelKo || value.modelAnswerKo || '').trim(),
+    yourTurnEn: String(value.yourTurnEn || '').trim(),
+    yourTurnKo: String(value.yourTurnKo || '').trim(),
+    sourceUrls: Array.isArray(value.sourceUrls) ? value.sourceUrls : [],
+    contentRich: buildDailyTalkCmsRichContent_(value, chunks),
+    contentHtml: buildDailyTalkCmsHtml_(value, chunks),
+    kakaoText: String(value.kakaoText || '').trim() ||
+      buildKakaoMessageText({ topicKo: value.topicKo, topicEn: value.topicEn, wixContentUrl: url }, opts.footerText),
+    generatedByAi: /^OPENAI/i.test(String(value.sources || value.generatedBy || '').trim())
+  };
+}
+
+/** Ricos nodes in the same shape the existing collection items use. */
+function buildDailyTalkCmsRichContent_(item, chunks) {
+  var value = item || {};
+  var nodes = [];
+  if (value.topicEn) nodes.push(cmsHeadingNode_(value.topicEn, 2));
+  if (value.topicKo) nodes.push(cmsParagraphNode_(value.topicKo));
+  if (value.snackEn || value.snackKo) {
+    nodes.push(cmsHeadingNode_('Today’s Language Snack', 3));
+    if (value.snackEn) nodes.push(cmsParagraphNode_(value.snackEn));
+    if (value.snackKo) nodes.push(cmsParagraphNode_(value.snackKo));
+  }
+
+  var list = chunks || normalizeDailyTalkChunks_(value.chunksJson);
+  if (list.length) {
+    nodes.push(cmsHeadingNode_('Useful Chunks', 3));
+    list.forEach(function (chunk) {
+      nodes.push(cmsParagraphNode_(chunk.ko ? chunk.en + ': ' + chunk.ko : chunk.en));
+    });
+  }
+
+  if (value.modelEn || value.modelKo) {
+    nodes.push(cmsHeadingNode_('Model Answer', 3));
+    if (value.modelEn) nodes.push(cmsParagraphNode_(value.modelEn));
+    if (value.modelKo) nodes.push(cmsParagraphNode_(value.modelKo));
+  }
+
+  if (value.yourTurnEn || value.yourTurnKo) {
+    nodes.push(cmsHeadingNode_('Your Turn', 3));
+    if (value.yourTurnEn) nodes.push(cmsParagraphNode_(value.yourTurnEn));
+    if (value.yourTurnKo) nodes.push(cmsParagraphNode_(value.yourTurnKo));
+  }
+
+  return { nodes: nodes };
+}
+
+function cmsHeadingNode_(text, level) {
+  return {
+    type: 'HEADING',
+    headingData: { level: level || 2, textStyle: { textAlignment: 'AUTO' } },
+    nodes: [cmsTextNode_(text)]
+  };
+}
+
+function cmsParagraphNode_(text) {
+  return {
+    type: 'PARAGRAPH',
+    paragraphData: { textStyle: { textAlignment: 'AUTO' } },
+    nodes: [cmsTextNode_(text)]
+  };
+}
+
+function cmsTextNode_(text) {
+  return { type: 'TEXT', textData: { decorations: [], text: String(text === null || text === undefined ? '' : text) } };
+}
+
+/** contentHtml mirror of the rich content, for templates that render the HTML field. */
+function buildDailyTalkCmsHtml_(item, chunks) {
+  var value = item || {};
+  var parts = [];
+  if (value.topicEn) parts.push('<h2>' + escapeDailyTalkHtml_(value.topicEn) + '</h2>');
+  if (value.topicKo) parts.push('<p class="topic-ko">' + escapeDailyTalkHtml_(value.topicKo) + '</p>');
+  if (value.snackEn || value.snackKo) {
+    parts.push('<h3>Today&rsquo;s Language Snack</h3>');
+    if (value.snackEn) parts.push('<p>' + escapeDailyTalkHtml_(value.snackEn) + '</p>');
+    if (value.snackKo) parts.push('<p>' + escapeDailyTalkHtml_(value.snackKo) + '</p>');
+  }
+
+  var list = chunks || normalizeDailyTalkChunks_(value.chunksJson);
+  if (list.length) {
+    parts.push('<h3>Useful Chunks</h3>');
+    list.forEach(function (chunk) {
+      parts.push('<p>' + escapeDailyTalkHtml_(chunk.ko ? chunk.en + ': ' + chunk.ko : chunk.en) + '</p>');
+    });
+  }
+
+  if (value.modelEn || value.modelKo) {
+    parts.push('<h3>Model Answer</h3>');
+    if (value.modelEn) parts.push('<p>' + escapeDailyTalkHtml_(value.modelEn) + '</p>');
+    if (value.modelKo) parts.push('<p>' + escapeDailyTalkHtml_(value.modelKo) + '</p>');
+  }
+
+  if (value.yourTurnEn || value.yourTurnKo) {
+    parts.push('<h3>Your Turn</h3>');
+    if (value.yourTurnEn) parts.push('<p>' + escapeDailyTalkHtml_(value.yourTurnEn) + '</p>');
+    if (value.yourTurnKo) parts.push('<p>' + escapeDailyTalkHtml_(value.yourTurnKo) + '</p>');
+  }
+
+  return parts.join('');
+}
+
+function escapeDailyTalkHtml_(text) {
+  return String(text === null || text === undefined ? '' : text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/** One wix-data/v2 call; a non-2xx answer becomes an error without the key. */
+function wixDataRequest_(config, apiKey, method, path, payload) {
+  var options = {
+    method: method,
+    contentType: 'application/json',
+    headers: {
+      Authorization: apiKey,
+      'wix-site-id': String((config && config.siteId) || RM_DAILY_TALK_CONFIG.WIX_SITE_ID)
+    },
+    muteHttpExceptions: true
+  };
+  if (payload) options.payload = JSON.stringify(payload);
+
+  var response = UrlFetchApp.fetch(RM_DAILY_TALK_CONFIG.WIX_DATA_API_BASE + path, options);
+  var status = response.getResponseCode();
+  var text = String(response.getContentText() === null || response.getContentText() === undefined ? '' : response.getContentText());
+  if (status < 200 || status >= 300) {
+    // The key travels in the request header; keep it out of any surfaced message.
+    var detail = apiKey ? text.split(String(apiKey)).join('[REDACTED]') : text;
+    throw new Error('Wix CMS ' + method.toUpperCase() + ' ' + path + ' 실패 (' + status + '): ' + detail.slice(0, 400));
+  }
+  return safeJsonParse(text, {});
+}
+
+/** CMS item id for an existing slug, or '' when the slug is free. */
+function findDailyTalkCmsItemIdBySlug_(config, slug, apiKey) {
+  var parsed = wixDataRequest_(config, apiKey, 'post', '/items/query', {
+    dataCollectionId: config.collectionId,
+    query: { filter: { slug: slug }, paging: { limit: 1 } }
+  });
+  var items = (parsed && parsed.dataItems) || [];
+  if (!items.length) return '';
+  return String(items[0].id || (items[0].data && items[0].data._id) || '').trim();
+}
+
+function insertDailyTalkCmsItem_(config, data, apiKey) {
+  var parsed = wixDataRequest_(config, apiKey, 'post', '/items', {
+    dataCollectionId: config.collectionId,
+    dataItem: { data: data }
+  });
+  return (parsed && parsed.dataItem) || {};
+}
+
+/**
+ * Updates only the fields this publisher owns, so columns the CMS editor or the
+ * old blog sync filled (blogPostId, blogUrl, ...) are left alone.
+ */
+function patchDailyTalkCmsItem_(config, itemId, data, apiKey) {
+  var modifications = Object.keys(data || {}).map(function (fieldPath) {
+    return { fieldPath: fieldPath, action: 'SET_FIELD', setFieldOptions: { value: data[fieldPath] } };
+  });
+  if (!modifications.length) throw new Error('Wix CMS 패치할 필드가 없습니다: ' + itemId);
+
+  var parsed = wixDataRequest_(config, apiKey, 'patch', '/items/' + encodeURIComponent(itemId), {
+    dataCollectionId: config.collectionId,
+    patch: { dataItemId: itemId, fieldModifications: modifications }
+  });
+  return (parsed && parsed.dataItem) || { id: itemId };
 }
 
 /**
@@ -433,7 +805,8 @@ function writeQueuePublishingResult_(sheet, headerUnit, rowNumber, published) {
   setHeaderCell_(sheet, rowNumber, headerUnit, 'WIX_CONTENT_URL', published.url);
   setHeaderCell_(sheet, rowNumber, headerUnit, 'WIX_POST_ID', published.postId);
   setHeaderCell_(sheet, rowNumber, headerUnit, 'WIX_PUBLISHED_AT', published.publishedAt);
-  setHeaderCell_(sheet, rowNumber, headerUnit, '카카오본문', '오늘의 Ryan Daily Talk\n' + published.url);
+  var kakaoText = String(published.kakaoText || '').trim() || ('오늘의 Ryan Daily Talk\n' + published.url);
+  setHeaderCell_(sheet, rowNumber, headerUnit, '카카오본문', kakaoText);
 }
 
 function writeQueueSendResult_(sheet, headerUnit, rowNumber, sendResult, testMode) {

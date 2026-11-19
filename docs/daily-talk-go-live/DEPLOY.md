@@ -168,18 +168,46 @@ listOpenAiModels()                                   // 이 키로 쓸 수 있�
 검증용 행은 `상태=TEST`로 두면 파이프라인이 집어가지 않는다(APPROVED/PUBLISHED만 처리).
 `상태=TEST`·`FAILED` 행은 그날 콘텐츠가 이미 있는 것으로 치지 않으므로 재생성도 막지 않는다.
 
-### Wix CMS(`RyanDailyTalkContent`) 대응
+### Wix CMS(`RyanDailyTalkContent`) 대응 — 게시 경로
 
-게시 경로(CMS vs 블로그)는 대표 결정 대기 중이라 손대지 않았고, 필드 대응만 맞춰 두었다.
+Daily Talk 글은 Wix 블로그가 아니라 CMS 컬렉션 `RyanDailyTalkContent`에 있고
+`/rm-magazine/{slug}` 동적 페이지가 그 항목을 렌더한다. 그래서 게시는
+`wix-data/v2` API로 한다(`apps-script/DailyTalkWixPublisher.gs`).
 
-| `콘텐츠대기열` | `RyanDailyTalkContent` |
-| --- | --- |
-| `TOPIC_EN` / `TOPIC_KO` | `topicEn` / `topicKo` |
-| `SNACK_EN` / `SNACK_KO` | `snackEn` / `snackKo` |
-| `CHUNKS_JSON` | `chunksJson` |
-| `MODEL_EN` / `MODEL_KO` | `modelAnswerEn` / `modelAnswerKo` |
-| `YOUR_TURN_EN` / `YOUR_TURN_KO` | `yourTurnEn` / `yourTurnKo` |
-| `카카오본문` | `kakaoText` |
+| `콘텐츠대기열` | `RyanDailyTalkContent` | 비고 |
+| --- | --- | --- |
+| `CONTENT_ID` | `contentId` | |
+| `트랙` | `track` | `SMALL_TALK` / `BUSINESS` |
+| `레벨` | `level` | 기본 `BASIC` |
+| `TOPIC_EN` / `TOPIC_KO` | `topicEn` / `topicKo` | |
+| `SNACK_EN` / `SNACK_KO` | `snackEn` / `snackKo` | |
+| `CHUNKS_JSON` | `chunksJson` | `[{en,ko}]` JSON 문자열로 정규화 |
+| `MODEL_EN` / `MODEL_KO` | `modelAnswerEn` / `modelAnswerKo` | |
+| `YOUR_TURN_EN` / `YOUR_TURN_KO` | `yourTurnEn` / `yourTurnKo` | |
+| `카카오본문` | `kakaoText` | 없으면 게시 URL로 새로 만든다 |
+| (게시 시 생성) | `slug`, `title`, `publishDate`, `status`, `magazineUrl`, `contentRich`, `contentHtml`, `generatedByAi` | 아래 규칙 |
+
+게시 규칙:
+
+* `slug` = `{small-talk|business-talk}-{YYYY-MM-DD}-{주제 영어 단어}`. 생성 행의
+  `CONTENT_ID`(`SMALL_TALK-20261119-making-lunch-plans`)에서 그대로 유도하므로
+  같은 콘텐츠는 항상 같은 슬러그가 된다. 예: `small-talk-2026-11-19-making-lunch-plans`.
+* `title` = `[Small Talk] 주제` / `[Business Talk] 주제`(기존 항목과 같은 형식).
+* `publishDate` = `CONTENT_ID`의 날짜(없으면 `발송일`), `status` = `PUBLISHED`,
+  `magazineUrl` = `https://www.ryanmembers.com/rm-magazine/{slug}`.
+* `contentRich`(본문)와 `contentHtml`(같은 내용의 HTML)을 함께 채운다. 실제 페이지는
+  `contentRich`를 렌더하고, 템플릿에 따라 `contentHtml`도 쓴다.
+* 먼저 `slug`로 조회해서 **있으면 그 항목만 PATCH**(이 게시기가 쓰는 필드만), 없으면 INSERT.
+  재실행해도 같은 날 같은 트랙이 두 번 생기지 않는다. CMS 편집기나 옛 블로그 동기화가
+  채운 `blogPostId`·`blogUrl`은 PATCH에서 건드리지 않는다.
+* 성공하면 `콘텐츠대기열`의 `WIX_CONTENT_URL`(매거진 URL)·`WIX_POST_ID`(CMS item `_id`)·
+  `WIX_PUBLISHED_AT`를 채우고, 실패하면 `상태=FAILED`와 `오류`에 상태코드와 응답을 남긴다
+  (`WIX_API_KEY`는 오류 문구에서 지운다).
+* `설정` 시트 값: `WIX_PUBLICATION_MODE`(`CMS_MAGAZINE`), `WIX_CMS_COLLECTION_ID`
+  (`RyanDailyTalkContent`), `WIX_MAGAZINE_BASE_URL`(`https://www.ryanmembers.com/rm-magazine`).
+* 되돌리기: `WIX_PUBLICATION_MODE=BLOG`이면 예전 블로그 API 경로를 쓴다. 단 그 경로는
+  Blog 쓰기 권한이 있는 API 키가 필요하고, 현재 키로는 401/403이 난다.
+* Wix 검색 노출은 켜기로 했으므로 `noindex` 같은 설정은 넣지 않는다.
 
 ---
 

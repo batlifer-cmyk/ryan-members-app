@@ -15,7 +15,7 @@ const path = require('path');
 const vm = require('vm');
 
 const ROOT = path.resolve(__dirname, '..');
-const SOURCE_FILES = ['PassportCore.gs', 'DailyTalkContentGenerator.gs']
+const SOURCE_FILES = ['PassportCore.gs', 'DailyTalkContentGenerator.gs', 'DailyTalkWixPublisher.gs']
   .map((name) => path.join(ROOT, 'apps-script', name));
 
 const sandbox = {
@@ -54,8 +54,12 @@ global.RM_TRACK_LABELS = sandbox.RM_TRACK_LABELS;
 global.RM_REGISTRATION_TYPES = sandbox.RM_REGISTRATION_TYPES;
 global.RM_DAILY_TALK_STATUS = sandbox.RM_DAILY_TALK_STATUS;
 global.RM_DAILY_TALK_GEN = sandbox.RM_DAILY_TALK_GEN;
+global.RM_DAILY_TALK_CONFIG = sandbox.RM_DAILY_TALK_CONFIG;
 global.RM_DAILY_TALK_TRACK_BRIEFS = sandbox.RM_DAILY_TALK_TRACK_BRIEFS;
 global.ROOT = ROOT;
+// Tests that need to fake a Google or Wix service install the stub on this
+// sandbox object: functions defined in the .gs files read globals from it.
+global.__sandbox = sandbox;
 
 // --- tiny test framework ---------------------------------------------------
 const state = { passed: 0, failed: 0, failures: [], current: null };

@@ -595,12 +595,13 @@ function parseSolapiResponse(response, expectedPhones) {
   };
 }
 
-/** Accepts only an absolute http(s) Wix post URL. */
+/** Accepts only an absolute http(s) Wix post URL (blog post or magazine item). */
 function isValidWixPostUrl(url) {
   var text = String(url === null || url === undefined ? '' : url).trim();
   if (!/^https?:\/\/[^\s]+$/i.test(text)) return false;
   if (!/^https?:\/\/(www\.)?ryanmembers\.com\//i.test(text)) return false;
   if (/\/blog\/categories\/daily-talk\/?$/i.test(text)) return false; // category page is not a post
+  if (/\/rm-magazine\/?([?#].*)?$/i.test(text)) return false; // magazine index is not a post
   return true;
 }
 

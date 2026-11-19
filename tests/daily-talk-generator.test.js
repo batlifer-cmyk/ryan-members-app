@@ -296,6 +296,19 @@ describe('findMissingTracks', () => {
   test('ignores rows of another day', () => {
     assert.deepEqual(findMissingTracks(queue, '2026-11-21', ['SMALL_TALK']), ['SMALL_TALK']);
   });
+
+  test('a verification TEST row does not count as the day\'s content', () => {
+    const withTest = [{ contentId: 'T1', track: 'SMALL_TALK', dateKey: '2026-11-20', status: 'TEST' }];
+    assert.deepEqual(findMissingTracks(withTest, '2026-11-20', ['SMALL_TALK']), ['SMALL_TALK']);
+  });
+
+  test('a failed attempt is retried, while APPROVED and DRAFT are respected', () => {
+    const rows = [
+      { contentId: 'F1', track: 'SMALL_TALK', dateKey: '2026-11-20', status: 'FAILED' },
+      { contentId: 'D1', track: 'BUSINESS', dateKey: '2026-11-20', status: 'draft' }
+    ];
+    assert.deepEqual(findMissingTracks(rows, '2026-11-20', ['SMALL_TALK', 'BUSINESS']), ['SMALL_TALK']);
+  });
 });
 
 describe('recentTopicsForTrack', () => {

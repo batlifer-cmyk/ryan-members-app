@@ -361,11 +361,15 @@ function buildQueueRowValues(headerMap, content, meta) {
 
 /** Which tracks still need content for the given day. */
 function findMissingTracks(queueItems, dateKey, tracks) {
+  // A verification row (TEST) or a failed attempt does not count as today's content.
+  var ignoredStatuses = { TEST: true, FAILED: true };
   var have = {};
   (queueItems || []).forEach(function (item) {
     if (!item) return;
     var itemDate = String(item.dateKey || '').trim();
     if (itemDate !== dateKey) return;
+    var status = String(item.status || '').trim().toUpperCase();
+    if (ignoredStatuses[status]) return;
     var track = normalizeTrack(item.track);
     if (track) have[track] = true;
   });

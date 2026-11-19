@@ -166,6 +166,20 @@ listOpenAiModels()                                   // 이 키로 쓸 수 있�
 생성 결과는 `콘텐츠대기열` 3행 헤더 기준 19개 컬럼에 그대로 들어가고,
 `CHUNKS_JSON`·`카카오본문`·`SOURCES`(`OPENAI:<모델>`)까지 채워진다.
 검증용 행은 `상태=TEST`로 두면 파이프라인이 집어가지 않는다(APPROVED/PUBLISHED만 처리).
+`상태=TEST`·`FAILED` 행은 그날 콘텐츠가 이미 있는 것으로 치지 않으므로 재생성도 막지 않는다.
+
+### Wix CMS(`RyanDailyTalkContent`) 대응
+
+게시 경로(CMS vs 블로그)는 대표 결정 대기 중이라 손대지 않았고, 필드 대응만 맞춰 두었다.
+
+| `콘텐츠대기열` | `RyanDailyTalkContent` |
+| --- | --- |
+| `TOPIC_EN` / `TOPIC_KO` | `topicEn` / `topicKo` |
+| `SNACK_EN` / `SNACK_KO` | `snackEn` / `snackKo` |
+| `CHUNKS_JSON` | `chunksJson` |
+| `MODEL_EN` / `MODEL_KO` | `modelAnswerEn` / `modelAnswerKo` |
+| `YOUR_TURN_EN` / `YOUR_TURN_KO` | `yourTurnEn` / `yourTurnKo` |
+| `카카오본문` | `kakaoText` |
 
 ---
 

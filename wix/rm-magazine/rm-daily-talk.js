@@ -408,7 +408,16 @@
       return false;
     }
     if (!article) return false;
-    root.parentNode.insertBefore(article, root);
+    // Sit right under the page title: the template leaves the height of the old
+    // contentId/slug lines as blank space above the article otherwise.
+    var heading = document.querySelector('h1');
+    var headingBox = heading && (heading.closest('[class*="wixui-rich-text"]') || heading);
+    var host = headingBox && headingBox.parentElement;
+    if (host && host !== root && host.contains(root) && !root.contains(headingBox)) {
+      host.insertBefore(article, headingBox.nextSibling);
+    } else {
+      root.parentNode.insertBefore(article, root);
+    }
     root.style.setProperty('display', 'none', 'important');
     return true;
   }

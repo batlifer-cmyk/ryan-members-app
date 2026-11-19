@@ -237,7 +237,7 @@ Wix API 키가 없어도 이 단계는 위 편집기 조작만으로 끝난다(�
 실행:
 
 ```text
-sendDailyTalkTestToOwner('https://www.ryanmembers.com/post/<실제-게시물-슬러그>')
+sendDailyTalkTestToOwner('https://www.ryanmembers.com/rm-magazine/<실제-게시물-슬러그>')
 ```
 
 확인 항목:

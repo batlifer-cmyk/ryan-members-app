@@ -48,7 +48,7 @@
   var MESSAGE_HOUSE_INFO = { name: 'MESSAGE HOUSE', ko: '결론 → 근거 → 디테일' };
   // The business news card (2026-11-21 onward).
   var NEWS_INFO = { name: 'TODAY\'S BUSINESS NEWS', ko: '오늘의 경제·비즈니스 뉴스' };
-  var KEYWORD_SUB = '뉴스 속 표현과 패턴 드릴 2문장';
+  var KEYWORD_SUB = '표현 + 드릴 2문장';
   var MARKS = '①②③④';
   var ROLE_LABELS = { '누가': '누가', '한다': '한다', '무엇을': '무엇을', '어디서': '어디서', '언제': '언제', '어떻게': '어떻게' };
   var CTA_LINKS = {

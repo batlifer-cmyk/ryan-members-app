@@ -48,15 +48,16 @@ Wix CMS 컬렉션 `RyanDailyTalkContent`의 `contentRich`(리치 텍스트)를 �
 `<COMMIT_SHA>`는 이 파일이 들어 있는 커밋입니다. 스타일을 고칠 때는 커밋을 올리고
 스니펫의 SHA만 바꿉니다(커밋 고정 URL이라 캐시가 안전합니다).
 
-현재 라이브(2026-11-20):
+현재 라이브(2026-11-21):
 
 | 파일 | 스니펫 | SHA |
 | --- | --- | --- |
-| `rm-daily-talk.js` (5단계 + CTA → `?dailytalk=1`) | `RM Daily Talk · 기사 4단계 카드` | `42c9272db277645127187c1f7b285e3851d42bad` |
-| `rm-daily-talk.css` (5단계 칩·AAA 배지 포함) | `RM Daily Talk · 기사 스타일` | `42c9272db277645127187c1f7b285e3851d42bad` |
+| `rm-daily-talk.js` (5단계 + 비즈니스 Message House + CTA → `?dailytalk=1`) | `RM Daily Talk · 기사 4단계 카드` | `b1b0b5cbce5fc5869cf102bcc755c639b8f75253` |
+| `rm-daily-talk.css` (5단계 칩·AAA/MESSAGE HOUSE 배지 포함) | `RM Daily Talk · 기사 스타일` | `b1b0b5cbce5fc5869cf102bcc755c639b8f75253` |
 
-스니펫 이름(`RM Daily Talk · 기사 4단계 카드`)은 2026-11-20 5단계 개편 뒤에도 바꾸지 않고 SHA만
-올렸습니다. 이 스니펫 하나가 5단계 기사와 옛 4단계 기사를 모두 그립니다.
+스니펫 이름(`RM Daily Talk · 기사 4단계 카드`)은 2026-11-20 5단계 개편과 2026-11-21 비즈니스
+Message House 개편 뒤에도 바꾸지 않고 SHA만 올렸습니다. 이 스니펫 하나가 AAA 스몰톡 기사,
+Message House 비즈니스 기사, 옛 4단계 기사를 모두 그립니다.
 | — | `Ryan Members English Passport Preview` | `wix/custom-code/rm-overlay.html` (`?passport=1` / `?dailytalk=1` 전체화면 오버레이) |
 
 ## 확인

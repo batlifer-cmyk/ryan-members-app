@@ -14,12 +14,13 @@ Wix CMS 컬렉션 `RyanDailyTalkContent`의 `contentRich`(리치 텍스트)를 �
 
 동작 원리:
 
-1. `contentRich`는 `STEP 1 · KEY WORDS` … `STEP 5 · AAA IN ACTION` 제목과 문단으로
-   게시됩니다(`DailyTalkWixPublisher.gs`의 `buildDailyTalkFiveStepBlocks_`).
+1. `contentRich`는 `STEP 1 · KEY WORDS` … `STEP 5 · AAA IN ACTION`(스몰톡) 또는
+   `STEP 5 · MESSAGE HOUSE`(비즈니스) 제목과 문단으로 게시됩니다(`DailyTalkWixPublisher.gs`의
+   `buildDailyTalkFiveStepBlocks_`).
 2. 스크립트가 그 텍스트를 읽어 ① 오늘의 단어 3개 ② 그 단어로 만든 한국어 문장 3개
    ③ 같은 문장의 영어 어순(누가 / 한다 / 무엇을 / 어디서 / 언제 칩) ④ 통번역한 영어 문장 3개
-   ⑤ 그중 하나를 고른 Answer·Add·Ask 3문장 카드로 다시 그립니다. 파싱에 실패하면
-   **원래 리치 텍스트를 그대로 둡니다**(안전한 기본값).
+   ⑤ 그중 하나를 고른 Answer·Add·Ask 3문장(스몰톡) 또는 Conclusion·Reason·Detail·Suggestion
+   3~4문장(비즈니스) 카드로 다시 그립니다. 파싱에 실패하면 **원래 리치 텍스트를 그대로 둡니다**(안전한 기본값).
 3. 원문을 숨긴 뒤에만 카드가 보이므로, 스크립트가 없거나 실패해도 글은 읽힙니다.
 4. 카드 아래에는 `Ryan Daily Talk` CTA 카드가 하나 붙습니다. 버튼 하나와 작은 링크 두 개로
    구성되고, 셋 다 **이미 있는 실서비스 주소**만 가리킵니다(새 도메인·새 폼을 만들지 않음).

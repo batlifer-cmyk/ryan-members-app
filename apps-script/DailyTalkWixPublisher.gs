@@ -462,20 +462,28 @@ var RM_DAILY_TALK_LESSON = Object.freeze({
     korean: 'STEP 2 · KOREAN SENTENCES',
     order: 'STEP 3 · ENGLISH WORD ORDER',
     english: 'STEP 4 · ENGLISH SENTENCES',
-    aaa: 'STEP 5 · AAA IN ACTION'
+    aaa: 'STEP 5 · AAA IN ACTION',
+    messageHouse: 'STEP 5 · MESSAGE HOUSE'
   },
   LEADS: {
     words: '오늘 대화에 바로 쓰는 단어 3개. 뜻과 함께 소리 내어 세 번씩 읽어 보세요.',
     korean: 'STEP 1의 단어로 만든 오늘의 문장 3개입니다. 먼저 한국어로 뜻을 확인하세요.',
     order: '통역하기 전에, 한국어를 영어 어순(누가 → 한다 → 무엇을 → 어디서 → 언제)으로 먼저 놓아 봅니다.',
     english: '같은 문장을 자연스러운 영어로 통번역하면 이렇게 됩니다.',
-    aaa: '오늘 문장 {mark}을 골라, 실제 대화에서는 이렇게 세 문장으로 말합니다. Answer → Add → Ask.'
+    aaa: '오늘 문장 {mark}을 골라, 실제 대화에서는 이렇게 세 문장으로 말합니다. Answer → Add → Ask.',
+    messageHouse: '업무 메시지는 결론부터. 오늘 문장 {mark}에서 출발해 Conclusion → Reason → Detail, 필요하면 Suggestion까지 세~네 문장으로 말합니다.'
   },
   MARKS: ['①', '②', '③'],
   AAA_HINTS: {
     'Answer': '한 문장으로 먼저 답하기',
     'Add': '이유나 디테일을 한 문장 더하기',
     'Ask': '상대에게 되묻기'
+  },
+  MESSAGE_HOUSE_HINTS: {
+    'Conclusion': '핵심 결론부터 말하기',
+    'Reason': '근거 기둥 세우기',
+    'Detail': '구체적인 디테일 붙이기',
+    'Suggestion': '다음 행동 제안하기'
   },
   STRUCTURE_HINTS: {
     'Answer': '한 문장으로 먼저 답하기',
@@ -496,13 +504,13 @@ function buildDailyTalkLessonBlocks_(item, words) {
   var list = words || normalizeDailyTalkChunks_(value.chunksJson);
   var rows = parseDailyTalkSentenceRows_(value.wordOrderJson);
   if (rows.length) {
-    return buildDailyTalkFiveStepBlocks_(value, list, rows, parseDailyTalkAaa_(value.structureJson));
+    return buildDailyTalkFiveStepBlocks_(value, list, rows, parseDailyTalkStep5_(value.structureJson));
   }
   return buildDailyTalkLegacyBlocks_(value, list);
 }
 
 /** The five steps as they are published (2026-11-20 onward). */
-function buildDailyTalkFiveStepBlocks_(value, words, rows, aaa) {
+function buildDailyTalkFiveStepBlocks_(value, words, rows, step5) {
   var blocks = [];
 
   function push(tag, text, cls, marker) {
@@ -548,13 +556,17 @@ function buildDailyTalkFiveStepBlocks_(value, words, rows, aaa) {
     });
   }
 
-  if (aaa.steps.length) {
-    var pick = aaa.pick >= 1 && aaa.pick <= rows.length ? aaa.pick : 1;
-    push('h3', RM_DAILY_TALK_LESSON.STEPS.aaa, 'dt-step-title', 'STEP5');
-    push('p', RM_DAILY_TALK_LESSON.LEADS.aaa.replace('{mark}', markAt(pick - 1)), 'dt-lead');
-    aaa.steps.forEach(function (step) {
-      var hint = RM_DAILY_TALK_LESSON.AAA_HINTS[step.label] || '';
-      push('p', step.label + (hint ? ' — ' + hint : '') + '\n' + step.en + (step.ko ? '\n' + step.ko : ''), 'dt-aaa', 'AAA');
+  if (step5.steps.length) {
+    var messageHouse = step5.type === 'MESSAGE_HOUSE';
+    var pick = step5.pick >= 1 && step5.pick <= rows.length ? step5.pick : 1;
+    push('h3', messageHouse ? RM_DAILY_TALK_LESSON.STEPS.messageHouse : RM_DAILY_TALK_LESSON.STEPS.aaa, 'dt-step-title', 'STEP5');
+    push('p', (messageHouse ? RM_DAILY_TALK_LESSON.LEADS.messageHouse : RM_DAILY_TALK_LESSON.LEADS.aaa)
+      .replace('{mark}', markAt(pick - 1)), 'dt-lead');
+    step5.steps.forEach(function (step) {
+      var hints = messageHouse ? RM_DAILY_TALK_LESSON.MESSAGE_HOUSE_HINTS : RM_DAILY_TALK_LESSON.AAA_HINTS;
+      var hint = hints[step.label] || '';
+      push('p', step.label + (hint ? ' — ' + hint : '') + '\n' + step.en + (step.ko ? '\n' + step.ko : ''),
+        messageHouse ? 'dt-aaa dt-message-house' : 'dt-aaa', messageHouse ? 'MESSAGE_HOUSE_STEP' : 'AAA');
     });
   }
 
@@ -700,12 +712,16 @@ function parseDailyTalkSentenceRows_(value) {
   }).filter(function (row) { return row && row.ko && row.en; });
 }
 
-/** STRUCTURE_JSON -> {type:'AAA', pick, steps:[{label, en, ko}]}. */
-function parseDailyTalkAaa_(value) {
+/** STRUCTURE_JSON -> {type, pick, steps:[{label, en, ko}]}; AAA when unreadable. */
+function parseDailyTalkStep5_(value) {
   var raw = safeJsonParse(String(value === null || value === undefined ? '' : value), null);
+  var type = raw && String(raw.type || '').trim().toUpperCase() === 'MESSAGE_HOUSE' ? 'MESSAGE_HOUSE' : 'AAA';
+  var labels = dailyTalkStructureLabels(type);
   var steps = (raw && Array.isArray(raw.steps) ? raw.steps : []).map(function (step) {
     var label = String((step && step.label) || '').trim();
     if (label === 'Ask back') label = 'Ask';
+    // A row written before the structure was labelled still reads as AAA.
+    if (labels.indexOf(label) === -1) label = label === 'Ask back' ? 'Ask' : label;
     return {
       label: label,
       en: String((step && step.en) || '').trim(),
@@ -713,7 +729,7 @@ function parseDailyTalkAaa_(value) {
     };
   }).filter(function (step) { return step.label && step.en; });
   return {
-    type: RM_DAILY_TALK_AAA.TYPE,
+    type: type,
     pick: Number(raw && raw.pick) || 1,
     steps: steps
   };

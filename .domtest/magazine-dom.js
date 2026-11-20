@@ -86,6 +86,66 @@ const FIVE_STEP_ITEM = {
   sources: 'OPENAI:gpt-5.5'
 };
 
+/** A business card: same five steps, step 5 is a Message House. */
+const BUSINESS_MESSAGE_HOUSE_ITEM = {
+  contentId: 'BUSINESS-20261121-one-more-day',
+  sendDate: '2026-11-21',
+  track: 'BUSINESS',
+  level: 'BASIC',
+  topicEn: 'One More Day',
+  topicKo: '하루 더 필요한 상황',
+  snackEn: 'The final check found two bugs. Today you tell your team the launch needs one more day.',
+  snackKo: '마지막 점검에서 오류 두 개가 나왔습니다. 오늘은 팀에 출시가 하루 더 필요하다고 말합니다.',
+  chunksJson: JSON.stringify([
+    { en: 'one more day', ko: '하루 더' },
+    { en: 'push the launch', ko: '출시를 미루다' },
+    { en: 'keep you posted', ko: '계속 알려 주다' }
+  ]),
+  wordOrderJson: JSON.stringify([
+    {
+      ko: '우리는 출시에 하루가 더 필요합니다',
+      order: [
+        { role: '누가', text: '우리는' },
+        { role: '한다', text: '필요합니다' },
+        { role: '무엇을', text: '하루가 더' },
+        { role: '어디서', text: '출시에' }
+      ],
+      en: 'We need one more day for the launch.'
+    },
+    {
+      ko: '저는 출시를 금요일로 미룹니다',
+      order: [
+        { role: '누가', text: '저는' },
+        { role: '한다', text: '미룹니다' },
+        { role: '무엇을', text: '출시를' },
+        { role: '언제', text: '금요일로' }
+      ],
+      en: 'I will push the launch to Friday.'
+    },
+    {
+      ko: '제가 계속 상황을 알려 드리겠습니다',
+      order: [
+        { role: '누가', text: '제가' },
+        { role: '한다', text: '알려 드리겠습니다' },
+        { role: '무엇을', text: '상황을' },
+        { role: '어떻게', text: '계속' }
+      ],
+      en: 'I will keep you posted.'
+    }
+  ]),
+  structureJson: JSON.stringify({
+    type: 'MESSAGE_HOUSE',
+    pick: 1,
+    steps: [
+      { label: 'Conclusion', en: 'We need one more day for the launch.', ko: '출시에 하루가 더 필요합니다.' },
+      { label: 'Reason', en: 'The final check found two bugs.', ko: '마지막 점검에서 오류 두 개가 나왔습니다.' },
+      { label: 'Detail', en: 'Both are on the payment screen.', ko: '둘 다 결제 화면에 있습니다.' },
+      { label: 'Suggestion', en: 'Could we push the launch to Friday?', ko: '출시를 금요일로 미룰 수 있을까요?' }
+    ]
+  }),
+  sources: 'OPENAI:gpt-5.5'
+};
+
 const LEGACY_ITEM = {
   contentId: 'SMALL_TALK-20261119-cold-morning-chat',
   track: 'SMALL_TALK',
@@ -257,6 +317,75 @@ function texts(root, selector) {
     if (article.querySelector('.rmdt-title-en').textContent.trim() !== 'Warm Coffee Morning') throw new Error('hero title');
   });
   five.window.close();
+
+  // --- a business card: step 5 is the Message House -------------------------
+  const business = renderPage(BUSINESS_MESSAGE_HOUSE_ITEM, '[Business Talk] 하루 더 필요한 상황');
+  await wait(600);
+  const businessDoc = business.window.document;
+
+  check('a business card draws the same five steps, with MESSAGE HOUSE as step 5', () => {
+    const cards = Array.from(businessDoc.querySelectorAll('.rmdt-card'));
+    if (cards.map((card) => card.dataset.step).join(',') !== '1,2,3,4,5') {
+      throw new Error('steps: ' + cards.map((c) => c.dataset.step).join(','));
+    }
+    const names = cards.map((card) => card.querySelector('.rmdt-name').textContent.trim()).join('|');
+    if (names !== 'KEY WORDS|KOREAN SENTENCES|ENGLISH WORD ORDER|ENGLISH SENTENCES|MESSAGE HOUSE') {
+      throw new Error('names: ' + names);
+    }
+    const subs = cards[4].querySelector('.rmdt-sub').textContent.trim();
+    if (subs !== '결론 → 근거 → 디테일') throw new Error('step 5 sub: ' + subs);
+  });
+
+  check('step 5 shows the picked sentence and the four Message House blocks', () => {
+    const card = businessDoc.querySelector('.rmdt-card[data-step="5"]');
+    if (!card.classList.contains('is-message-house')) throw new Error('no is-message-house class');
+    const pick = card.querySelector('.rmdt-pick');
+    if (!pick) throw new Error('no pick box');
+    if (pick.querySelector('.rmdt-pick-label').textContent.trim() !== '오늘 고른 문장 ①') {
+      throw new Error('pick label: ' + pick.textContent);
+    }
+    if (pick.querySelector('.rmdt-pick-ko').textContent.trim() !== '우리는 출시에 하루가 더 필요합니다') {
+      throw new Error('pick ko: ' + pick.textContent);
+    }
+    const blocks = Array.from(card.querySelectorAll('.rmdt-aaa-block'));
+    if (blocks.length !== 4) throw new Error('blocks: ' + blocks.length);
+    const roles = blocks.map((block) => block.getAttribute('data-role')).join('|');
+    if (roles !== 'conclusion|reason|detail|suggestion') throw new Error('roles: ' + roles);
+    const badges = blocks.map((block) => block.querySelector('.rmdt-aaa-badge').textContent.trim()).join('|');
+    if (badges !== 'CONCLUSION|REASON|DETAIL|SUGGESTION') throw new Error('badges: ' + badges);
+    const hints = blocks.map((block) => block.querySelector('.rmdt-aaa-hint').textContent.trim()).join('|');
+    if (hints !== '핵심 결론부터 말하기|근거 기둥 세우기|구체적인 디테일 붙이기|다음 행동 제안하기') {
+      throw new Error('hints: ' + hints);
+    }
+    if (blocks[2].querySelector('.rmdt-aaa-ko').textContent.trim() !== '둘 다 결제 화면에 있습니다.') {
+      throw new Error('detail ko');
+    }
+  });
+
+  check('the business card keeps the closing CTA and its live links', () => {
+    const cta = businessDoc.querySelector('.rmdt-cta');
+    if (!cta) throw new Error('no CTA');
+    if (cta.querySelector('.rmdt-cta-btn').getAttribute('href') !== 'https://www.ryanmembers.com/?dailytalk=1') {
+      throw new Error('CTA href');
+    }
+  });
+  business.window.close();
+
+  // --- a business card with no next step: three sentences -------------------
+  const shortItem = Object.assign({}, BUSINESS_MESSAGE_HOUSE_ITEM, {
+    structureJson: JSON.stringify({ type: 'MESSAGE_HOUSE', pick: 1, steps: JSON.parse(BUSINESS_MESSAGE_HOUSE_ITEM.structureJson).steps.slice(0, 3) })
+  });
+  const shortHouse = renderPage(shortItem, '[Business Talk] 하루 더 필요한 상황');
+  await wait(600);
+  check('a Message House with no Suggestion draws three blocks', () => {
+    const card = shortHouse.window.document.querySelector('.rmdt-card[data-step="5"]');
+    const blocks = Array.from(card.querySelectorAll('.rmdt-aaa-block'));
+    if (blocks.length !== 3) throw new Error('blocks: ' + blocks.length);
+    if (blocks.map((block) => block.querySelector('.rmdt-aaa-badge').textContent.trim()).join('|') !== 'CONCLUSION|REASON|DETAIL') {
+      throw new Error('badges: ' + blocks.map((block) => block.textContent).join(' / '));
+    }
+  });
+  shortHouse.window.close();
 
   // --- articles published before 2026-11-20 -------------------------------
   const legacy = renderPage(LEGACY_ITEM, '[Small Talk] 쌀쌀한 엘리베이터 인사');

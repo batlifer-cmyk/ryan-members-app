@@ -169,11 +169,11 @@ listOpenAiModels()                                   // 이 키로 쓸 수 있�
 검증용 행은 `상태=TEST`로 두면 파이프라인이 집어가지 않는다(APPROVED/PUBLISHED만 처리).
 `상태=TEST`·`FAILED` 행은 그날 콘텐츠가 이미 있는 것으로 치지 않으므로 재생성도 막지 않는다.
 
-### 라이언멤버스 5단계 레슨 (2026-11-20 개편)
+### 라이언멤버스 5단계 레슨 (2026-11-20 개편, 2026-11-21 비즈니스 5단계 개편)
 
 콘텐츠는 학원 고유 교육법 다섯 단계를 그대로 담는다. 프롬프트·스키마·검증·큐 컬럼·게시 본문이
-모두 이 순서를 따른다. `SMALL_TALK`와 `BUSINESS` 모두 같은 5단계이고, 5단계의 대화 상황만
-일상 대화 / 업무 대화로 다르다.
+모두 이 순서를 따른다. `SMALL_TALK`와 `BUSINESS` 모두 같은 1~4단계이고, **5단계만 트랙에 따라
+구조가 다르다** — 일상 대화는 `AAA`, 업무 대화는 `MESSAGE HOUSE`.
 
 | 단계 | 필드 | 내용 |
 | --- | --- | --- |
@@ -181,12 +181,16 @@ listOpenAiModels()                                   // 이 키로 쓸 수 있�
 | STEP 2 그 단어로 한국어 문장 | `sentences[].ko` (`WORD_ORDER_JSON`) | 단어를 쓴 자연스러운 한국어 문장 3개 |
 | STEP 3 영어 어순으로 재정렬 | `sentences[].order` (`WORD_ORDER_JSON`) | 같은 문장을 의미 조각으로 쪼개 영어 어순으로. 각 조각 `{role, text}`, role은 `누가`·`한다`·`무엇을`·`어디서`·`언제`·`어떻게` |
 | STEP 4 통번역된 영어 문장 | `sentences[].en` (`WORD_ORDER_JSON`) | STEP 2·3 문장을 자연스러운 영어로. STEP 2와 같은 번호(①·②·③)로 짝을 이룬다 |
-| STEP 5 AAA 3문장 | `aaa` (`STRUCTURE_JSON`, `MODEL_EN/KO`) | 위 3문장 중 하나(`pick`)를 골라 **Answer → Add → Ask** 세 문장으로. `MODEL_EN/KO`에는 `Answer: … / Add: … / Ask: …` 형태로도 저장 |
+| STEP 5 (SMALL_TALK) AAA 3문장 | `aaa` (`STRUCTURE_JSON`, `MODEL_EN/KO`) | 위 3문장 중 하나(`pick`)를 골라 **Answer 한 문장 답 → Add 이유·디테일 → Ask 되묻기**. `MODEL_EN/KO`에는 `Answer: … / Add: … / Ask: …` |
+| STEP 5 (BUSINESS) Message House 3~4문장 | `messageHouse` (`STRUCTURE_JSON`, `MODEL_EN/KO`) | 위 3문장 중 하나(`pick`)에서 출발해 **Conclusion 결론 → Reason 근거 → Detail 디테일 → Suggestion 제안(필요할 때만)**. 제안이 없으면 3문장, 있으면 4문장. `STRUCTURE_JSON`에는 `type: "MESSAGE_HOUSE"`와 `steps[{label,en,ko}]`, `MODEL_EN/KO`에는 `Conclusion: …` 형태 |
 
-* 스키마는 `words`·`sentences` 개수를 3으로 고정하고, `order[].role`을 6개 enum으로, `aaa`는
-  `pick`(1~3) + `answer`/`add`/`ask`로 고정한다.
+* 스키마는 `words`·`sentences` 개수를 3으로 고정하고, `order[].role`을 6개 enum으로,
+  STEP 5는 트랙에 맞는 객체 하나(`aaa` 또는 `messageHouse`)만 요구한다. `messageHouse.suggestion`은
+  스키마상 필수지만 `en`/`ko`를 빈 문자열로 받으면 없는 것으로 본다(스키마 union 타입을 쓰지 않기 위함).
 * 검증은 단계 간 연결까지 본다: 단어 3개 중 2개 이상이 영어 문장 안에 실제로 나와야 하고,
-  `aaa.answer`는 고른 문장과 내용 단어를 공유해야 한다. 어순 조각은 `누가`가 `한다`보다
+  `aaa.answer` / `messageHouse`의 문장 묶음은 고른 문장과 내용 단어를 공유해야 한다.
+  Message House에는 1단계 단어가 최소 하나 들어가야 하며, `conclusion`·`reason`·`detail`은 비울 수 없고
+  `suggestion`은 둘 다 비었거나 둘 다 채워져야 한다. 어순 조각은 `누가`가 `한다`보다
   앞서야 하고 조각 안에 `/`가 들어가면 안 된다.
 * `WORD_ORDER_JSON`·`STRUCTURE_JSON`은 기존 컬럼을 그대로 쓴다(시트 마이그레이션 없음).
   `SUBSTITUTIONS_JSON`은 새 콘텐츠에서 비운다.
@@ -222,7 +226,7 @@ Daily Talk 글은 Wix 블로그가 아니라 CMS 컬렉션 `RyanDailyTalkContent
   `magazineUrl` = `https://www.ryanmembers.com/rm-magazine/{slug}`.
 * `contentRich`(본문)와 `contentHtml`(같은 내용의 HTML)을 함께 채운다. 실제 페이지는
   `contentRich`를 렌더하고, 템플릿에 따라 `contentHtml`도 쓴다.
-* 본문은 `STEP 1 · KEY WORDS` ~ `STEP 5 · AAA IN ACTION` 제목으로 나뉘고, 각 줄은
+* 본문은 `STEP 1 · KEY WORDS` ~ `STEP 5 · AAA IN ACTION`(스몰톡) 또는 `STEP 5 · MESSAGE HOUSE`(비즈니스) 제목으로 나뉘고, 각 줄은
   화면 스크립트가 다시 읽어 카드로 그린다(`wix/rm-magazine/`, 아래 4-2 참고).
 * 먼저 `slug`로 조회해서 **있으면 그 항목만 PATCH**(이 게시기가 쓰는 필드만), 없으면 INSERT.
   재실행해도 같은 날 같은 트랙이 두 번 생기지 않는다. CMS 편집기나 옛 블로그 동기화가
@@ -255,6 +259,9 @@ Daily Talk 글은 Wix 블로그가 아니라 CMS 컬렉션 `RyanDailyTalkContent
   * STEP 3 — 같은 번호로, 문장을 `누가`·`한다`·`무엇을`·`어디서`·`언제` 역할 칩으로 쪼개 `/`로 이어 붙임
   * STEP 4 — 같은 번호의 영어 문장 3개(가장 크고 굵게)
   * STEP 5 — 고른 문장 박스 + `ANSWER`·`ADD`·`ASK` 배지가 붙은 3문장
+  * STEP 5 (비즈니스) — 같은 고른 문장 박스에 `MESSAGE HOUSE`, `CONCLUSION`·`REASON`·`DETAIL`·`SUGGESTION`
+    배지 블록(3~4개). 결론 블록은 카드 색을 입고, 제안 블록은 점선 테두리로 “필요할 때만”임을 보인다.
+    카드 이름과 한글 설명도 `MESSAGE HOUSE / 결론 → 근거 → 디테일`로 바뀐다.
 * 4단계 기사(2026-11-20 이전 발행분)는 예전 카드(`KEY CHUNKS`/`WORD ORDER`/`AAA`/`MODEL & YOUR TURN`)로
   그대로 그려진다. `STEP` 제목이 없는 옛 글은 아무것도 하지 않고 원문을 그대로 둔다.
 * 실패 시 동작: 파싱이 안 되면 원래 리치 텍스트를 그대로 두고 아무것도 숨기지 않는다(스크립트가

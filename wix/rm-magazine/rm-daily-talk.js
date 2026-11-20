@@ -10,7 +10,9 @@
  * Two lesson shapes live on the site right now:
  *   - five steps (2026-11-20 onward): KEY WORDS -> KOREAN SENTENCES ->
  *     ENGLISH WORD ORDER (누가 / 한다 / 무엇을 / 어디서 / 언제 chips) ->
- *     ENGLISH SENTENCES -> AAA IN ACTION (Answer / Add / Ask),
+ *     ENGLISH SENTENCES -> step 5, which is AAA IN ACTION (Answer / Add / Ask)
+ *     for small talk and MESSAGE HOUSE (Conclusion / Reason / Detail /
+ *     Suggestion) for business talk,
  *   - four steps (articles published before that): KEY CHUNKS -> WORD ORDER ->
  *     AAA / MESSAGE HOUSE -> MODEL & YOUR TURN.
  * Whichever the text carries is what gets drawn; nothing is guessed.
@@ -39,6 +41,8 @@
     4: { name: 'ENGLISH SENTENCES', ko: '통번역한 영어 문장' },
     5: { name: 'AAA IN ACTION', ko: '실제 대화 3문장' }
   };
+  // STEP 5 for a business card: the same card slot, a different structure.
+  var MESSAGE_HOUSE_INFO = { name: 'MESSAGE HOUSE', ko: '결론 → 근거 → 디테일' };
   var MARKS = '①②③④';
   var ROLE_LABELS = { '누가': '누가', '한다': '한다', '무엇을': '무엇을', '어디서': '어디서', '언제': '언제', '어떻게': '어떻게' };
   var CTA_LINKS = {
@@ -57,8 +61,13 @@
   var AAA_HINTS = {
     'Answer': '한 문장으로 먼저 답하기',
     'Add': '이유나 디테일을 한 문장 더하기',
-    'Ask': '상대에게 되묻기'
+    'Ask': '상대에게 되묻기',
+    'Conclusion': '핵심 결론부터 말하기',
+    'Reason': '근거 기둥 세우기',
+    'Detail': '구체적인 디테일 붙이기',
+    'Suggestion': '다음 행동 제안하기'
   };
+  var MESSAGE_HOUSE_LABELS = ['Conclusion', 'Reason', 'Detail', 'Suggestion'];
 
   function clean(value) {
     return String(value == null ? '' : value)
@@ -188,15 +197,19 @@
     return { lead: lead, rows: rows };
   }
 
-  /** STEP 5: "Answer — hint\n<en>\n<ko>" paragraphs plus the picked sentence. */
+  /**
+   * STEP 5: "Answer — hint\n<en>\n<ko>" paragraphs plus the picked sentence.
+   * Business cards use the same paragraph shape with the Message House labels.
+   */
   function parseAaa(nodes) {
-    var first = { lead: '', pick: 0, steps: [] };
+    var first = { lead: '', pick: 0, steps: [], messageHouse: false };
     var current = null;
     nodes.forEach(function (node) {
       var head = node.lines[0] || '';
-      var label = /^(Answer|Add|Ask(?:\s*back)?)\s*(?:[—–-]\s*(.*))?$/i.exec(head);
+      var label = /^(Answer|Add|Ask(?:\s*back)?|Conclusion|Reason|Detail|Suggestion)\s*(?:[—–-]\s*(.*))?$/i.exec(head);
       if (label) {
-        var name = /^ask/i.test(label[1]) ? 'Ask' : label[1];
+        var name = /^ask/i.test(label[1]) ? 'Ask' : label[1].charAt(0).toUpperCase() + label[1].slice(1).toLowerCase();
+        if (MESSAGE_HOUSE_LABELS.indexOf(name) !== -1) first.messageHouse = true;
         current = {
           label: name,
           hint: (label[2] || '').trim() || AAA_HINTS[name] || '',
@@ -442,10 +455,11 @@
     return card;
   }
 
-  /** STEP 5 — the picked sentence, then Answer / Add / Ask. */
-  function renderAaa(data, context) {
+  /** STEP 5 — the picked sentence, then Answer / Add / Ask or the Message House. */
+  function renderAaa(data, context, info) {
     if (!data.steps.length) return null;
-    var card = renderCard(5, data.lead);
+    var card = renderCard(5, data.lead, info || (data.messageHouse ? MESSAGE_HOUSE_INFO : STEP_INFO[5]));
+    if (data.messageHouse) card.classList.add('is-message-house');
     var picked = null;
     var index = data.pick > 0 ? data.pick - 1 : -1;
     if (index >= 0 && context) {
@@ -649,14 +663,15 @@
     var korean = byStep[2] ? parseNumbered(byStep[2].nodes) : { lead: '', rows: [] };
     var order = byStep[3] ? parseOrder(byStep[3].nodes) : { lead: '', rows: [] };
     var english = byStep[4] ? parseNumbered(byStep[4].nodes) : { lead: '', rows: [] };
-    var aaa = byStep[5] ? parseAaa(byStep[5].nodes) : { lead: '', pick: 0, steps: [] };
+    var aaa = byStep[5] ? parseAaa(byStep[5].nodes) : { lead: '', pick: 0, steps: [], messageHouse: false };
+    var messageHouse = aaa.messageHouse || /MESSAGE\s*HOUSE/i.test((byStep[5] && byStep[5].title) || '');
 
     return [
       renderWords(words),
       renderSentences(korean, 2, 'rmdt-sentences', 'rmdt-sentence-text'),
       renderOrder(order),
       renderSentences(english, 4, 'rmdt-english', 'rmdt-english-text'),
-      renderAaa(aaa, { korean: korean, english: english })
+      renderAaa(aaa, { korean: korean, english: english }, messageHouse ? MESSAGE_HOUSE_INFO : STEP_INFO[5])
     ];
   }
 

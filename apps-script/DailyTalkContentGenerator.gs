@@ -19,17 +19,22 @@
  *  - Pure helpers (prompt, schema, parsing, validation, row layout) have no
  *    Google service calls and are covered by tests/daily-talk-generator.test.js.
  *
- * Lesson shape (2026-11-20, the academy's five steps):
+ * Lesson shape (2026-11-20, the academy's five steps; step 5 differs by track):
  *   STEP 1  words     3 words / expressions with their Korean meaning
  *   STEP 2  sentences 3 Korean sentences built from those words
  *   STEP 3  sentences[].order  the same Korean sentences cut up and reordered
  *          into English word order (누가 / 한다 / 무엇을 / 어디서 / 언제)
  *   STEP 4  sentences[].en     the same sentences in natural English
- *   STEP 5  aaa       one of those sentences said in a real conversation as
- *          Answer -> Add -> Ask
+ *   STEP 5  SMALL_TALK  aaa           one of those sentences said in a real
+ *          conversation as Answer -> Add -> Ask
+ *          BUSINESS    messageHouse  one of those sentences grown into the
+ *          message a Korean office worker really sends: Conclusion (the point
+ *          first) -> Reason -> Detail -> Suggestion when a next step is needed
+ *          (3 or 4 sentences)
  * Storage keeps the existing queue columns: CHUNKS_JSON <- words,
- * WORD_ORDER_JSON <- sentences, STRUCTURE_JSON <- AAA script, MODEL_EN/KO <-
- * the three AAA lines. No sheet migration is needed.
+ * WORD_ORDER_JSON <- sentences, STRUCTURE_JSON <- the step 5 script (type AAA
+ * or MESSAGE_HOUSE), MODEL_EN/KO <- the same lines as labelled text. No sheet
+ * migration is needed, and rows written before today keep their AAA shape.
  */
 
 var RM_DAILY_TALK_GEN = Object.freeze({
@@ -60,7 +65,9 @@ var RM_DAILY_TALK_GEN = Object.freeze({
   // 콘텐츠대기열 by ensureQueueHeaderColumns_ and read by the Wix publisher.
   STEP_HEADERS: ['WORD_ORDER_JSON', 'STRUCTURE_JSON', 'SUBSTITUTIONS_JSON'],
   TEXT_FIELDS: ['topicEn', 'topicKo', 'snackEn', 'snackKo'],
-  CONTENT_FIELDS: ['topicEn', 'topicKo', 'snackEn', 'snackKo', 'words', 'sentences', 'aaa'],
+  // The fields every card has; step 5 adds `aaa` (small talk) or
+  // `messageHouse` (business) — see dailyTalkContentFields().
+  CONTENT_FIELDS: ['topicEn', 'topicKo', 'snackEn', 'snackKo', 'words', 'sentences'],
   // Step 1 teaches three words; steps 2-4 walk the same three sentences, and
   // step 5 grows out of one of them.
   WORD_COUNT: 3,
@@ -76,7 +83,7 @@ var RM_DAILY_TALK_GEN = Object.freeze({
  */
 var RM_DAILY_TALK_ROLES = Object.freeze(['누가', '한다', '무엇을', '어디서', '언제', '어떻게']);
 
-/** STEP 5: Answer -> Add -> Ask, for both tracks. */
+/** STEP 5 for SMALL_TALK: Answer -> Add -> Ask. */
 var RM_DAILY_TALK_AAA = Object.freeze({
   TYPE: 'AAA',
   STEPS: [
@@ -86,20 +93,43 @@ var RM_DAILY_TALK_AAA = Object.freeze({
   ]
 });
 
+/**
+ * STEP 5 for BUSINESS: a Top-Down Message House. Conclusion first, then the
+ * reason it holds, one concrete detail, and — only when the situation needs a
+ * next step — a suggestion. Suggestion is asked for but may come back empty,
+ * so a business card is 3 or 4 sentences.
+ */
+var RM_DAILY_TALK_MESSAGE_HOUSE = Object.freeze({
+  TYPE: 'MESSAGE_HOUSE',
+  STEPS: [
+    { key: 'conclusion', label: 'Conclusion', hint: '핵심 결론부터 말하기' },
+    { key: 'reason', label: 'Reason', hint: '근거 기둥 세우기' },
+    { key: 'detail', label: 'Detail', hint: '구체적인 디테일 붙이기' },
+    { key: 'suggestion', label: 'Suggestion', hint: '다음 행동 제안하기', optional: true }
+  ]
+});
+
 /** The practice cue stored in YOUR_TURN_* (the CMS keeps the field non-empty). */
 var RM_DAILY_TALK_PRACTICE_CUE = Object.freeze({
   en: 'Say your Answer, Add and Ask out loud three times today.',
   ko: '오늘 Answer → Add → Ask 세 문장을 소리 내어 세 번 말해 보세요.'
 });
 
+var RM_DAILY_TALK_PRACTICE_CUES = Object.freeze({
+  AAA: RM_DAILY_TALK_PRACTICE_CUE,
+  MESSAGE_HOUSE: Object.freeze({
+    en: 'Say your business message out loud three times today: Conclusion first, then Reason, Detail and Suggestion.',
+    ko: '오늘 업무 메시지를 소리 내어 세 번 말해 보세요. 결론 → 근거 → 디테일, 필요하면 제안까지.'
+  })
+});
+
 /**
- * Legacy scaffolding kept for reading rows generated before 2026-11-20
- * (AAA for small talk, Top-Down Message House for business). New content uses
- * RM_DAILY_TALK_AAA for both tracks.
+ * Step 5 labels by structure type. Kept as one table because the queue's
+ * STRUCTURE_JSON, the CMS body and the article renderer all read it.
  */
 var RM_DAILY_TALK_STRUCTURE_LABELS = Object.freeze({
-  AAA: ['Answer', 'Add', 'Ask back'],
-  MESSAGE_HOUSE: ['Conclusion', 'Reason', 'Detail', 'Suggestion']
+  AAA: RM_DAILY_TALK_AAA.STEPS.map(function (step) { return step.label; }),
+  MESSAGE_HOUSE: RM_DAILY_TALK_MESSAGE_HOUSE.STEPS.map(function (step) { return step.label; })
 });
 
 function dailyTalkStructureTypeFor(track) {
@@ -108,6 +138,11 @@ function dailyTalkStructureTypeFor(track) {
 
 function dailyTalkStructureLabels(type) {
   return RM_DAILY_TALK_STRUCTURE_LABELS[type === 'MESSAGE_HOUSE' ? 'MESSAGE_HOUSE' : 'AAA'];
+}
+
+/** STEP 5 steps of a structure type: [{key, label, hint, optional?}]. */
+function dailyTalkStructureSteps(type) {
+  return (type === 'MESSAGE_HOUSE' ? RM_DAILY_TALK_MESSAGE_HOUSE : RM_DAILY_TALK_AAA).STEPS;
 }
 
 var RM_DAILY_TALK_TRACK_BRIEFS = Object.freeze({
@@ -152,8 +187,18 @@ function buildDailyTalkPairSchema_() {
   };
 }
 
-/** JSON schema for one Daily Talk item (Responses API structured output). */
-function buildDailyTalkContentSchema() {
+/** Required JSON fields of a card for a structure type. */
+function dailyTalkContentFields(structureType) {
+  var step5 = structureType === 'MESSAGE_HOUSE' ? 'messageHouse' : 'aaa';
+  return RM_DAILY_TALK_GEN.CONTENT_FIELDS.concat([step5]);
+}
+
+/**
+ * JSON schema for one Daily Talk item (Responses API structured output).
+ * structureType picks the step 5 object: `aaa` (Answer / Add / Ask) or
+ * `messageHouse` (Conclusion / Reason / Detail / Suggestion).
+ */
+function buildDailyTalkContentSchema(structureType) {
   var pieceSchema = {
     type: 'object',
     additionalProperties: false,
@@ -179,40 +224,61 @@ function buildDailyTalkContentSchema() {
     }
   };
   var pair = buildDailyTalkPairSchema_();
+  var type = structureType === 'MESSAGE_HOUSE' ? 'MESSAGE_HOUSE' : 'AAA';
+
+  var properties = {
+    topicEn: { type: 'string' },
+    topicKo: { type: 'string' },
+    snackEn: { type: 'string' },
+    snackKo: { type: 'string' },
+    words: {
+      type: 'array',
+      minItems: RM_DAILY_TALK_GEN.WORD_COUNT,
+      maxItems: RM_DAILY_TALK_GEN.WORD_COUNT,
+      items: pair
+    },
+    sentences: {
+      type: 'array',
+      minItems: RM_DAILY_TALK_GEN.SENTENCE_COUNT,
+      maxItems: RM_DAILY_TALK_GEN.SENTENCE_COUNT,
+      items: sentenceSchema
+    }
+  };
+
+  if (type === 'MESSAGE_HOUSE') {
+    properties.messageHouse = {
+      type: 'object',
+      additionalProperties: false,
+      required: ['pick', 'conclusion', 'reason', 'detail', 'suggestion'],
+      properties: {
+        pick: { type: 'integer', minimum: 1, maximum: RM_DAILY_TALK_GEN.SENTENCE_COUNT },
+        conclusion: pair,
+        reason: pair,
+        detail: pair,
+        // Required by the schema, but both strings are empty when a next step
+        // is not needed; normalizeGeneratedContent drops empty pairs.
+        suggestion: pair
+      }
+    };
+  } else {
+    properties.aaa = {
+      type: 'object',
+      additionalProperties: false,
+      required: ['pick', 'answer', 'add', 'ask'],
+      properties: {
+        pick: { type: 'integer', minimum: 1, maximum: RM_DAILY_TALK_GEN.SENTENCE_COUNT },
+        answer: pair,
+        add: pair,
+        ask: pair
+      }
+    };
+  }
 
   return {
     type: 'object',
     additionalProperties: false,
-    required: RM_DAILY_TALK_GEN.CONTENT_FIELDS.slice(),
-    properties: {
-      topicEn: { type: 'string' },
-      topicKo: { type: 'string' },
-      snackEn: { type: 'string' },
-      snackKo: { type: 'string' },
-      words: {
-        type: 'array',
-        minItems: RM_DAILY_TALK_GEN.WORD_COUNT,
-        maxItems: RM_DAILY_TALK_GEN.WORD_COUNT,
-        items: pair
-      },
-      sentences: {
-        type: 'array',
-        minItems: RM_DAILY_TALK_GEN.SENTENCE_COUNT,
-        maxItems: RM_DAILY_TALK_GEN.SENTENCE_COUNT,
-        items: sentenceSchema
-      },
-      aaa: {
-        type: 'object',
-        additionalProperties: false,
-        required: ['pick', 'answer', 'add', 'ask'],
-        properties: {
-          pick: { type: 'integer', minimum: 1, maximum: RM_DAILY_TALK_GEN.SENTENCE_COUNT },
-          answer: pair,
-          add: pair,
-          ask: pair
-        }
-      }
-    }
+    required: dailyTalkContentFields(type),
+    properties: properties
   };
 }
 
@@ -228,6 +294,9 @@ function buildContentPrompt(track, options) {
   var recent = (opts.recentTopics || []).filter(Boolean).slice(0, RM_DAILY_TALK_GEN.RECENT_TOPIC_LOOKBACK);
   var seed = String(opts.seed || '').trim();
   var isBusiness = normalizedTrack === RM_TRACKS.BUSINESS;
+  // Step 5 is small talk's AAA and business's Top-Down Message House.
+  var structureType = dailyTalkStructureTypeFor(normalizedTrack);
+  var messageHouse = structureType === 'MESSAGE_HOUSE';
 
   var system = [
     'You write Ryan Daily Talk, the weekday English-learning card that Ryan Members, an English conversation academy in Busan,',
@@ -241,8 +310,12 @@ function buildContentPrompt(track, options) {
     'Step 3 English word order: the same three Korean sentences, cut into meaning pieces and rearranged into English word order',
     '(누가 / 한다 / 무엇을 / 어디서 / 언제), so the learner stops translating word for word from Korean.',
     'Step 4 English sentences: the same three sentences translated into natural spoken English.',
-    'Step 5 AAA: pick ONE of the three sentences and show how the learner says it in a real conversation in three sentences —',
-    'Answer (answer in one sentence), Add (one reason or detail), Ask (ask back and hand the turn over).',
+    messageHouse
+      ? 'Step 5 Message House: pick ONE of the three sentences and grow it into the business message the learner really sends or says at work —'
+      : 'Step 5 AAA: pick ONE of the three sentences and show how the learner says it in a real conversation in three sentences —',
+    messageHouse
+      ? 'three sentences, or four when a next step is needed: Conclusion (say the point first), Reason (why it holds), Detail (one concrete fact), Suggestion (the next step as a proposal or a question).'
+      : 'Answer (answer in one sentence), Add (one reason or detail), Ask (ask back and hand the turn over).',
     isBusiness
       ? 'This card is BUSINESS TALK: a workplace exchange. Every sentence is what the learner would really say to a colleague, a client or a manager.'
       : 'This card is SMALL TALK: friendly everyday conversation the learner can have today.',
@@ -275,17 +348,42 @@ function buildContentPrompt(track, options) {
     '  Use ' + RM_DAILY_TALK_GEN.MIN_ORDER_PIECES + '-' + RM_DAILY_TALK_GEN.MAX_ORDER_PIECES + ' pieces, always include 누가 and 한다, and place them 누가 → 한다 → 무엇을 → 어디서 → 언제 order.',
     '  Example for 나는 오늘 아침 출근길에 따뜻한 커피를 마셨다: 누가/나는, 한다/마셨다, 무엇을/따뜻한 커피를, 어디서/출근길에, 언제/오늘 아침.',
     '  Never use the "/" character inside a piece.',
-    '  "en" = that same sentence in natural spoken English (max 16 words, contractions).',
-    '- aaa: pick ONE of the three sentences ("pick": 1, 2 or 3 — the one that best opens a real conversation today)',
-    '  and expand it into the three sentences the learner actually says:',
-    '  "answer" = Answer: one short sentence that answers or states the picked sentence conversationally;',
-    '  "add" = Add: one sentence adding a reason or a concrete detail;',
-    '  "ask" = Ask: one sentence asking the other person and handing the turn back.',
-    '  Each of answer / add / ask has "en" and "ko".',
+    '  "en" = that same sentence in natural spoken English (max 16 words, contractions).'
+  ];
+
+  if (messageHouse) {
+    lines = lines.concat([
+      '- messageHouse: pick ONE of the three sentences ("pick": 1, 2 or 3 — the one this workplace message grows out of)',
+      '  and turn it into the message the learner actually sends or says at work:',
+      '  "conclusion" = Conclusion: the point in one sentence, said first (max 20 words);',
+      '  "reason" = Reason: the one reason the point holds (max 20 words);',
+      '  "detail" = Detail: one concrete fact — a date, a number, a screen or a person (max 20 words);',
+      '  "suggestion" = Suggestion: one sentence proposing the next step or asking for a decision —',
+      '  or put "" in both "en" and "ko" when this situation needs no next step.',
+      '  Each of conclusion / reason / detail / suggestion has "en" and "ko".',
+      '  All together that is 3 sentences (no suggestion) or 4 sentences (with suggestion) — never more.'
+    ]);
+  } else {
+    lines = lines.concat([
+      '- aaa: pick ONE of the three sentences ("pick": 1, 2 or 3 — the one that best opens a real conversation today)',
+      '  and expand it into the three sentences the learner actually says:',
+      '  "answer" = Answer: one short sentence that answers or states the picked sentence conversationally;',
+      '  "add" = Add: one sentence adding a reason or a concrete detail;',
+      '  "ask" = Ask: one sentence asking the other person and handing the turn back.',
+      '  Each of answer / add / ask has "en" and "ko".'
+    ]);
+  }
+
+  lines = lines.concat([
     '',
     'Hard rules:',
     '- At least two of the three words must visibly appear in the three English sentences (sentences[].en).',
-    '- The answer must be built on the picked sentence: keep its key words so the learner hears the same expression again.',
+    messageHouse
+      ? '- The Conclusion must be built on the picked sentence: keep its key words so the learner hears the same expression again.'
+      : '- The answer must be built on the picked sentence: keep its key words so the learner hears the same expression again.',
+    messageHouse
+      ? '- The Message House must reuse at least one of the three words of Step 1, so the card stays one lesson.'
+      : '',
     '- The pieces of "order" must be the Korean words of "ko" itself — the meaning does not change, only the order.',
     '- Each "en" is the translation of its own "ko": same meaning, same length, no extra ideas.',
     '- Write spoken English: use contractions (I\'m, it\'s, we\'ll, don\'t) and avoid textbook stiffness.',
@@ -293,14 +391,14 @@ function buildContentPrompt(track, options) {
     '- Keep every expression polite and safe for a workplace and a family chat.',
     '- No brand names, no prices, no politics, no religion, no medical or legal advice.',
     '- The topic must be different from the recent topics above and useful this week.'
-  ].filter(function (line, index, all) { return line !== '' || all[index - 1] !== ''; });
+  ].filter(function (line, index, all) { return line !== '' || all[index - 1] !== ''; }));
 
   return {
     track: normalizedTrack,
     level: level,
-    structureType: RM_DAILY_TALK_AAA.TYPE,
+    structureType: structureType,
     schemaName: 'ryan_daily_talk_' + normalizedTrack.toLowerCase(),
-    schema: buildDailyTalkContentSchema(),
+    schema: buildDailyTalkContentSchema(structureType),
     system: system,
     user: lines.join('\n')
   };
@@ -372,9 +470,16 @@ function normalizeGeneratedContent(parsed, context) {
     };
   });
 
+  // Step 5's shape follows the payload, so a business row that came back in
+  // the small-talk AAA shape (or an old row) still validates and stores.
+  var hasMessageHouse = !!(raw.messageHouse && typeof raw.messageHouse === 'object');
+  var hasAaa = !!(raw.aaa && typeof raw.aaa === 'object');
+  var structureType = hasMessageHouse ? 'MESSAGE_HOUSE' : (hasAaa ? 'AAA' : dailyTalkStructureTypeFor(track));
+
   return {
     track: track,
     level: String(ctx.level || RM_DAILY_TALK_GEN.DEFAULT_LEVEL).trim().toUpperCase(),
+    structureType: structureType,
     topicEn: cleanText_(raw.topicEn),
     topicKo: cleanText_(raw.topicKo),
     snackEn: cleanText_(raw.snackEn),
@@ -388,7 +493,20 @@ function normalizeGeneratedContent(parsed, context) {
       answer: normalizeDailyTalkPair_(raw.aaa && raw.aaa.answer),
       add: normalizeDailyTalkPair_(raw.aaa && raw.aaa.add),
       ask: normalizeDailyTalkPair_(raw.aaa && raw.aaa.ask)
-    }
+    },
+    messageHouse: normalizeDailyTalkMessageHouse_(raw.messageHouse)
+  };
+}
+
+/** {pick, conclusion, reason, detail, suggestion} — every pair trimmed. */
+function normalizeDailyTalkMessageHouse_(raw) {
+  var value = raw && typeof raw === 'object' ? raw : {};
+  return {
+    pick: Number(value.pick || 0) || 0,
+    conclusion: normalizeDailyTalkPair_(value.conclusion),
+    reason: normalizeDailyTalkPair_(value.reason),
+    detail: normalizeDailyTalkPair_(value.detail),
+    suggestion: normalizeDailyTalkPair_(value.suggestion)
   };
 }
 
@@ -495,10 +613,23 @@ function validateGeneratedContent(content) {
 
   validateDailyTalkWords_(value.words, fail);
   validateDailyTalkSentences_(value.sentences, fail);
-  validateDailyTalkAaa_(value.aaa, fail);
+  if (dailyTalkStructureTypeOf_(value) === 'MESSAGE_HOUSE') {
+    validateDailyTalkMessageHouse_(value.messageHouse, fail);
+  } else {
+    validateDailyTalkAaa_(value.aaa, fail);
+  }
   validateDailyTalkStepLinks_(value, fail);
 
   return { ok: errors.length === 0, errors: errors };
+}
+
+/** The structure type a content object carries; AAA when it is unset. */
+function dailyTalkStructureTypeOf_(content) {
+  var value = content || {};
+  if (value.structureType === 'MESSAGE_HOUSE') return 'MESSAGE_HOUSE';
+  if (value.structureType === 'AAA') return 'AAA';
+  if (value.messageHouse && !value.aaa) return 'MESSAGE_HOUSE';
+  return 'AAA';
 }
 
 /** STEP 1: exactly three words, each an English word/expression with a Korean meaning. */
@@ -574,16 +705,47 @@ function validateDailyTalkAaa_(value, fail) {
     fail('aaa.pick', '고른 문장 번호가 1~' + RM_DAILY_TALK_GEN.SENTENCE_COUNT + '이어야 합니다.');
   }
   RM_DAILY_TALK_AAA.STEPS.forEach(function (step) {
-    var pair = aaa[step.key] || {};
-    var prefix = 'aaa.' + step.key;
-    var en = String(pair.en || '');
-    var ko = String(pair.ko || '');
-    if (!en.trim()) fail(prefix + '.en', '영어 문장이 비어 있습니다.');
-    if (!ko.trim()) fail(prefix + '.ko', '한글 문장이 비어 있습니다.');
-    if (en && RM_HANGUL_PATTERN.test(en)) fail(prefix + '.en', '영어 문장에 한글이 있습니다.');
-    if (en && !RM_LATIN_PATTERN.test(en)) fail(prefix + '.en', '영어 문장에 영어가 없습니다.');
-    if (ko && !RM_HANGUL_PATTERN.test(ko)) fail(prefix + '.ko', '한글 문장에 한글이 없습니다.');
+    validateDailyTalkPair_(aaa[step.key], 'aaa.' + step.key, fail, true);
   });
+}
+
+/**
+ * STEP 5 for business: Conclusion -> Reason -> Detail -> (Suggestion).
+ * Suggestion may be absent (both fields empty), which makes a 3-sentence
+ * message; one empty half is an error.
+ */
+function validateDailyTalkMessageHouse_(value, fail) {
+  var house = value || {};
+  var pick = Number(house.pick || 0);
+  if (!(pick >= 1 && pick <= RM_DAILY_TALK_GEN.SENTENCE_COUNT)) {
+    fail('messageHouse.pick', '고른 문장 번호가 1~' + RM_DAILY_TALK_GEN.SENTENCE_COUNT + '이어야 합니다.');
+  }
+  ['conclusion', 'reason', 'detail'].forEach(function (key) {
+    validateDailyTalkPair_(house[key], 'messageHouse.' + key, fail, true);
+  });
+
+  var suggestion = house.suggestion || {};
+  var hasEn = !!String(suggestion.en || '').trim();
+  var hasKo = !!String(suggestion.ko || '').trim();
+  if (hasEn || hasKo) validateDailyTalkPair_(suggestion, 'messageHouse.suggestion', fail, true);
+}
+
+/**
+ * One {en, ko} sentence. When required, both halves must be there, in the
+ * right script and a sensible length.
+ */
+function validateDailyTalkPair_(pair, prefix, fail, required) {
+  var value = pair || {};
+  var en = String(value.en || '').trim();
+  var ko = String(value.ko || '').trim();
+  if (required) {
+    if (!en) fail(prefix + '.en', '영어 문장이 비어 있습니다.');
+    if (!ko) fail(prefix + '.ko', '한글 문장이 비어 있습니다.');
+  }
+  if (en && RM_HANGUL_PATTERN.test(en)) fail(prefix + '.en', '영어 문장에 한글이 있습니다.');
+  if (en && !RM_LATIN_PATTERN.test(en)) fail(prefix + '.en', '영어 문장에 영어가 없습니다.');
+  if (en && en.split(/\s+/).filter(Boolean).length > 24) fail(prefix + '.en', '영어 문장이 너무 깁니다.');
+  if (ko && !RM_HANGUL_PATTERN.test(ko)) fail(prefix + '.ko', '한글 문장에 한글이 없습니다.');
 }
 
 /**
@@ -603,22 +765,70 @@ function validateDailyTalkStepLinks_(value, fail) {
     }).join(', '));
   }
 
-  var pick = Number(content.aaa && content.aaa.pick);
+  var pick = Number((dailyTalkStructureTypeOf_(content) === 'MESSAGE_HOUSE'
+    ? content.messageHouse && content.messageHouse.pick
+    : content.aaa && content.aaa.pick));
   var picked = sentences[pick - 1];
+
+  if (dailyTalkStructureTypeOf_(content) === 'MESSAGE_HOUSE') {
+    var house = content.messageHouse || {};
+    var conclusionEn = String((house.conclusion && house.conclusion.en) || '');
+    var messageEn = ['conclusion', 'reason', 'detail', 'suggestion'].map(function (key) {
+      return String((house[key] && house[key].en) || '').trim();
+    }).filter(Boolean).join(' ');
+    // The conclusion names the point; the rest of the message should still be
+    // recognisably the sentence the learner picked.
+    if (picked && conclusionEn && !dailyTalkSentencesShareWord_(picked.en, messageEn)) {
+      fail('messageHouse.conclusion', '고른 문장과 이어지지 않습니다.');
+    }
+    var houseUsed = words.filter(function (word) { return dailyTalkWordAppearsIn_(word && word.en, messageEn); });
+    if (words.length && !houseUsed.length) {
+      fail('messageHouse', '1단계 단어가 업무 메시지에 쓰이지 않았습니다: ' + words.map(function (word) {
+        return String((word && word.en) || '');
+      }).join(', '));
+    }
+    return;
+  }
+
   var answerEn = String((content.aaa && content.aaa.answer && content.aaa.answer.en) || '');
   if (picked && answerEn && !dailyTalkSentencesShareWord_(picked.en, answerEn)) {
     fail('aaa.answer', '고른 문장과 이어지지 않습니다.');
   }
 }
 
+/**
+ * STEP 5 of a content object as {type, pick, steps:[{label, en, ko}]}. One
+ * shape for both tracks, so STRUCTURE_JSON, MODEL_EN/KO and the CMS body are
+ * written the same way; an empty Suggestion is dropped, leaving 3 sentences.
+ */
+function buildDailyTalkStep5_(content) {
+  var value = content || {};
+  var type = dailyTalkStructureTypeOf_(value);
+  var source = type === 'MESSAGE_HOUSE' ? (value.messageHouse || {}) : (value.aaa || {});
+  var steps = dailyTalkStructureSteps(type).map(function (step) {
+    var pair = source[step.key] || {};
+    return { label: step.label, en: pair.en || '', ko: pair.ko || '' };
+  }).filter(function (step) { return String(step.en || '').trim(); });
+  return { type: type, pick: Number(source.pick) || 1, steps: steps };
+}
+
 /** Step 5 as the plain text kept in MODEL_EN / MODEL_KO (and the CMS model fields). */
-function buildAaaScriptText_(aaa, lang) {
-  var value = aaa || {};
+function buildStep5ScriptText_(step5, lang) {
   var key = lang === 'ko' ? 'ko' : 'en';
-  return RM_DAILY_TALK_AAA.STEPS.map(function (step) {
-    var pair = value[step.key] || {};
-    return step.label + ': ' + String(pair[key] || '').trim();
+  var steps = (step5 && step5.steps) || [];
+  return steps.map(function (step) {
+    return step.label + ': ' + String(step[key] || '').trim();
   }).join('\n');
+}
+
+/** The practice cue for a structure type (YOUR_TURN_*). */
+function dailyTalkPracticeCue_(structureType) {
+  return RM_DAILY_TALK_PRACTICE_CUES[structureType === 'MESSAGE_HOUSE' ? 'MESSAGE_HOUSE' : 'AAA'];
+}
+
+/** Back-compat wrapper: AAA script text from a bare aaa object. */
+function buildAaaScriptText_(aaa, lang) {
+  return buildStep5ScriptText_(buildDailyTalkStep5_({ structureType: 'AAA', aaa: aaa }), lang);
 }
 
 /** 'How was your weekend?' -> 'how-was-your-weekend' (max 4 words). */
@@ -687,19 +897,17 @@ function buildQueueRowValues(headerMap, content, meta) {
   put('SNACK_KO', value.snackKo || '');
   put('CHUNKS_JSON', JSON.stringify(value.words || []));
   put('WORD_ORDER_JSON', JSON.stringify(value.sentences || []));
+  var step5 = buildDailyTalkStep5_(value);
   put('STRUCTURE_JSON', JSON.stringify({
-    type: RM_DAILY_TALK_AAA.TYPE,
-    pick: Number(value.aaa && value.aaa.pick) || 1,
-    steps: RM_DAILY_TALK_AAA.STEPS.map(function (step) {
-      var pair = (value.aaa && value.aaa[step.key]) || {};
-      return { label: step.label, en: pair.en || '', ko: pair.ko || '' };
-    })
+    type: step5.type,
+    pick: step5.pick,
+    steps: step5.steps
   }));
   put('SUBSTITUTIONS_JSON', '');
-  put('MODEL_EN', buildAaaScriptText_(value.aaa, 'en'));
-  put('MODEL_KO', buildAaaScriptText_(value.aaa, 'ko'));
-  put('YOUR_TURN_EN', RM_DAILY_TALK_PRACTICE_CUE.en);
-  put('YOUR_TURN_KO', RM_DAILY_TALK_PRACTICE_CUE.ko);
+  put('MODEL_EN', buildStep5ScriptText_(step5, 'en'));
+  put('MODEL_KO', buildStep5ScriptText_(step5, 'ko'));
+  put('YOUR_TURN_EN', dailyTalkPracticeCue_(step5.type).en);
+  put('YOUR_TURN_KO', dailyTalkPracticeCue_(step5.type).ko);
   put('SOURCES', info.sources || '');
   put('카카오본문', buildKakaoTeaser(value));
   put('생성시각', info.generatedAt || '');
@@ -1027,6 +1235,11 @@ function checkDailyTalkGeneratorSetup() {
     fallbacks: resolveModelChain(settings.OPENAI_MODEL),
     tracks: parseTrackList(settings.TRACKS_TO_GENERATE),
     level: String(settings.DEFAULT_LEVEL || RM_DAILY_TALK_GEN.DEFAULT_LEVEL),
+    // STEP 5 differs by track: small talk AAA, business Message House.
+    structures: parseTrackList(settings.TRACKS_TO_GENERATE).reduce(function (map, track) {
+      map[track] = dailyTalkStructureTypeFor(track);
+      return map;
+    }, {}),
     autoGenerate: isAutoGenerateEnabled_(settings),
     autoApprove: toBoolean(settings.AUTO_APPROVE),
     statusOnCreate: toBoolean(settings.AUTO_APPROVE) ? RM_DAILY_TALK_GEN.STATUS_APPROVED : RM_DAILY_TALK_GEN.STATUS_DRAFT,

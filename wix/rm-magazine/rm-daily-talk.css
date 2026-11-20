@@ -365,6 +365,23 @@
   color: var(--rmdt-muted);
 }
 
+/* STEP 5 for business talk — Message House.
+   Conclusion is the point and carries the tint; the optional Suggestion reads
+   as a proposal, so it keeps a dashed edge. The flow itself is named in the
+   card's Korean sub-label (결론 → 근거 → 디테일). */
+#rmdt-root .rmdt-card.is-message-house .rmdt-aaa-block[data-role="conclusion"] {
+  background: var(--rmdt-tint);
+  border-color: #e6ddd2;
+}
+#rmdt-root .rmdt-card.is-message-house .rmdt-aaa-block[data-role="conclusion"] .rmdt-aaa-en {
+  font-size: 16.5px;
+  font-weight: 700;
+}
+#rmdt-root .rmdt-card.is-message-house .rmdt-aaa-block[data-role="suggestion"] {
+  border-style: dashed;
+  border-color: #e2d6da;
+}
+
 /* --- steps 1-4 of the articles published before 2026-11-20 ---------------- */
 /* --- step 1: chunks ------------------------------------------------------ */
 #rmdt-root .rmdt-chunks { list-style: none; margin: 0; padding: 0; }

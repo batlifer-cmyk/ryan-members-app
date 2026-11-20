@@ -5,7 +5,9 @@
  *
  * The lesson is the academy's five steps:
  *   1 words (3) -> 2 Korean sentences (3) -> 3 the same sentences in English
- *   word order -> 4 the same sentences in English -> 5 AAA on one of them.
+ *   word order -> 4 the same sentences in English -> 5 the structure the track
+ *   uses: AAA (Answer/Add/Ask) for small talk, Message House
+ *   (Conclusion/Reason/Detail/Suggestion) for business.
  */
 const fs = require('fs');
 const path = require('path');
@@ -52,13 +54,37 @@ const BUSINESS_SAMPLE = {
       en: 'I will keep you posted.'
     }
   ],
+  messageHouse: {
+    pick: 1,
+    conclusion: { en: 'We need one more day for the launch.', ko: '출시에 하루가 더 필요합니다.' },
+    reason: { en: 'The final check found two bugs.', ko: '마지막 점검에서 오류 두 개가 나왔습니다.' },
+    detail: { en: 'Both are on the payment screen.', ko: '둘 다 결제 화면에 있습니다.' },
+    suggestion: { en: 'Could we push the launch to Friday?', ko: '출시를 금요일로 미룰 수 있을까요?' }
+  }
+};
+
+/** The business card's step 5: a Top-Down Message House, 3 or 4 sentences. */
+const BUSINESS_MESSAGE_HOUSE = {
+  pick: 1,
+  conclusion: { en: 'We need one more day for the launch.', ko: '출시에 하루가 더 필요합니다.' },
+  reason: { en: 'The final check found two bugs.', ko: '마지막 점검에서 오류 두 개가 나왔습니다.' },
+  detail: { en: 'Both are on the payment screen.', ko: '둘 다 결제 화면에 있습니다.' },
+  suggestion: { en: 'Could we push the launch to Friday?', ko: '출시를 금요일로 미룰 수 있을까요?' }
+};
+const BUSINESS_SAMPLE_AA = Object.assign({}, BUSINESS_SAMPLE, {
+  messageHouse: undefined,
   aaa: {
     pick: 1,
     answer: { en: 'We need one more day for the launch.', ko: '출시에 하루가 더 필요합니다.' },
     add: { en: 'The final check found two bugs.', ko: '마지막 점검에서 오류 두 개가 나왔습니다.' },
     ask: { en: 'Does Friday still work for you?', ko: '금요일도 괜찮으실까요?' }
   }
-};
+});
+
+/** The same business card with the Suggestion left out (a 3-sentence message). */
+const BUSINESS_MESSAGE_HOUSE_SHORT = Object.assign({}, BUSINESS_MESSAGE_HOUSE, {
+  suggestion: { en: '', ko: '' }
+});
 
 const SAMPLE = {
   topicEn: 'Warm Coffee Morning',
@@ -171,15 +197,26 @@ describe('buildContentPrompt', () => {
     assert.ok(system.indexOf('Step 4') < system.indexOf('Step 5'));
   });
 
-  test('both tracks use the same five steps, and step 5 is business talk for BUSINESS', () => {
+  test('both tracks use the same five steps, and step 5 follows the track', () => {
     const small = buildContentPrompt('SMALL_TALK', {});
     assert.equal(small.structureType, 'AAA');
     assert.includes(small.system, 'This card is SMALL TALK');
+    assert.includes(small.system, 'Step 5 AAA');
 
     const business = buildContentPrompt('BUSINESS', {});
-    assert.equal(business.structureType, 'AAA');
+    assert.equal(business.structureType, 'MESSAGE_HOUSE');
     assert.includes(business.system, 'This card is BUSINESS TALK');
-    assert.includes(business.system, 'Step 5 AAA');
+    assert.includes(business.system, 'Step 5 Message House');
+    assert.includes(business.system, 'Conclusion (say the point first)');
+    assert.excludes(business.system, 'Step 5 AAA');
+  });
+
+  test('a business prompt asks for the Message House sentences instead of AAA', () => {
+    const business = buildContentPrompt('BUSINESS', {});
+    ['messageHouse', 'conclusion', 'reason', 'detail', 'suggestion']
+      .forEach((field) => assert.includes(business.user, field));
+    assert.includes(business.user, '3 sentences (no suggestion) or 4 sentences (with suggestion)');
+    assert.excludes(business.user, '- aaa:');
   });
 
   test('asks for the steps to point at the same three sentences', () => {
@@ -187,6 +224,13 @@ describe('buildContentPrompt', () => {
     assert.includes(prompt.system, 'must all point at the same three sentences');
     assert.includes(prompt.user, 'At least two of the three words must visibly appear');
     assert.includes(prompt.user, 'The answer must be built on the picked sentence');
+  });
+
+  test('ties the Message House back to the picked sentence and the words', () => {
+    const prompt = buildContentPrompt('BUSINESS', {});
+    assert.includes(prompt.user, 'The Conclusion must be built on the picked sentence');
+    assert.includes(prompt.user, 'reuse at least one of the three words of Step 1');
+    assert.excludes(prompt.user, 'The answer must be built');
   });
 });
 
@@ -212,6 +256,17 @@ describe('buildDailyTalkContentSchema', () => {
     const piece = schema.properties.sentences.items.properties.order.items;
     assert.deepEqual(piece.required, ['role', 'text']);
     assert.equal(piece.additionalProperties, false);
+  });
+
+  test('a business schema requires the Message House instead of AAA', () => {
+    const schema = buildDailyTalkContentSchema('MESSAGE_HOUSE');
+    assert.deepEqual(schema.required,
+      ['topicEn', 'topicKo', 'snackEn', 'snackKo', 'words', 'sentences', 'messageHouse']);
+    assert.equal(schema.properties.aaa, undefined);
+    assert.deepEqual(schema.properties.messageHouse.required,
+      ['pick', 'conclusion', 'reason', 'detail', 'suggestion']);
+    assert.equal(schema.properties.messageHouse.properties.pick.maximum, 3);
+    assert.deepEqual(schema.properties.messageHouse.properties.reason.required, ['en', 'ko']);
   });
 });
 
@@ -301,6 +356,23 @@ describe('normalizeGeneratedContent', () => {
       { role: '무엇을', text: '커피를' }
     ]);
   });
+
+  test('a business payload carries a Message House, and the type comes from the payload', () => {
+    const content = normalizeGeneratedContent(BUSINESS_SAMPLE, { track: 'BUSINESS' });
+    assert.equal(content.structureType, 'MESSAGE_HOUSE');
+    assert.equal(content.messageHouse.conclusion.en, 'We need one more day for the launch.');
+    assert.equal(content.messageHouse.suggestion.ko, '출시를 금요일로 미룰 수 있을까요?');
+
+    const small = normalizeGeneratedContent(SAMPLE, { track: 'SMALL_TALK' });
+    assert.equal(small.structureType, 'AAA');
+    assert.equal(small.messageHouse.conclusion.en, '');
+  });
+
+  test('a business payload in the older AAA shape still normalizes as AAA', () => {
+    const content = normalizeGeneratedContent(BUSINESS_SAMPLE_AA, { track: 'BUSINESS' });
+    assert.equal(content.structureType, 'AAA');
+    assert.equal(content.aaa.ask.en, 'Does Friday still work for you?');
+  });
 });
 
 describe('validateGeneratedContent', () => {
@@ -309,9 +381,60 @@ describe('validateGeneratedContent', () => {
     assert.deepEqual(result, { ok: true, errors: [] });
   });
 
-  test('accepts the business track with the same five steps', () => {
+  test('accepts the business track with a Message House', () => {
     const result = validateGeneratedContent(normalizeGeneratedContent(BUSINESS_SAMPLE, { track: 'BUSINESS' }));
     assert.deepEqual(result, { ok: true, errors: [] });
+  });
+
+  test('accepts a three-sentence Message House (no Suggestion)', () => {
+    const content = normalizeGeneratedContent(Object.assign({}, BUSINESS_SAMPLE, {
+      messageHouse: BUSINESS_MESSAGE_HOUSE_SHORT
+    }), { track: 'BUSINESS' });
+    assert.deepEqual(validateGeneratedContent(content), { ok: true, errors: [] });
+    assert.deepEqual(dailyTalkStructureLabels(content.structureType),
+      ['Conclusion', 'Reason', 'Detail', 'Suggestion']);
+  });
+
+  test('requires the Conclusion, Reason and Detail of a Message House', () => {
+    const missingReason = normalizeGeneratedContent(Object.assign({}, BUSINESS_SAMPLE, {
+      messageHouse: Object.assign({}, BUSINESS_MESSAGE_HOUSE, { reason: { en: '', ko: '' } })
+    }), { track: 'BUSINESS' });
+    assert.ok(validateGeneratedContent(missingReason).errors.some((error) => error.field === 'messageHouse.reason.en'));
+
+    const englishDetail = normalizeGeneratedContent(Object.assign({}, BUSINESS_SAMPLE, {
+      messageHouse: Object.assign({}, BUSINESS_MESSAGE_HOUSE, { detail: { en: '결제 화면', ko: '결제 화면' } })
+    }), { track: 'BUSINESS' });
+    assert.ok(validateGeneratedContent(englishDetail).errors.some((error) => error.field === 'messageHouse.detail.en'));
+  });
+
+  test('a half-filled Suggestion is an error, an empty one is not', () => {
+    const half = normalizeGeneratedContent(Object.assign({}, BUSINESS_SAMPLE, {
+      messageHouse: Object.assign({}, BUSINESS_MESSAGE_HOUSE, { suggestion: { en: 'Should we shift it?', ko: '' } })
+    }), { track: 'BUSINESS' });
+    assert.ok(validateGeneratedContent(half).errors.some((error) => error.field === 'messageHouse.suggestion.ko'));
+
+    const empty = normalizeGeneratedContent(Object.assign({}, BUSINESS_SAMPLE, {
+      messageHouse: BUSINESS_MESSAGE_HOUSE_SHORT
+    }), { track: 'BUSINESS' });
+    assert.deepEqual(validateGeneratedContent(empty), { ok: true, errors: [] });
+  });
+
+  test('rejects a business Message House with a bad pick or detached from the sentences', () => {
+    const badPick = normalizeGeneratedContent(Object.assign({}, BUSINESS_SAMPLE, {
+      messageHouse: Object.assign({}, BUSINESS_MESSAGE_HOUSE, { pick: 4 })
+    }), { track: 'BUSINESS' });
+    assert.ok(validateGeneratedContent(badPick).errors.some((error) => error.field === 'messageHouse.pick'));
+
+    const detached = normalizeGeneratedContent(Object.assign({}, BUSINESS_SAMPLE, {
+      messageHouse: {
+        pick: 1,
+        conclusion: { en: 'My sister lives in Canada.', ko: '제 여동생은 캐나다에 살아요.' },
+        reason: { en: 'She moved there last year.', ko: '작년에 이사했어요.' },
+        detail: { en: 'She likes the snow.', ko: '눈을 좋아해요.' },
+        suggestion: { en: '', ko: '' }
+      }
+    }), { track: 'BUSINESS' });
+    assert.ok(validateGeneratedContent(detached).errors.some((error) => error.field === 'messageHouse.conclusion'));
   });
 
   test('rejects Hangul inside an English field', () => {
@@ -533,6 +656,32 @@ describe('buildQueueRowValues', () => {
     const narrow = { CONTENT_ID: 1, 트랙: 2, 상태: 3 };
     const row = buildQueueRowValues(narrow, content, { contentId: 'C1' });
     assert.deepEqual(row, ['C1', 'SMALL_TALK', 'DRAFT']);
+  });
+
+  test('a business card stores its Message House in STRUCTURE_JSON and MODEL_*', () => {
+    const business = normalizeGeneratedContent(BUSINESS_SAMPLE, { track: 'BUSINESS', level: 'BASIC' });
+    const row = buildQueueRowValues(headerMap, business, { contentId: 'BUSINESS-20261120-one-more-day' });
+    const structure = JSON.parse(row[headerMap.STRUCTURE_JSON - 1]);
+    assert.equal(structure.type, 'MESSAGE_HOUSE');
+    assert.equal(structure.pick, 1);
+    assert.deepEqual(structure.steps.map((step) => step.label),
+      ['Conclusion', 'Reason', 'Detail', 'Suggestion']);
+    assert.equal(structure.steps[0].en, BUSINESS_MESSAGE_HOUSE.conclusion.en);
+    assert.equal(row[headerMap.MODEL_EN - 1].split('\n')[0],
+      'Conclusion: ' + BUSINESS_MESSAGE_HOUSE.conclusion.en);
+    assert.includes(row[headerMap.MODEL_KO - 1], 'Suggestion: ' + BUSINESS_MESSAGE_HOUSE.suggestion.ko);
+    assert.equal(row[headerMap.YOUR_TURN_EN - 1], RM_DAILY_TALK_PRACTICE_CUES.MESSAGE_HOUSE.en);
+    assert.equal(row[headerMap.YOUR_TURN_KO - 1], RM_DAILY_TALK_PRACTICE_CUES.MESSAGE_HOUSE.ko);
+  });
+
+  test('a three-sentence Message House stores only its three steps', () => {
+    const business = normalizeGeneratedContent(Object.assign({}, BUSINESS_SAMPLE, {
+      messageHouse: BUSINESS_MESSAGE_HOUSE_SHORT
+    }), { track: 'BUSINESS' });
+    const row = buildQueueRowValues(headerMap, business, { contentId: 'C2' });
+    const structure = JSON.parse(row[headerMap.STRUCTURE_JSON - 1]);
+    assert.equal(structure.steps.length, 3);
+    assert.equal(row[headerMap.MODEL_EN - 1].split('\n').length, 3);
   });
 });
 

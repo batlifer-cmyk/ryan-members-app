@@ -152,6 +152,80 @@ const BUSINESS_ITEM = {
   sources: 'OPENAI:gpt-5.5'
 };
 
+/** A business row generated after the 2026-11-21 Message House change. */
+const BUSINESS_MESSAGE_HOUSE_ITEM = {
+  contentId: 'BUSINESS-20261121-one-more-day',
+  sendDate: '2026-11-21',
+  track: 'BUSINESS',
+  level: 'BASIC',
+  topicEn: 'One More Day',
+  topicKo: '하루 더 필요한 상황',
+  snackEn: 'The final check found two bugs. Today you tell your team the launch needs one more day.',
+  snackKo: '마지막 점검에서 오류 두 개가 나왔습니다. 오늘은 팀에 출시가 하루 더 필요하다고 말합니다.',
+  chunksJson: JSON.stringify([
+    { en: 'one more day', ko: '하루 더' },
+    { en: 'push the launch', ko: '출시를 미루다' },
+    { en: 'keep you posted', ko: '계속 알려 주다' }
+  ]),
+  wordOrderJson: JSON.stringify([
+    {
+      ko: '우리는 출시에 하루가 더 필요합니다',
+      order: [
+        { role: '누가', text: '우리는' },
+        { role: '한다', text: '필요합니다' },
+        { role: '무엇을', text: '하루가 더' },
+        { role: '어디서', text: '출시에' }
+      ],
+      en: 'We need one more day for the launch.'
+    },
+    {
+      ko: '저는 출시를 금요일로 미룹니다',
+      order: [
+        { role: '누가', text: '저는' },
+        { role: '한다', text: '미룹니다' },
+        { role: '무엇을', text: '출시를' },
+        { role: '언제', text: '금요일로' }
+      ],
+      en: 'I will push the launch to Friday.'
+    },
+    {
+      ko: '제가 계속 상황을 알려 드리겠습니다',
+      order: [
+        { role: '누가', text: '제가' },
+        { role: '한다', text: '알려 드리겠습니다' },
+        { role: '무엇을', text: '상황을' },
+        { role: '어떻게', text: '계속' }
+      ],
+      en: 'I will keep you posted.'
+    }
+  ]),
+  structureJson: JSON.stringify({
+    type: 'MESSAGE_HOUSE',
+    pick: 1,
+    steps: [
+      { label: 'Conclusion', en: 'We need one more day for the launch.', ko: '출시에 하루가 더 필요합니다.' },
+      { label: 'Reason', en: 'The final check found two bugs.', ko: '마지막 점검에서 오류 두 개가 나왔습니다.' },
+      { label: 'Detail', en: 'Both are on the payment screen.', ko: '둘 다 결제 화면에 있습니다.' },
+      { label: 'Suggestion', en: 'Could we push the launch to Friday?', ko: '출시를 금요일로 미룰 수 있을까요?' }
+    ]
+  }),
+  modelEn: 'Conclusion: We need one more day for the launch.\nReason: The final check found two bugs.\nDetail: Both are on the payment screen.\nSuggestion: Could we push the launch to Friday?',
+  modelKo: 'Conclusion: 출시에 하루가 더 필요합니다.\nReason: 마지막 점검에서 오류 두 개가 나왔습니다.\nDetail: 둘 다 결제 화면에 있습니다.\nSuggestion: 출시를 금요일로 미룰 수 있을까요?',
+  yourTurnEn: 'Say your business message out loud three times today: Conclusion first, then Reason, Detail and Suggestion.',
+  yourTurnKo: '오늘 업무 메시지를 소리 내어 세 번 말해 보세요. 결론 → 근거 → 디테일, 필요하면 제안까지.',
+  sources: 'OPENAI:gpt-5.5'
+};
+
+/** The same card where no next step was needed: three sentences only. */
+const BUSINESS_MESSAGE_HOUSE_SHORT_ITEM = Object.assign({}, BUSINESS_MESSAGE_HOUSE_ITEM, {
+  contentId: 'BUSINESS-20261121-one-more-day-short',
+  structureJson: JSON.stringify({
+    type: 'MESSAGE_HOUSE',
+    pick: 1,
+    steps: JSON.parse(BUSINESS_MESSAGE_HOUSE_ITEM.structureJson).steps.slice(0, 3)
+  })
+});
+
 // --- stub plumbing ---------------------------------------------------------
 
 function withServiceStubs(stubs, fn) {
@@ -370,7 +444,7 @@ describe('Daily Talk CMS body — five steps', () => {
     assert.includes(texts, '오늘 문장 ②을 골라, 실제 대화에서는 이렇게 세 문장으로 말합니다. Answer → Add → Ask.');
   });
 
-  test('the business track uses the same five steps', () => {
+  test('a business row generated before the Message House change keeps its AAA step 5', () => {
     const texts = richTexts(BUSINESS_ITEM);
     assert.includes(texts, 'STEP 1 · KEY WORDS');
     assert.includes(texts, 'STEP 3 · ENGLISH WORD ORDER');
@@ -378,6 +452,42 @@ describe('Daily Talk CMS body — five steps', () => {
     assert.includes(texts, '① 누가: 우리는 / 한다: 필요합니다 / 무엇을: 하루가 더 / 어디서: 출시에');
     assert.includes(texts, 'Answer — 한 문장으로 먼저 답하기\nWe need one more day for the launch.\n출시에 하루가 더 필요합니다.');
     assert.excludes(texts.join('|'), 'MESSAGE HOUSE');
+  });
+
+  test('a business Message House row publishes STEP 5 · MESSAGE HOUSE with four sentences', () => {
+    const texts = richTexts(BUSINESS_MESSAGE_HOUSE_ITEM);
+    assert.includes(texts, 'STEP 5 · MESSAGE HOUSE');
+    assert.excludes(texts.join('|'), 'STEP 5 · AAA IN ACTION');
+    assert.includes(texts, '업무 메시지는 결론부터. 오늘 문장 ①에서 출발해 Conclusion → Reason → Detail, 필요하면 Suggestion까지 세~네 문장으로 말합니다.');
+    assert.includes(texts, 'Conclusion — 핵심 결론부터 말하기\nWe need one more day for the launch.\n출시에 하루가 더 필요합니다.');
+    assert.includes(texts, 'Reason — 근거 기둥 세우기\nThe final check found two bugs.\n마지막 점검에서 오류 두 개가 나왔습니다.');
+    assert.includes(texts, 'Detail — 구체적인 디테일 붙이기\nBoth are on the payment screen.\n둘 다 결제 화면에 있습니다.');
+    assert.includes(texts, 'Suggestion — 다음 행동 제안하기\nCould we push the launch to Friday?\n출시를 금요일로 미룰 수 있을까요?');
+
+    const labels = ['STEP 1 · KEY WORDS', 'STEP 2 · KOREAN SENTENCES', 'STEP 3 · ENGLISH WORD ORDER',
+      'STEP 4 · ENGLISH SENTENCES', 'STEP 5 · MESSAGE HOUSE'];
+    const positions = labels.map((title) => texts.indexOf(title));
+    assert.ok(positions.every((index) => index > -1), 'every step heading exists: ' + positions.join(','));
+  });
+
+  test('a three-sentence Message House leaves Suggestion out', () => {
+    const texts = richTexts(BUSINESS_MESSAGE_HOUSE_SHORT_ITEM);
+    assert.includes(texts, 'STEP 5 · MESSAGE HOUSE');
+    assert.includes(texts, 'Conclusion — 핵심 결론부터 말하기\nWe need one more day for the launch.\n출시에 하루가 더 필요합니다.');
+    assert.excludes(texts.join('|'), 'Suggestion —');
+  });
+
+  test('the Message House lead names the sentence it picked', () => {
+    const second = Object.assign({}, BUSINESS_MESSAGE_HOUSE_ITEM, {
+      structureJson: JSON.stringify(Object.assign({}, JSON.parse(BUSINESS_MESSAGE_HOUSE_ITEM.structureJson), { pick: 2 }))
+    });
+    assert.includes(richTexts(second), '업무 메시지는 결론부터. 오늘 문장 ②에서 출발해 Conclusion → Reason → Detail, 필요하면 Suggestion까지 세~네 문장으로 말합니다.');
+  });
+
+  test('the Message House body is mirrored in contentHtml with its own class', () => {
+    const html = buildDailyTalkCmsData_(BUSINESS_MESSAGE_HOUSE_ITEM).contentHtml;
+    assert.includes(html, '<h3 class="dt-step-title">STEP 5 · MESSAGE HOUSE</h3>');
+    assert.includes(html, '<p class="dt-aaa dt-message-house">Conclusion — 핵심 결론부터 말하기<br>We need one more day for the launch.<br>출시에 하루가 더 필요합니다.</p>');
   });
 
   test('contentHtml mirrors the five steps and escapes markup', () => {

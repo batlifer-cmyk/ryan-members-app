@@ -228,6 +228,66 @@ const BUSINESS_MESSAGE_HOUSE_SHORT_ITEM = Object.assign({}, BUSINESS_MESSAGE_HOU
 
 // --- stub plumbing ---------------------------------------------------------
 
+/** A business news card (2026-11-21): news briefing + 5 keywords x 2 drills. */
+const NEWS_KEYWORDS = [
+  { en: 'hold rates steady', ko: '금리를 동결하다', usageKo: '연준이 기준금리를 그대로 두었다는 뜻으로 쓰였습니다.',
+    drills: [
+      { en: 'The Fed held rates steady at its November meeting.', ko: '연준은 11월 회의에서 금리를 동결했습니다.', highlight: 'held rates steady' },
+      { en: "We're holding prices steady through the quarter.", ko: '우리는 이번 분기 동안 가격을 동결하고 있습니다.', highlight: 'holding prices steady' }
+    ] },
+  { en: 'signal a cut', ko: '인하 신호를 보내다', usageKo: '다음 회의에서 금리를 내릴 수 있다는 신호를 줬습니다.',
+    drills: [
+      { en: 'The Fed signaled a cut in December.', ko: '연준은 12월 인하 신호를 보냈습니다.', highlight: 'signaled a cut' },
+      { en: 'The report signals a cut in our budget.', ko: '그 보고서는 예산 축소 신호를 보여 줍니다.', highlight: 'signals a cut' }
+    ] },
+  { en: 'inflation report', ko: '물가 보고서', usageKo: '금리 결정 전에 나온 물가 보고서가 근거로 언급되었습니다.',
+    drills: [
+      { en: 'The inflation report came out before the meeting.', ko: '물가 보고서는 회의 전에 나왔습니다.', highlight: 'inflation report' },
+      { en: 'I read the inflation report on my commute.', ko: '출근길에 물가 보고서를 읽었습니다.', highlight: 'inflation report' }
+    ] },
+  { en: 'policy meeting', ko: '정책 회의', usageKo: '연준의 정책 회의 결과가 시장의 관심을 모았습니다.',
+    drills: [
+      { en: 'The policy meeting ended at two oclock.', ko: '정책 회의는 두 시에 끝났습니다.', highlight: 'policy meeting' },
+      { en: 'Our policy meeting is on Thursday.', ko: '우리 정책 회의는 목요일에 있습니다.', highlight: 'policy meeting' }
+    ] },
+  { en: 'rate cut', ko: '금리 인하', usageKo: '연내 금리 인하 가능성이 낮아졌다는 해석이 나왔습니다.',
+    drills: [
+      { en: 'Investors expect one more rate cut this year.', ko: '투자자들은 올해 금리 인하가 한 번 더 있을 것으로 봅니다.', highlight: 'rate cut' },
+      { en: 'A rate cut would help our loan.', ko: '금리 인하면 우리 대출에 도움이 됩니다.', highlight: 'rate cut' }
+    ] }
+];
+
+const NEWS_SUMMARY = [
+  '미 연방준비제도가 기준금리를 3.75%로 동결했습니다.',
+  '물가가 목표치에 가까워졌지만 인하 시점은 더 지켜보겠다고 발표했습니다.',
+  '한국은행도 당분간 금리를 유지할 가능성이 커졌습니다.'
+];
+
+const NEWS_ITEM = {
+  contentId: 'BUSINESS-20261121-rates-on-hold',
+  sendDate: '2026-11-21',
+  track: 'BUSINESS',
+  level: 'BASIC',
+  topicEn: 'Rates On Hold',
+  topicKo: '금리 동결',
+  chunksJson: JSON.stringify(NEWS_KEYWORDS.map((word) => ({ en: word.en, ko: word.ko, usageKo: word.usageKo }))),
+  wordOrderJson: '',
+  structureJson: JSON.stringify({
+    type: 'NEWS_DRILLS',
+    news: {
+      headlineEn: 'Fed holds rates steady, signals one more cut',
+      summaryKo: NEWS_SUMMARY,
+      sources: [{ title: '연준, 기준금리 동결', publisher: '매일경제', date: '2026-11-21', url: 'https://www.mk.co.kr/news/economy/1' }]
+    },
+    keywords: NEWS_KEYWORDS
+  }),
+  modelEn: 'Fed holds rates steady, signals one more cut',
+  modelKo: NEWS_SUMMARY.join('\n'),
+  yourTurnEn: 'Say all ten sentences out loud today: two pattern drills for each of the five keywords.',
+  yourTurnKo: '오늘 문장 10개를 소리 내어 말해 보세요. 키워드 다섯 개마다 두 문장씩입니다.',
+  sources: 'OPENAI:gpt-5.5\nhttps://www.mk.co.kr/news/economy/1'
+};
+
 function withServiceStubs(stubs, fn) {
   const merged = Object.assign({ Utilities: fakeUtilities() }, stubs || {});
   const applied = Object.keys(merged);
@@ -515,6 +575,98 @@ describe('Daily Talk CMS body — five steps', () => {
     const paragraph = rich.nodes[1];
     assert.equal(paragraph.type, 'PARAGRAPH');
     assert.equal(paragraph.paragraphData.textStyle.textAlignment, 'AUTO');
+  });
+});
+
+// --- the business news card (2026-11-21) ----------------------------------
+
+describe('Daily Talk CMS body — business news card', () => {
+  test('opens with the news briefing: headline, Korean lines, source and date', () => {
+    const texts = richTexts(NEWS_ITEM);
+    assert.includes(texts, "TODAY'S BUSINESS NEWS");
+    assert.includes(texts, 'Fed holds rates steady, signals one more cut');
+    NEWS_SUMMARY.forEach((line) => assert.includes(texts, line));
+    assert.includes(texts, '출처 · 매일경제 · 2026-11-21');
+
+    const order = ["TODAY'S BUSINESS NEWS", 'Fed holds rates steady, signals one more cut', NEWS_SUMMARY[0], '출처 · 매일경제 · 2026-11-21'];
+    const positions = order.map((text) => texts.indexOf(text));
+    assert.ok(positions.every((index) => index > -1), 'news parts exist: ' + positions.join(','));
+    assert.ok(positions[0] < positions[1] && positions[1] < positions[2] && positions[2] < positions[3], 'news parts in order');
+  });
+
+  test('then five keyword cards, each with its meaning, usage and two drills', () => {
+    const texts = richTexts(NEWS_ITEM);
+    NEWS_KEYWORDS.forEach((word, index) => {
+      assert.includes(texts, 'KEYWORD ' + (index + 1) + ' · ' + word.en);
+      assert.includes(texts, '뜻 · ' + word.ko);
+      assert.includes(texts, '뉴스 속 쓰임 · ' + word.usageKo);
+      word.drills.forEach((drill, drillIndex) => {
+        assert.includes(texts, '패턴 드릴 ' + (drillIndex + 1) + '\n' + drill.en + '\n' + drill.ko + '\n패턴 · ' + drill.highlight);
+      });
+    });
+  });
+
+  test('the keyword cards come after the briefing, in order', () => {
+    const texts = richTexts(NEWS_ITEM);
+    const newsIndex = texts.indexOf("TODAY'S BUSINESS NEWS");
+    for (let index = 0; index < NEWS_KEYWORDS.length; index += 1) {
+      const at = texts.indexOf('KEYWORD ' + (index + 1) + ' · ' + NEWS_KEYWORDS[index].en);
+      assert.ok(at > newsIndex, 'KEYWORD ' + (index + 1) + ' after the news');
+      if (index > 0) {
+        const previous = texts.indexOf('KEYWORD ' + index + ' · ' + NEWS_KEYWORDS[index - 1].en);
+        assert.ok(at > previous, 'KEYWORD ' + (index + 1) + ' follows KEYWORD ' + index);
+      }
+    }
+  });
+
+  test('does not draw the five step headings or an AAA step for a news card', () => {
+    const texts = richTexts(NEWS_ITEM).join('|');
+    assert.excludes(texts, 'STEP 1 · KEY WORDS');
+    assert.excludes(texts, 'ENGLISH WORD ORDER');
+    assert.excludes(texts, 'AAA IN ACTION');
+    assert.excludes(texts, 'MESSAGE HOUSE');
+  });
+
+  test('contentHtml mirrors the news card with its own classes', () => {
+    const html = buildDailyTalkCmsData_(NEWS_ITEM).contentHtml;
+    assert.includes(html, "<h3 class=\"dt-step-title\">TODAY'S BUSINESS NEWS</h3>");
+    assert.includes(html, '<p class="dt-news-headline">Fed holds rates steady, signals one more cut</p>');
+    assert.includes(html, '<p class="dt-news-line">' + NEWS_SUMMARY[0] + '</p>');
+    assert.includes(html, '<p class="dt-news-source">출처 · 매일경제 · 2026-11-21</p>');
+    assert.includes(html, '<h3 class="dt-step-title">KEYWORD 1 · hold rates steady</h3>');
+    assert.includes(html, '<p class="dt-kw-ko">뜻 · 금리를 동결하다</p>');
+    assert.includes(html, '<p class="dt-drill">패턴 드릴 1<br>The Fed held rates steady at its November meeting.<br>연준은 11월 회의에서 금리를 동결했습니다.<br>패턴 · held rates steady</p>');
+    assert.equal((html.match(/class="dt-drill"/g) || []).length, 10);
+    assert.equal((html.match(/class="dt-step-title">KEYWORD /g) || []).length, 5);
+  });
+
+  test('the CMS payload carries the five keywords, the headline and the title prefix', () => {
+    const data = buildDailyTalkCmsData_(NEWS_ITEM, { slug: 'business-talk-2026-11-21-rates-on-hold' });
+    assert.equal(data.title, '[Business Talk] 금리 동결');
+    assert.equal(data.modelAnswerEn, NEWS_ITEM.modelEn);
+    assert.equal(data.modelAnswerKo, NEWS_SUMMARY.join('\n'));
+    assert.equal(data.yourTurnEn, NEWS_ITEM.yourTurnEn);
+    assert.equal(data.slug, 'business-talk-2026-11-21-rates-on-hold');
+    assert.equal(data.magazineUrl, 'https://www.ryanmembers.com/rm-magazine/business-talk-2026-11-21-rates-on-hold');
+    const chunks = JSON.parse(data.chunksJson);
+    assert.equal(chunks.length, 5);
+    assert.deepEqual(chunks[0], { en: 'hold rates steady', ko: '금리를 동결하다' });
+    assert.equal(data.generatedByAi, true);
+    assert.includes(data.kakaoText, '금리 동결');
+    assert.includes(data.kakaoText, data.magazineUrl);
+  });
+
+  test('the slug follows the CONTENT_ID and the send date', () => {
+    assert.equal(buildDailyTalkCmsSlug_(NEWS_ITEM), 'business-talk-2026-11-21-rates-on-hold');
+  });
+
+  test('a news row whose STRUCTURE_JSON is unreadable still publishes readable text', () => {
+    // The queue is the source of truth; if that cell were emptied by hand the
+    // article falls back to the older chunk list instead of inventing a card.
+    const bare = Object.assign({}, NEWS_ITEM, { structureJson: '' });
+    const texts = richTexts(bare);
+    assert.includes(texts, 'hold rates steady');
+    assert.excludes(texts.join('|'), 'STEP 5 · AAA IN ACTION');
   });
 });
 

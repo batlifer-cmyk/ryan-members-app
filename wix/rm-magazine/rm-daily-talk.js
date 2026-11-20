@@ -11,10 +11,13 @@
  *   - five steps (2026-11-20 onward): KEY WORDS -> KOREAN SENTENCES ->
  *     ENGLISH WORD ORDER (누가 / 한다 / 무엇을 / 어디서 / 언제 chips) ->
  *     ENGLISH SENTENCES -> step 5, which is AAA IN ACTION (Answer / Add / Ask)
- *     for small talk and MESSAGE HOUSE (Conclusion / Reason / Detail /
- *     Suggestion) for business talk,
- *   - four steps (articles published before that): KEY CHUNKS -> WORD ORDER ->
- *     AAA / MESSAGE HOUSE -> MODEL & YOUR TURN.
+ *     for small talk,
+ *   - a business news card (2026-11-21 onward): TODAY'S BUSINESS NEWS (one
+ *     English headline, 3-4 Korean lines, source and date) then five
+ *     KEYWORD cards, each with its meaning, how the news used it and two
+ *     pattern drills (English + Korean + the highlighted pattern),
+ *   - four steps (articles published before 2026-11-20): KEY CHUNKS ->
+ *     WORD ORDER -> AAA / MESSAGE HOUSE -> MODEL & YOUR TURN.
  * Whichever the text carries is what gets drawn; nothing is guessed.
  *
  * Also hidden here: the contentId / slug lines the template prints under the
@@ -43,6 +46,9 @@
   };
   // STEP 5 for a business card: the same card slot, a different structure.
   var MESSAGE_HOUSE_INFO = { name: 'MESSAGE HOUSE', ko: '결론 → 근거 → 디테일' };
+  // The business news card (2026-11-21 onward).
+  var NEWS_INFO = { name: 'TODAY\'S BUSINESS NEWS', ko: '오늘의 경제·비즈니스 뉴스' };
+  var KEYWORD_SUB = '뉴스 속 표현과 패턴 드릴 2문장';
   var MARKS = '①②③④';
   var ROLE_LABELS = { '누가': '누가', '한다': '한다', '무엇을': '무엇을', '어디서': '어디서', '언제': '언제', '어떻게': '어떻게' };
   var CTA_LINKS = {
@@ -117,18 +123,32 @@
 
   function splitSections(nodes) {
     var sections = [];
-    var current = { step: 0, title: '', nodes: [] };
+    var current = { kind: 'hero', step: 0, index: 0, title: '', nodes: [] };
     nodes.forEach(function (node) {
-      var match = /^STEP\s*([1-6])\b[^]*$/i.exec(node.text);
-      if (match && (node.tag === 'h3' || node.tag === 'h2')) {
+      var head = (node.tag === 'h3' || node.tag === 'h2') ? headingKind(node.text) : null;
+      if (head) {
         sections.push(current);
-        current = { step: Number(match[1]), title: node.text, nodes: [] };
+        current = { kind: head.kind, step: head.step, index: head.index || 0, title: node.text, nodes: [] };
       } else {
         current.nodes.push(node);
       }
     });
     sections.push(current);
     return sections;
+  }
+
+  /**
+   * What a heading starts: a STEP card, the business news briefing, or one
+   * KEYWORD card. Any other heading keeps the paragraph in its section.
+   */
+  function headingKind(text) {
+    var value = String(text || '');
+    var step = /^STEP\s*([1-6])\b/i.exec(value);
+    if (step) return { kind: 'step', step: Number(step[1]) };
+    if (/^TODAY'?S\s+(?:BUSINESS\s+)?NEWS\b/i.test(value)) return { kind: 'news', step: 0 };
+    var keyword = /^KEYWORD\s*([1-9])\b/i.exec(value);
+    if (keyword) return { kind: 'keyword', step: 0, index: Number(keyword[1]) };
+    return null;
   }
 
   /** "[Small Talk] 주제" -> "Small Talk". */
@@ -491,6 +511,209 @@
     return card;
   }
 
+  // --- section parsers (business news card, 2026-11-21 onward) -------------
+
+  /**
+   * TODAY'S BUSINESS NEWS: one English headline, the Korean lines, and the
+   * closing '출처 · 매일경제 · 2026-11-21' line.
+   */
+  function parseNews(nodes) {
+    var data = { headline: '', lines: [], source: '' };
+    nodes.forEach(function (node) {
+      var text = node.text;
+      if (/^출처\s*·/.test(text)) {
+        data.source = text.replace(/^출처\s*·\s*/, '').trim();
+        return;
+      }
+      if (!data.headline && !hasHangul(text)) {
+        data.headline = text;
+        return;
+      }
+      if (text) data.lines.push(text);
+    });
+    return data;
+  }
+
+  /**
+   * 'KEYWORD 3 · hold rates steady' plus its paragraphs:
+   *   뜻 · 금리를 동결하다
+   *   뉴스 속 쓰임 · …
+   *   패턴 드릴 1 / <en> / <ko> / 패턴 · <highlight>
+   */
+  function parseKeywordSection(section) {
+    var title = String((section && section.title) || '');
+    var head = /^KEYWORD\s*(\d+)\s*(?:[·.\-–—:]\s*)?(.*)$/i.exec(title);
+    var data = {
+      index: (section && section.index) || (head ? Number(head[1]) : 0),
+      expression: head ? head[2].trim() : title,
+      meaning: '',
+      usage: '',
+      drills: []
+    };
+
+    (section.nodes || []).forEach(function (node) {
+      var first = node.lines[0] || '';
+      var meaning = /^뜻\s*·\s*(.*)$/.exec(first);
+      if (meaning) { data.meaning = meaning[1].trim(); return; }
+      var usage = /^뉴스\s*속\s*쓰임\s*·\s*(.*)$/.exec(first);
+      if (usage) { data.usage = usage[1].trim(); return; }
+      var drill = /^패턴\s*드릴\s*(\d+)\s*$/.exec(first);
+      if (drill) {
+        var patternLine = '';
+        var lines = node.lines.slice(1);
+        // '패턴 · <highlight>' closes the drill paragraph.
+        var last = lines.length ? lines[lines.length - 1] : '';
+        var pattern = /^패턴\s*·\s*(.*)$/.exec(last);
+        if (pattern) {
+          patternLine = pattern[1].trim();
+          lines = lines.slice(0, -1);
+        }
+        data.drills.push({
+          index: Number(drill[1]),
+          en: lines[0] || '',
+          ko: lines.slice(1).join(' ') || '',
+          pattern: patternLine
+        });
+      }
+    });
+    return data;
+  }
+
+  // --- renderers (business news card) --------------------------------------
+
+  /** Marks the first occurrence(s) of the pattern inside the English sentence. */
+  function highlighted(text, pattern) {
+    var fragment = document.createDocumentFragment();
+    var source = String(text || '');
+    var needle = String(pattern || '').trim();
+    if (!needle) {
+      fragment.appendChild(document.createTextNode(source));
+      return fragment;
+    }
+    var haystack = source.toLowerCase();
+    var target = needle.toLowerCase();
+    var from = 0;
+    var found = -1;
+    while ((found = haystack.indexOf(target, from)) !== -1) {
+      if (found > from) fragment.appendChild(document.createTextNode(source.slice(from, found)));
+      fragment.appendChild(make('span', 'rmdt-hl', source.slice(found, found + needle.length)));
+      from = found + needle.length;
+    }
+    if (from < source.length) fragment.appendChild(document.createTextNode(source.slice(from)));
+    return fragment;
+  }
+
+  function renderNewsCard(data, keywords) {
+    var card = make('section', 'rmdt-card is-news');
+    card.setAttribute('data-step', 'news');
+
+    var head = make('div', 'rmdt-head');
+    head.appendChild(make('span', 'rmdt-step', 'NEWS'));
+    var names = make('div', 'rmdt-names');
+    names.appendChild(make('h3', 'rmdt-name', NEWS_INFO.name));
+    names.appendChild(make('span', 'rmdt-sub', NEWS_INFO.ko));
+    head.appendChild(names);
+    card.appendChild(head);
+
+    if (data.headline) card.appendChild(make('p', 'rmdt-news-headline', data.headline));
+
+    if (data.lines.length) {
+      var list = make('ul', 'rmdt-news-lines');
+      data.lines.forEach(function (line) {
+        list.appendChild(make('li', 'rmdt-news-line', line));
+      });
+      card.appendChild(list);
+    }
+
+    if (data.source) {
+      var source = make('p', 'rmdt-news-source');
+      source.appendChild(make('span', 'rmdt-news-source-label', '출처'));
+      source.appendChild(make('span', 'rmdt-news-source-text', data.source));
+      card.appendChild(source);
+    }
+
+    if (keywords.length) {
+      var index = make('div', 'rmdt-kw-index');
+      index.appendChild(make('span', 'rmdt-kw-index-label', '오늘의 키워드 ' + keywords.length));
+      var chips = make('ol', 'rmdt-kw-index-list');
+      keywords.forEach(function (keyword) {
+        var item = make('li', 'rmdt-kw-index-item');
+        var link = make('a', 'rmdt-kw-index-link');
+        link.setAttribute('href', '#rmdt-keyword-' + keyword.index);
+        link.appendChild(make('span', 'rmdt-kw-index-num', String(keyword.index)));
+        link.appendChild(make('span', 'rmdt-kw-index-text', keyword.expression));
+        item.appendChild(link);
+        chips.appendChild(item);
+      });
+      index.appendChild(chips);
+      card.appendChild(index);
+    }
+
+    return card;
+  }
+
+  function renderKeywordCard(data) {
+    var card = make('section', 'rmdt-card is-keyword');
+    card.setAttribute('data-step', 'keyword');
+    card.setAttribute('data-keyword', String(data.index));
+    card.id = 'rmdt-keyword-' + data.index;
+
+    var head = make('div', 'rmdt-head');
+    head.appendChild(make('span', 'rmdt-step', 'KEYWORD ' + data.index));
+    var names = make('div', 'rmdt-names');
+    names.appendChild(make('h3', 'rmdt-name rmdt-kw-title', data.expression));
+    names.appendChild(make('span', 'rmdt-sub', KEYWORD_SUB));
+    head.appendChild(names);
+    card.appendChild(head);
+
+    if (data.meaning) card.appendChild(make('p', 'rmdt-kw-ko', data.meaning));
+
+    if (data.usage) {
+      var usage = make('p', 'rmdt-kw-usage');
+      usage.appendChild(make('span', 'rmdt-kw-usage-label', '뉴스 속 쓰임'));
+      usage.appendChild(make('span', 'rmdt-kw-usage-text', data.usage));
+      card.appendChild(usage);
+    }
+
+    if (data.drills.length) {
+      var drills = make('div', 'rmdt-drills');
+      data.drills.forEach(function (drill) {
+        var block = make('div', 'rmdt-drill');
+        block.setAttribute('data-drill', String(drill.index));
+        var drillHead = make('div', 'rmdt-drill-head');
+        drillHead.appendChild(make('span', 'rmdt-drill-badge', 'DRILL ' + drill.index));
+        if (drill.pattern) drillHead.appendChild(make('span', 'rmdt-drill-pattern', drill.pattern));
+        block.appendChild(drillHead);
+
+        var english = make('p', 'rmdt-drill-en');
+        english.appendChild(highlighted(drill.en, drill.pattern));
+        block.appendChild(english);
+
+        if (drill.ko) block.appendChild(make('p', 'rmdt-drill-ko', drill.ko));
+        drills.appendChild(block);
+      });
+      card.appendChild(drills);
+    }
+
+    return card;
+  }
+
+  /** The whole business news card: briefing first, then KEYWORD 1..5. */
+  function buildNewsDrillCards(newsSections, keywordSections) {
+    var keywords = keywordSections.map(parseKeywordSection)
+      .filter(function (keyword) { return keyword.expression || keyword.drills.length; })
+      .sort(function (left, right) { return left.index - right.index; });
+    if (!keywords.length) return [];
+
+    var cards = [];
+    if (newsSections.length) {
+      var news = parseNews(newsSections[0].nodes);
+      if (news.headline || news.lines.length) cards.push(renderNewsCard(news, keywords));
+    }
+    keywords.forEach(function (keyword) { cards.push(renderKeywordCard(keyword)); });
+    return cards;
+  }
+
   // --- four-step renderers (kept for articles published before 2026-11-20) -
 
   function renderChunks(section) {
@@ -634,9 +857,11 @@
     var nodes = collectNodes(root);
     if (nodes.length < 3) return null;
     var sections = splitSections(nodes);
-    var heroNodes = sections[0].step === 0 ? sections[0].nodes : [];
-    var lesson = sections.filter(function (section) { return section.step > 0; });
-    if (!lesson.length) return null;
+    var heroNodes = sections[0].kind === 'hero' ? sections[0].nodes : [];
+    var lesson = sections.filter(function (section) { return section.kind === 'step'; });
+    var keywordSections = sections.filter(function (section) { return section.kind === 'keyword'; });
+    var newsSections = sections.filter(function (section) { return section.kind === 'news'; });
+    if (!lesson.length && !keywordSections.length) return null;
 
     var fiveStep = lesson.some(function (section) { return section.step >= 5; });
     var article = make('div', '', null);
@@ -644,7 +869,12 @@
     var hero = parseHero(heroNodes);
     if (hero.titleEn || hero.titleKo || hero.snackEn) article.appendChild(renderHero(hero));
 
-    var cards = fiveStep ? buildFiveStepCards(lesson) : buildFourStepCards(lesson);
+    var cards;
+    if (keywordSections.length) {
+      cards = buildNewsDrillCards(newsSections, keywordSections);
+    } else {
+      cards = fiveStep ? buildFiveStepCards(lesson) : buildFourStepCards(lesson);
+    }
     var rendered = cards.filter(Boolean).length;
     cards.forEach(function (card) { if (card) article.appendChild(card); });
     if (!rendered) return null;

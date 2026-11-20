@@ -19,18 +19,29 @@
  *  - Pure helpers (prompt, schema, parsing, validation, row layout) have no
  *    Google service calls and are covered by tests/daily-talk-generator.test.js.
  *
- * Lesson shape (2026-11-20, the academy's five steps; step 5 differs by track):
+ * Card shapes by track (2026-11-21):
+ *
+ * SMALL_TALK — the academy's five steps:
  *   STEP 1  words     3 words / expressions with their Korean meaning
  *   STEP 2  sentences 3 Korean sentences built from those words
  *   STEP 3  sentences[].order  the same Korean sentences cut up and reordered
  *          into English word order (누가 / 한다 / 무엇을 / 어디서 / 언제)
  *   STEP 4  sentences[].en     the same sentences in natural English
- *   STEP 5  SMALL_TALK  aaa           one of those sentences said in a real
- *          conversation as Answer -> Add -> Ask
- *          BUSINESS    messageHouse  one of those sentences grown into the
- *          message a Korean office worker really sends: Conclusion (the point
- *          first) -> Reason -> Detail -> Suggestion when a next step is needed
- *          (3 or 4 sentences)
+ *   STEP 5  aaa       one of those sentences said in a real conversation as
+ *          Answer -> Add -> Ask
+ *
+ * BUSINESS — today's real economy/business news, read from public RSS feeds
+ * (RM_DAILY_TALK_NEWS) and handed to the model:
+ *   news      one English headline, 3-4 Korean summary lines and the real
+ *             publisher + date of the items it is based on
+ *   keywords  5 English keywords/expressions from that news, each with its
+ *             Korean meaning, one Korean line on how today's news used it,
+ *             and 2 pattern drills (English + Korean + the highlighted
+ *             pattern) — ten drill sentences in all
+ *
+ * A business row generated before 2026-11-21 keeps its Message House step 5;
+ * normalize/validate/render still read that shape, so old drafts publish the
+ * way they were generated.
  * Storage keeps the existing queue columns: CHUNKS_JSON <- words,
  * WORD_ORDER_JSON <- sentences, STRUCTURE_JSON <- the step 5 script (type AAA
  * or MESSAGE_HOUSE), MODEL_EN/KO <- the same lines as labelled text. No sheet
@@ -77,6 +88,42 @@ var RM_DAILY_TALK_GEN = Object.freeze({
 });
 
 /**
+ * Today's economy/business news for the BUSINESS card.
+ *
+ * Apps Script reads these public RSS feeds (no key, no page scraping) and hands
+ * the newest neutral business stories to the model, which picks one. The feed
+ * list is ordered: Google News Korea business first, then the economy desks of
+ * two Korean dailies and the national wire.
+ */
+var RM_DAILY_TALK_NEWS = Object.freeze({
+  FEEDS: [
+    { publisher: 'Google News', url: 'https://news.google.com/rss/headlines/section/topic/BUSINESS?hl=ko&gl=KR&ceid=KR:ko' },
+    { publisher: '연합뉴스', url: 'https://www.yna.co.kr/rss/economy.xml' },
+    { publisher: '매일경제', url: 'https://www.mk.co.kr/rss/30000001/' },
+    { publisher: '한국경제', url: 'https://www.hankyung.com/feed/economy' }
+  ],
+  CANDIDATE_LIMIT: 10,
+  FRESH_HOURS: 48,
+  KEYWORD_COUNT: 5,
+  DRILL_COUNT: 2,
+  MIN_SUMMARY_LINES: 3,
+  MAX_SUMMARY_LINES: 4,
+  MAX_SOURCE_PICKS: 3,
+  SUMMARY_TEXT_MAX_CHARS: 240,
+  USAGE_MAX_CHARS: 160,
+  HEADLINE_MAX_WORDS: 24,
+  KEYWORD_MAX_WORDS: 6,
+  DRILL_MAX_WORDS: 22,
+  SUMMARY_LINE_MAX_CHARS: 220,
+  // Asia/Seoul has no daylight saving time, so a fixed offset is exact.
+  TIMEZONE_OFFSET_MINUTES: 540,
+  // Stories this card never teaches: the lesson has to stay neutral.
+  BLOCKED_TITLE: /(국회|대통령|여당|야당|정당|총선|대선|선거|탄핵|검찰|경찰|구속|영장|피의자|재판|살인|성범죄|성폭행|마약|복권|시험|입시|수능|생도|사망|부고|부상|화재|전쟁|미사일|북한|우크라|푸틴|이스라엘|하마스|프로야구|KBO|축구|야구|배구|농구|올림픽|연예|아이돌|드라마|음주운전)/,
+  // Stories that are business/economy (one hit is enough to become a candidate).
+  TOPIC_HINTS: /(금리|환율|물가|인상|인하|수출|수입|무역|관세|반도체|반도체|배터리|전기차|조선|자동차|항공|물류|항만|유가|원유|에너지|원전|재생에너지|전력|증시|코스피|주가|실적|영업이익|매출|투자|펀드|채권|국채|가계부채|부동산|집값|전세|월세|고용|취업|임금|최저임금|소비|매출|기업|그룹|공장|생산|제조|수주|계약|인수|합병|구조조정|감원|연준|Fed|ECB|GDP|성장률|경제|산업|통상|공급망|데이터센터|AI|인공지능|클라우드|스타트업|벤처|은행|보험|카드|결제|핀테크|가상자산|비트코인|달러|엔화|위안|브렉시트|EU|OECD|IEA|IMF|수출입은행|한국은행|기획재정부|산업부)/
+});
+
+/**
  * STEP 3 splits a Korean sentence into meaning pieces and lays them out in
  * English word order: 누가 (who) / 한다 (does) / 무엇을 (what) / 어디서 (where) /
  * 언제 (when) / 어떻게 (how).
@@ -120,6 +167,10 @@ var RM_DAILY_TALK_PRACTICE_CUES = Object.freeze({
   MESSAGE_HOUSE: Object.freeze({
     en: 'Say your business message out loud three times today: Conclusion first, then Reason, Detail and Suggestion.',
     ko: '오늘 업무 메시지를 소리 내어 세 번 말해 보세요. 결론 → 근거 → 디테일, 필요하면 제안까지.'
+  }),
+  NEWS_DRILLS: Object.freeze({
+    en: 'Say all ten sentences out loud today: two pattern drills for each of the five keywords.',
+    ko: '오늘 문장 10개를 소리 내어 말해 보세요. 키워드 다섯 개마다 두 문장씩입니다.'
   })
 });
 
@@ -133,23 +184,26 @@ var RM_DAILY_TALK_STRUCTURE_LABELS = Object.freeze({
 });
 
 function dailyTalkStructureTypeFor(track) {
-  return normalizeTrack(track) === RM_TRACKS.BUSINESS ? 'MESSAGE_HOUSE' : 'AAA';
+  return normalizeTrack(track) === RM_TRACKS.BUSINESS ? 'NEWS_DRILLS' : 'AAA';
 }
 
 function dailyTalkStructureLabels(type) {
+  // A news card has no Answer/Add/Ask or Message House steps; the keywords are
+  // its structure. Callers that only draw step 5 get an empty list.
+  if (type === 'NEWS_DRILLS') return [];
   return RM_DAILY_TALK_STRUCTURE_LABELS[type === 'MESSAGE_HOUSE' ? 'MESSAGE_HOUSE' : 'AAA'];
 }
 
 /** STEP 5 steps of a structure type: [{key, label, hint, optional?}]. */
 function dailyTalkStructureSteps(type) {
+  if (type === 'NEWS_DRILLS') return [];
   return (type === 'MESSAGE_HOUSE' ? RM_DAILY_TALK_MESSAGE_HOUSE : RM_DAILY_TALK_AAA).STEPS;
 }
 
 var RM_DAILY_TALK_TRACK_BRIEFS = Object.freeze({
   SMALL_TALK: 'Daily Small Talk: everyday conversation an adult learner can use the same day ' +
     '(greetings, weekends, food and cafes, weather, hobbies, travel, neighbours, delivery, small talk with coworkers).',
-  BUSINESS: 'Daily Business Talk: workplace English for Korean office workers ' +
-    '(meetings, email openers and follow-ups, deadlines, polite requests, status updates, negotiation, presenting, workplace small talk).'
+  BUSINESS: 'Daily Business Talk: today\'s real economy and business news, its five English keywords and ten pattern drills.'
 });
 
 // ---------------------------------------------------------------------------
@@ -174,6 +228,211 @@ function parseTrackList(value) {
   return out.length ? out : [RM_TRACKS.SMALL_TALK, RM_TRACKS.BUSINESS];
 }
 
+/**
+ * Today's real business news: read the public RSS feeds, keep the newest
+ * neutral stories, and give the model a numbered list to choose from.
+ * Everything below the fetch call is pure (no Google services) and unit tested.
+ */
+
+/** XML/HTML entities and CDATA out of one RSS field. */
+function decodeNewsText_(value) {
+  var text = String(value === null || value === undefined ? '' : value);
+  text = text.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1');
+  text = text
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#0*39;|&apos;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&');
+  return text.replace(/&#(\d+);/g, function (match, code) {
+    return String.fromCharCode(Number(code));
+  });
+}
+
+/** The first text inside a tag, attributes ignored. */
+function newsTagText_(block, tag) {
+  var matched = new RegExp('<' + tag + '\\b[^>]*>([\\s\\S]*?)</' + tag + '>', 'i').exec(String(block || ''));
+  return matched ? matched[1] : '';
+}
+
+/** A description with its tags and entities flattened into one line. */
+function stripNewsHtml_(value) {
+  return String(value === null || value === undefined ? '' : value)
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    // Block tags and line breaks separate words; inline tags (a, b, span) do
+    // not, so a Korean sentence keeps its spacing.
+    .replace(/<\/?(p|div|li|ul|ol|tr|td|h[1-6]|blockquote)\b[^>]*>/gi, ' ')
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<[^>]+>/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/** 'YYYY-MM-DD' in Asia/Seoul from a Date (no Utilities, so tests can call it). */
+function newsDateKey_(value) {
+  if (!value) return '';
+  var date = Object.prototype.toString.call(value) === '[object Date]' ? value : new Date(value);
+  if (isNaN(date.getTime())) return '';
+  var shifted = new Date(date.getTime() + RM_DAILY_TALK_NEWS.TIMEZONE_OFFSET_MINUTES * 60000);
+  var month = shifted.getUTCMonth() + 1;
+  var day = shifted.getUTCDate();
+  return shifted.getUTCFullYear() + '-' + (month < 10 ? '0' : '') + month + '-' + (day < 10 ? '0' : '') + day;
+}
+
+/**
+ * RSS 2.0 -> [{title, publisher, url, publishedAt, publishedMs, dateKey, summary}].
+ * Google News and the Korean newspaper feeds share the item shape; Google News
+ * also names the publisher in <source> and repeats it after " - " in the title.
+ */
+function parseNewsRssFeed(xml, options) {
+  var feed = options || {};
+  var text = String(xml === null || xml === undefined ? '' : xml);
+  var items = [];
+  var re = /<item\b[^>]*>([\s\S]*?)<\/item>/gi;
+  var match;
+  while ((match = re.exec(text))) {
+    var block = match[1];
+    var publisher = decodeNewsText_(newsTagText_(block, 'source')).replace(/\s+/g, ' ').trim() ||
+      String(feed.publisher || '').trim();
+    var title = decodeNewsText_(newsTagText_(block, 'title')).replace(/\s+/g, ' ').trim();
+    if (publisher && title.slice(-1 * (publisher.length + 3)) === ' - ' + publisher) {
+      title = title.slice(0, -1 * (publisher.length + 3)).trim();
+    }
+    if (!title) continue;
+
+    var rawDescription = decodeNewsText_(newsTagText_(block, 'description'));
+    var published = new Date(decodeNewsText_(newsTagText_(block, 'pubDate')).trim());
+    var valid = !isNaN(published.getTime());
+    items.push({
+      title: title,
+      publisher: publisher,
+      url: decodeNewsText_(newsTagText_(block, 'link')).trim(),
+      publishedAt: valid ? published.toISOString() : '',
+      publishedMs: valid ? published.getTime() : 0,
+      dateKey: valid ? newsDateKey_(published) : '',
+      // Google News fills the description with a list of related headlines
+      // (an <ol>), not the story's lede; keeping it would only add noise.
+      summary: /<ol[\s>]/i.test(rawDescription) ? '' : stripNewsHtml_(rawDescription)
+    });
+  }
+  return items;
+}
+
+/** A title stripped to its letters and digits, for duplicate detection. */
+function newsTitleKey_(title) {
+  return String(title === null || title === undefined ? '' : title)
+    .toLowerCase()
+    .replace(/[^0-9a-z\uac00-\ud7a3]/g, '');
+}
+
+/**
+ * Keeps the newest, neutral, distinct stories and numbers them 1..n so the
+ * model can cite the ones it used without inventing a publisher or a date.
+ *
+ * The Google News business feed also carries crime, exam and war stories, so a
+ * candidate must read like economy/business news: it needs at least one
+ * business word in the title or summary, and the plain filter above still
+ * rejects the obviously off-topic ones.
+ */
+function selectNewsCandidates(items, options) {
+  var opts = options || {};
+  var limit = Number(opts.limit) || RM_DAILY_TALK_NEWS.CANDIDATE_LIMIT;
+  var nowMs = opts.now ? new Date(opts.now).getTime() : Date.now();
+  var freshMs = (Number(opts.freshHours) || RM_DAILY_TALK_NEWS.FRESH_HOURS) * 3600000;
+  var requireTopic = opts.requireTopicMatch !== false;
+  var seen = {};
+  var kept = [];
+
+  (items || []).forEach(function (item) {
+    if (!item) return;
+    var title = String(item.title || '').replace(/\s+/g, ' ').trim();
+    if (title.length < 8) return;
+    if (RM_DAILY_TALK_NEWS.BLOCKED_TITLE.test(title)) return;
+    if (item.publishedMs && nowMs && nowMs - item.publishedMs > freshMs) return;
+    var summary = String(item.summary || '').trim().slice(0, RM_DAILY_TALK_NEWS.SUMMARY_TEXT_MAX_CHARS);
+    var score = newsTopicScore_(title + ' ' + summary);
+    if (requireTopic && !score) return;
+    var key = newsTitleKey_(title).slice(0, 40);
+    if (!key || seen[key]) return;
+    seen[key] = true;
+    kept.push({
+      title: title,
+      publisher: String(item.publisher || '').replace(/\s+/g, ' ').trim(),
+      url: String(item.url || '').trim(),
+      publishedAt: String(item.publishedAt || ''),
+      publishedMs: Number(item.publishedMs) || 0,
+      dateKey: String(item.dateKey || ''),
+      summary: summary,
+      score: score
+    });
+  });
+
+  // Best business fit first; the newest story wins among equals.
+  kept.sort(function (left, right) {
+    if (left.score !== right.score) return right.score - left.score;
+    if (left.publishedMs !== right.publishedMs) return right.publishedMs - left.publishedMs;
+    return String(left.title).localeCompare(String(right.title));
+  });
+
+  return kept.slice(0, limit).map(function (item, index) {
+    return {
+      index: index + 1,
+      title: item.title,
+      publisher: item.publisher,
+      url: item.url,
+      publishedAt: item.publishedAt,
+      dateKey: item.dateKey,
+      summary: item.summary
+    };
+  });
+}
+
+/** How many business/economy words a headline and summary carry. */
+function newsTopicScore_(text) {
+  var matches = String(text === null || text === undefined ? '' : text).match(new RegExp(RM_DAILY_TALK_NEWS.TOPIC_HINTS.source, 'g'));
+  return matches ? matches.length : 0;
+}
+
+/** The numbered news list the prompt shows the model. */
+function formatNewsCandidatesForPrompt(candidates) {
+  return (candidates || []).map(function (item) {
+    var meta = [item.dateKey, item.publisher].filter(Boolean).join(' · ');
+    return '[' + item.index + '] ' + meta + '\n' + item.title + (item.summary ? '\n' + item.summary : '');
+  }).join('\n\n');
+}
+
+/**
+ * sourceIndexes -> the real publisher/date/URL of those candidates. The model
+ * never supplies a publisher or a URL, so the card cannot cite a story that
+ * does not exist.
+ */
+function resolveNewsSources(indexes, candidates) {
+  var list = candidates || [];
+  var seen = {};
+  var out = [];
+  (Array.isArray(indexes) ? indexes : []).forEach(function (raw) {
+    var index = Number(raw);
+    var item = null;
+    list.forEach(function (candidate) {
+      if (!item && Number(candidate && candidate.index) === index) item = candidate;
+    });
+    if (!item) return;
+    var key = String(item.url || item.title || '');
+    if (!key || seen[key]) return;
+    seen[key] = true;
+    out.push({
+      index: index,
+      title: String(item.title || ''),
+      publisher: String(item.publisher || ''),
+      date: String(item.dateKey || ''),
+      url: String(item.url || '')
+    });
+  });
+  return out.slice(0, RM_DAILY_TALK_NEWS.MAX_SOURCE_PICKS);
+}
+
 /** Pairs of {"en", "ko"} — a word (STEP 1) or one AAA line (STEP 5). */
 function buildDailyTalkPairSchema_() {
   return {
@@ -189,8 +448,77 @@ function buildDailyTalkPairSchema_() {
 
 /** Required JSON fields of a card for a structure type. */
 function dailyTalkContentFields(structureType) {
+  if (structureType === 'NEWS_DRILLS') return ['topicEn', 'topicKo', 'news', 'keywords'];
   var step5 = structureType === 'MESSAGE_HOUSE' ? 'messageHouse' : 'aaa';
   return RM_DAILY_TALK_GEN.CONTENT_FIELDS.concat([step5]);
+}
+
+/**
+ * JSON schema for the business news card: today's news briefing, then five
+ * keywords with two pattern drills each.
+ */
+function buildDailyTalkNewsSchema_() {
+  var keywordItem = {
+    type: 'object',
+    additionalProperties: false,
+    required: ['en', 'ko', 'usageKo', 'drills'],
+    properties: {
+      en: { type: 'string' },
+      ko: { type: 'string' },
+      usageKo: { type: 'string' },
+      drills: {
+        type: 'array',
+        minItems: RM_DAILY_TALK_NEWS.DRILL_COUNT,
+        maxItems: RM_DAILY_TALK_NEWS.DRILL_COUNT,
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['en', 'ko', 'highlight'],
+          properties: {
+            en: { type: 'string' },
+            ko: { type: 'string' },
+            highlight: { type: 'string' }
+          }
+        }
+      }
+    }
+  };
+
+  return {
+    type: 'object',
+    additionalProperties: false,
+    required: dailyTalkContentFields('NEWS_DRILLS'),
+    properties: {
+      topicEn: { type: 'string' },
+      topicKo: { type: 'string' },
+      news: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['headlineEn', 'summaryKo', 'sourceIndexes'],
+        properties: {
+          headlineEn: { type: 'string' },
+          summaryKo: {
+            type: 'array',
+            minItems: RM_DAILY_TALK_NEWS.MIN_SUMMARY_LINES,
+            maxItems: RM_DAILY_TALK_NEWS.MAX_SUMMARY_LINES,
+            items: { type: 'string' }
+          },
+          sourceIndexes: {
+            type: 'array',
+            minItems: 1,
+            maxItems: RM_DAILY_TALK_NEWS.MAX_SOURCE_PICKS,
+            items: { type: 'integer', minimum: 1 }
+          }
+        }
+      },
+      keywords: {
+        type: 'array',
+        minItems: RM_DAILY_TALK_NEWS.KEYWORD_COUNT,
+        maxItems: RM_DAILY_TALK_NEWS.KEYWORD_COUNT,
+        items: keywordItem
+      }
+    }
+  };
 }
 
 /**
@@ -199,6 +527,7 @@ function dailyTalkContentFields(structureType) {
  * `messageHouse` (Conclusion / Reason / Detail / Suggestion).
  */
 function buildDailyTalkContentSchema(structureType) {
+  if (structureType === 'NEWS_DRILLS') return buildDailyTalkNewsSchema_();
   var pieceSchema = {
     type: 'object',
     additionalProperties: false,
@@ -284,19 +613,23 @@ function buildDailyTalkContentSchema(structureType) {
 
 /**
  * Builds the system/user prompt for one track.
- * options: { date, level, recentTopics: ['topic', ...], seed }
+ * options: { date, level, recentTopics: ['topic', ...], seed, news: [candidate] }
+ *
+ * SMALL_TALK writes the academy's five steps. BUSINESS writes today's news
+ * card and needs the numbered news candidates in `options.news`.
  */
 function buildContentPrompt(track, options) {
-  var opts = options || {};
   var normalizedTrack = normalizeTrack(track) === RM_TRACKS.BUSINESS ? RM_TRACKS.BUSINESS : RM_TRACKS.SMALL_TALK;
-  var brief = RM_DAILY_TALK_TRACK_BRIEFS[normalizedTrack];
+  if (normalizedTrack === RM_TRACKS.BUSINESS) return buildBusinessNewsPrompt_(options);
+  return buildSmallTalkPrompt_(options);
+}
+
+/** The five-step small talk card. */
+function buildSmallTalkPrompt_(options) {
+  var opts = options || {};
   var level = String(opts.level || RM_DAILY_TALK_GEN.DEFAULT_LEVEL).trim().toUpperCase();
   var recent = (opts.recentTopics || []).filter(Boolean).slice(0, RM_DAILY_TALK_GEN.RECENT_TOPIC_LOOKBACK);
   var seed = String(opts.seed || '').trim();
-  var isBusiness = normalizedTrack === RM_TRACKS.BUSINESS;
-  // Step 5 is small talk's AAA and business's Top-Down Message House.
-  var structureType = dailyTalkStructureTypeFor(normalizedTrack);
-  var messageHouse = structureType === 'MESSAGE_HOUSE';
 
   var system = [
     'You write Ryan Daily Talk, the weekday English-learning card that Ryan Members, an English conversation academy in Busan,',
@@ -310,15 +643,9 @@ function buildContentPrompt(track, options) {
     'Step 3 English word order: the same three Korean sentences, cut into meaning pieces and rearranged into English word order',
     '(누가 / 한다 / 무엇을 / 어디서 / 언제), so the learner stops translating word for word from Korean.',
     'Step 4 English sentences: the same three sentences translated into natural spoken English.',
-    messageHouse
-      ? 'Step 5 Message House: pick ONE of the three sentences and grow it into the business message the learner really sends or says at work —'
-      : 'Step 5 AAA: pick ONE of the three sentences and show how the learner says it in a real conversation in three sentences —',
-    messageHouse
-      ? 'three sentences, or four when a next step is needed: Conclusion (say the point first), Reason (why it holds), Detail (one concrete fact), Suggestion (the next step as a proposal or a question).'
-      : 'Answer (answer in one sentence), Add (one reason or detail), Ask (ask back and hand the turn over).',
-    isBusiness
-      ? 'This card is BUSINESS TALK: a workplace exchange. Every sentence is what the learner would really say to a colleague, a client or a manager.'
-      : 'This card is SMALL TALK: friendly everyday conversation the learner can have today.',
+    'Step 5 AAA: pick ONE of the three sentences and show how the learner says it in a real conversation in three sentences —',
+    'Answer (answer in one sentence), Add (one reason or detail), Ask (ask back and hand the turn over).',
+    'This card is SMALL TALK: friendly everyday conversation the learner can have today.',
     '',
     'The five steps must all point at the same three sentences: the words of Step 1 are the words used in Steps 2-4,',
     'and Step 5 grows out of the sentence it picks.',
@@ -326,7 +653,7 @@ function buildContentPrompt(track, options) {
   ].join('\n');
 
   var lines = [
-    'Track: ' + brief,
+    'Track: ' + RM_DAILY_TALK_TRACK_BRIEFS.SMALL_TALK,
     'Learner level: ' + level,
     (opts.date ? 'Send date: ' + opts.date : ''),
     (seed ? 'Topic seed (use it or a close variation): ' + seed : ''),
@@ -348,42 +675,17 @@ function buildContentPrompt(track, options) {
     '  Use ' + RM_DAILY_TALK_GEN.MIN_ORDER_PIECES + '-' + RM_DAILY_TALK_GEN.MAX_ORDER_PIECES + ' pieces, always include 누가 and 한다, and place them 누가 → 한다 → 무엇을 → 어디서 → 언제 order.',
     '  Example for 나는 오늘 아침 출근길에 따뜻한 커피를 마셨다: 누가/나는, 한다/마셨다, 무엇을/따뜻한 커피를, 어디서/출근길에, 언제/오늘 아침.',
     '  Never use the "/" character inside a piece.',
-    '  "en" = that same sentence in natural spoken English (max 16 words, contractions).'
-  ];
-
-  if (messageHouse) {
-    lines = lines.concat([
-      '- messageHouse: pick ONE of the three sentences ("pick": 1, 2 or 3 — the one this workplace message grows out of)',
-      '  and turn it into the message the learner actually sends or says at work:',
-      '  "conclusion" = Conclusion: the point in one sentence, said first (max 20 words);',
-      '  "reason" = Reason: the one reason the point holds (max 20 words);',
-      '  "detail" = Detail: one concrete fact — a date, a number, a screen or a person (max 20 words);',
-      '  "suggestion" = Suggestion: one sentence proposing the next step or asking for a decision —',
-      '  or put "" in both "en" and "ko" when this situation needs no next step.',
-      '  Each of conclusion / reason / detail / suggestion has "en" and "ko".',
-      '  All together that is 3 sentences (no suggestion) or 4 sentences (with suggestion) — never more.'
-    ]);
-  } else {
-    lines = lines.concat([
-      '- aaa: pick ONE of the three sentences ("pick": 1, 2 or 3 — the one that best opens a real conversation today)',
-      '  and expand it into the three sentences the learner actually says:',
-      '  "answer" = Answer: one short sentence that answers or states the picked sentence conversationally;',
-      '  "add" = Add: one sentence adding a reason or a concrete detail;',
-      '  "ask" = Ask: one sentence asking the other person and handing the turn back.',
-      '  Each of answer / add / ask has "en" and "ko".'
-    ]);
-  }
-
-  lines = lines.concat([
+    '  "en" = that same sentence in natural spoken English (max 16 words, contractions).',
+    '- aaa: pick ONE of the three sentences ("pick": 1, 2 or 3 — the one that best opens a real conversation today)',
+    '  and expand it into the three sentences the learner actually says:',
+    '  "answer" = Answer: one short sentence that answers or states the picked sentence conversationally;',
+    '  "add" = Add: one sentence adding a reason or a concrete detail;',
+    '  "ask" = Ask: one sentence asking the other person and handing the turn back.',
+    '  Each of answer / add / ask has "en" and "ko".',
     '',
     'Hard rules:',
     '- At least two of the three words must visibly appear in the three English sentences (sentences[].en).',
-    messageHouse
-      ? '- The Conclusion must be built on the picked sentence: keep its key words so the learner hears the same expression again.'
-      : '- The answer must be built on the picked sentence: keep its key words so the learner hears the same expression again.',
-    messageHouse
-      ? '- The Message House must reuse at least one of the three words of Step 1, so the card stays one lesson.'
-      : '',
+    '- The answer must be built on the picked sentence: keep its key words so the learner hears the same expression again.',
     '- The pieces of "order" must be the Korean words of "ko" itself — the meaning does not change, only the order.',
     '- Each "en" is the translation of its own "ko": same meaning, same length, no extra ideas.',
     '- Write spoken English: use contractions (I\'m, it\'s, we\'ll, don\'t) and avoid textbook stiffness.',
@@ -391,17 +693,120 @@ function buildContentPrompt(track, options) {
     '- Keep every expression polite and safe for a workplace and a family chat.',
     '- No brand names, no prices, no politics, no religion, no medical or legal advice.',
     '- The topic must be different from the recent topics above and useful this week.'
-  ].filter(function (line, index, all) { return line !== '' || all[index - 1] !== ''; }));
+  ].filter(function (line, index, all) { return line !== '' || all[index - 1] !== ''; });
 
   return {
-    track: normalizedTrack,
+    track: RM_TRACKS.SMALL_TALK,
     level: level,
-    structureType: structureType,
-    schemaName: 'ryan_daily_talk_' + normalizedTrack.toLowerCase(),
-    schema: buildDailyTalkContentSchema(structureType),
+    structureType: 'AAA',
+    schemaName: 'ryan_daily_talk_small_talk',
+    schema: buildDailyTalkContentSchema('AAA'),
     system: system,
     user: lines.join('\n')
   };
+}
+
+/**
+ * The business news card: one story from today's real economy/business news,
+ * five English keywords from it, and two pattern drills for each keyword.
+ */
+function buildBusinessNewsPrompt_(options) {
+  var opts = options || {};
+  var level = String(opts.level || RM_DAILY_TALK_GEN.DEFAULT_LEVEL).trim().toUpperCase();
+  var candidates = Array.isArray(opts.news) ? opts.news : [];
+  var recent = (opts.recentTopics || []).filter(Boolean).slice(0, RM_DAILY_TALK_GEN.RECENT_TOPIC_LOOKBACK);
+  var seed = String(opts.seed || '').trim();
+
+  var system = [
+    'You write Ryan Daily Talk BUSINESS, the weekday card Ryan Members, an English conversation academy in Busan, sends to Korean office workers on KakaoTalk.',
+    'Brand line: "English Opens a New World." The reader is a busy Korean adult at ' + level + ' level (CEFR A2-B1) who reads the economic news every morning',
+    'but freezes when the same story has to be said in English. Write short, spoken, workplace-polite English they can use the same day.',
+    '',
+    'One card is: today\'s real economy/business news (one Korean briefing of 3-4 lines plus one English headline)',
+    '+ five English keywords or expressions taken from that news',
+    '+ two pattern drills for each keyword, so ten English sentences in all.',
+    '',
+    'Choose ONE neutral story from the numbered news list the user gives you: interest rates, inflation, the exchange rate, exports,',
+    'semiconductors and technology, energy, shipping and logistics, company earnings, hiring and wages, or global trade policy.',
+    'Never choose politics, elections, partisan conflict, crime, war, sports or entertainment.',
+    'Never add an opinion, a forecast, an investment tip, or a number that is not in the news list.',
+    '',
+    'Write the Korean for a Korean reader in the academy\'s plain, friendly tone. No markdown, no emoji, no hashtags.',
+    'Return JSON only.'
+  ].join('\n');
+
+  var lines = [
+    'Today\'s news candidates, newest first (the number in brackets is its sourceIndex):',
+    (candidates.length ? formatNewsCandidatesForPrompt(candidates) : '(no candidates were provided — use the news seed below)'),
+    (seed ? 'Story seed (use it when it fits one of the candidates): ' + seed : ''),
+    (opts.date ? 'Send date: ' + opts.date : ''),
+    recent.length ? 'Do NOT reuse these recent topics: ' + recent.join(' | ') : '',
+    '',
+    'Fill the JSON schema for one card:',
+    '- topicEn: the lesson title in English, 2-5 words, no ending period (a short label such as Rates On Hold, not the headline).',
+    '- topicKo: the same title in natural Korean, no English in parentheses.',
+    '- news.headlineEn: today\'s headline in English, one line, at most 16 words, neutral and factual.',
+    '- news.summaryKo: ' + RM_DAILY_TALK_NEWS.MIN_SUMMARY_LINES + ' or ' + RM_DAILY_TALK_NEWS.MAX_SUMMARY_LINES + ' Korean sentences that tell the story — what happened,',
+    '  the number or the decision, and what it changes for a Korean worker. Facts from the news list only, no opinion.',
+    '- news.sourceIndexes: the bracket numbers of the 1-' + RM_DAILY_TALK_NEWS.MAX_SOURCE_PICKS + ' news items the summary is based on.',
+    '- keywords: exactly ' + RM_DAILY_TALK_NEWS.KEYWORD_COUNT + ' items, in the order the learner should study them. Each item has:',
+    '  "en" = the English word or expression as it appears in the news (max ' + RM_DAILY_TALK_NEWS.KEYWORD_MAX_WORDS + ' words),',
+    '  "ko" = its Korean meaning, dictionary style (금리를 동결하다 / 기준금리 / 인하 신호),',
+    '  "usageKo" = one Korean sentence saying how today\'s news used it,',
+    '  "drills" = exactly ' + RM_DAILY_TALK_NEWS.DRILL_COUNT + ' practice sentences with that word or expression:',
+    '    "en" = a natural sentence the learner can say at work (max ' + RM_DAILY_TALK_NEWS.DRILL_MAX_WORDS + ' words, contractions welcome),',
+    '    "ko" = its Korean translation,',
+    '    "highlight" = the exact part of "en" that carries the keyword, copied letter for letter from "en".',
+    '  The first drill may restate today\'s news; the second moves the same expression into the learner\'s own work.',
+    '',
+    'Hard rules:',
+    '- Korean fields are Hangul (numbers, and company names that came from the news list, may be Latin). English fields are English only.',
+    '- The five keywords are different from each other and are actually used in their own drills.',
+    '- "highlight" is a substring of its own "en" sentence, exactly as written there.',
+    '- News facts only: no political opinion, no stock tip, no investment advice, no prediction stated as fact.',
+    '- The card must work for a learner who did not read the news: every drill sentence stands on its own.',
+    '- Keep every expression polite and safe for a Korean office.'
+  ].filter(function (line, index, all) { return line !== '' || all[index - 1] !== ''; });
+
+  return {
+    track: RM_TRACKS.BUSINESS,
+    level: level,
+    structureType: 'NEWS_DRILLS',
+    schemaName: 'ryan_daily_talk_business_news',
+    schema: buildDailyTalkContentSchema('NEWS_DRILLS'),
+    system: system,
+    user: lines.join('\n')
+  };
+}
+
+/**
+ * One more request when the first answer failed validation: the same prompt
+ * plus the failed checks, so the model fixes those instead of guessing again.
+ */
+function buildContentRepairPrompt(prompt, validation) {
+  var base = prompt || {};
+  var errors = (validation && validation.errors) || [];
+  var copy = {
+    track: base.track,
+    level: base.level,
+    structureType: base.structureType,
+    schemaName: base.schemaName,
+    schema: base.schema,
+    system: base.system,
+    user: ''
+  };
+  var notes = errors.slice(0, 8).map(function (error) {
+    return '- ' + error.field + ': ' + error.message;
+  });
+  copy.user = [
+    base.user,
+    '',
+    'Your previous answer failed these checks:',
+    notes.join('\n'),
+    '',
+    'Return the whole JSON again, keeping what passed and fixing only these. Every check above must hold.'
+  ].join('\n');
+  return copy;
 }
 
 /** Pulls the assistant text out of a Responses API (or Chat Completions) body. */
@@ -461,6 +866,7 @@ function normalizeGeneratedContent(parsed, context) {
   var raw = parsed || {};
   var ctx = context || {};
   var track = normalizeTrack(ctx.track) === RM_TRACKS.BUSINESS ? RM_TRACKS.BUSINESS : RM_TRACKS.SMALL_TALK;
+  var newsCandidates = Array.isArray(ctx.news) ? ctx.news : [];
   var sentences = (Array.isArray(raw.sentences) ? raw.sentences : []).map(function (row) {
     if (typeof row === 'string') return { ko: cleanText_(row), order: [], en: '' };
     return {
@@ -470,11 +876,15 @@ function normalizeGeneratedContent(parsed, context) {
     };
   });
 
-  // Step 5's shape follows the payload, so a business row that came back in
-  // the small-talk AAA shape (or an old row) still validates and stores.
+  // The shape follows the payload, so a business row generated before
+  // 2026-11-21 (Message House), a news card, and a small-talk card all
+  // normalize and validate the way they were written.
+  var hasNews = !!(raw.news && typeof raw.news === 'object');
   var hasMessageHouse = !!(raw.messageHouse && typeof raw.messageHouse === 'object');
   var hasAaa = !!(raw.aaa && typeof raw.aaa === 'object');
-  var structureType = hasMessageHouse ? 'MESSAGE_HOUSE' : (hasAaa ? 'AAA' : dailyTalkStructureTypeFor(track));
+  var structureType = hasNews
+    ? 'NEWS_DRILLS'
+    : (hasMessageHouse ? 'MESSAGE_HOUSE' : (hasAaa ? 'AAA' : dailyTalkStructureTypeFor(track)));
 
   return {
     track: track,
@@ -494,9 +904,52 @@ function normalizeGeneratedContent(parsed, context) {
       add: normalizeDailyTalkPair_(raw.aaa && raw.aaa.add),
       ask: normalizeDailyTalkPair_(raw.aaa && raw.aaa.ask)
     },
-    messageHouse: normalizeDailyTalkMessageHouse_(raw.messageHouse)
+    messageHouse: normalizeDailyTalkMessageHouse_(raw.messageHouse),
+    news: normalizeDailyTalkNews_(raw.news, newsCandidates),
+    keywords: normalizeDailyTalkKeywords_(raw.keywords)
   };
 }
+
+/**
+ * news: {headlineEn, summaryKo:[...], sources:[...]} — the sources come from
+ * the real news candidates the model pointed at, never from the model itself.
+ */
+function normalizeDailyTalkNews_(raw, candidates) {
+  var value = raw && typeof raw === 'object' ? raw : {};
+  var summary = (Array.isArray(value.summaryKo) ? value.summaryKo : []).map(function (line) {
+    return cleanText_(line);
+  }).filter(Boolean);
+  var indexes = (Array.isArray(value.sourceIndexes) ? value.sourceIndexes : []).map(function (index) {
+    return Number(index) || 0;
+  }).filter(function (index) { return index > 0; });
+  return {
+    headlineEn: cleanText_(value.headlineEn),
+    summaryKo: summary,
+    sourceIndexes: indexes,
+    sources: resolveNewsSources(indexes, candidates)
+  };
+}
+
+/** keywords: 5 x {en, ko, usageKo, drills:[{en, ko, highlight}]}. */
+function normalizeDailyTalkKeywords_(rows) {
+  return (Array.isArray(rows) ? rows : []).map(function (word) {
+    var value = word && typeof word === 'object' ? word : {};
+    return {
+      en: cleanText_(value.en),
+      ko: cleanText_(value.ko),
+      usageKo: cleanText_(value.usageKo || value.usage),
+      drills: (Array.isArray(value.drills) ? value.drills : []).map(function (drill) {
+        var row = drill && typeof drill === 'object' ? drill : {};
+        return {
+          en: cleanText_(row.en),
+          ko: cleanText_(row.ko),
+          highlight: cleanText_(row.highlight || row.pattern)
+        };
+      })
+    };
+  });
+}
+
 
 /** {pick, conclusion, reason, detail, suggestion} — every pair trimmed. */
 function normalizeDailyTalkMessageHouse_(raw) {
@@ -589,6 +1042,7 @@ function dailyTalkSentencesShareWord_(left, right) {
 /** Field-level validation; returns {ok, errors:[{field, message}]}. */
 function validateGeneratedContent(content) {
   var value = content || {};
+  if (dailyTalkStructureTypeOf_(value) === 'NEWS_DRILLS') return validateDailyTalkNewsCard_(value);
   var errors = [];
   function fail(field, message) { errors.push({ field: field, message: message }); }
 
@@ -626,10 +1080,152 @@ function validateGeneratedContent(content) {
 /** The structure type a content object carries; AAA when it is unset. */
 function dailyTalkStructureTypeOf_(content) {
   var value = content || {};
+  if (value.structureType === 'NEWS_DRILLS') return 'NEWS_DRILLS';
   if (value.structureType === 'MESSAGE_HOUSE') return 'MESSAGE_HOUSE';
   if (value.structureType === 'AAA') return 'AAA';
+  if (value.news && typeof value.news === 'object') return 'NEWS_DRILLS';
   if (value.messageHouse && !value.aaa) return 'MESSAGE_HOUSE';
   return 'AAA';
+}
+
+/** Does the highlighted pattern appear in the English sentence, as written? */
+function dailyTalkHighlightAppears_(sentence, highlight) {
+  function normalized(text) {
+    return String(text === null || text === undefined ? '' : text)
+      .toLowerCase()
+      .replace(/[\u2018\u2019]/g, "'")
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+  var needle = normalized(highlight);
+  if (!needle) return false;
+  return normalized(sentence).indexOf(needle) !== -1;
+}
+
+/**
+ * The business news card: a neutral Korean briefing with a real source and
+ * date, then five keywords, each with exactly two pattern drills.
+ */
+function validateDailyTalkNewsCard_(value) {
+  var content = value || {};
+  var errors = [];
+  function fail(field, message) { errors.push({ field: field, message: message }); }
+
+  var topicEn = String(content.topicEn || '').trim();
+  var topicKo = String(content.topicKo || '').trim();
+  if (!topicEn) {
+    fail('topicEn', '비어 있습니다.');
+  } else {
+    if (RM_HANGUL_PATTERN.test(topicEn)) fail('topicEn', '영어 필드에 한글이 있습니다.');
+    if (!RM_LATIN_PATTERN.test(topicEn)) fail('topicEn', '영어 필드에 영어가 없습니다.');
+    if (topicEn.length > 70) fail('topicEn', '제목이 너무 깁니다.');
+  }
+  if (!topicKo) {
+    fail('topicKo', '비어 있습니다.');
+  } else {
+    if (!RM_HANGUL_PATTERN.test(topicKo)) fail('topicKo', '한글 필드에 한글이 없습니다.');
+    if (topicKo.length > 60) fail('topicKo', '제목이 너무 깁니다.');
+  }
+
+  var news = content.news || {};
+  var headline = String(news.headlineEn || '').trim();
+  if (!headline) {
+    fail('news.headlineEn', '비어 있습니다.');
+  } else {
+    if (RM_HANGUL_PATTERN.test(headline)) fail('news.headlineEn', '영어 필드에 한글이 있습니다.');
+    if (!RM_LATIN_PATTERN.test(headline)) fail('news.headlineEn', '영어 필드에 영어가 없습니다.');
+    if (headline.split(/\s+/).filter(Boolean).length > RM_DAILY_TALK_NEWS.HEADLINE_MAX_WORDS) {
+      fail('news.headlineEn', '헤드라인이 너무 깁니다.');
+    }
+  }
+
+  var summary = Array.isArray(news.summaryKo) ? news.summaryKo : [];
+  if (summary.length < RM_DAILY_TALK_NEWS.MIN_SUMMARY_LINES || summary.length > RM_DAILY_TALK_NEWS.MAX_SUMMARY_LINES) {
+    fail('news.summaryKo', '요약은 ' + RM_DAILY_TALK_NEWS.MIN_SUMMARY_LINES + '~' + RM_DAILY_TALK_NEWS.MAX_SUMMARY_LINES + '줄이어야 합니다.');
+  }
+  summary.forEach(function (line, index) {
+    var text = String(line || '').trim();
+    var at = 'news.summaryKo[' + index + ']';
+    if (!text) { fail(at, '비어 있습니다.'); return; }
+    if (!RM_HANGUL_PATTERN.test(text)) fail(at, '한글이 없습니다.');
+    if (text.length > RM_DAILY_TALK_NEWS.SUMMARY_LINE_MAX_CHARS) fail(at, '한 줄이 너무 깁니다.');
+  });
+
+  var sources = Array.isArray(news.sources) ? news.sources : [];
+  if (!sources.length) {
+    fail('news.sources', '출처가 없습니다. 뉴스 후보의 sourceIndexes를 지정해야 합니다.');
+  }
+  sources.forEach(function (source, index) {
+    var at = 'news.sources[' + index + ']';
+    if (!String((source && source.publisher) || '').trim()) fail(at + '.publisher', '언론사가 없습니다.');
+    if (!String((source && source.date) || '').trim()) fail(at + '.date', '날짜가 없습니다.');
+  });
+
+  var keywords = Array.isArray(content.keywords) ? content.keywords : [];
+  if (keywords.length !== RM_DAILY_TALK_NEWS.KEYWORD_COUNT) {
+    fail('keywords', '키워드는 ' + RM_DAILY_TALK_NEWS.KEYWORD_COUNT + '개여야 합니다.');
+  }
+  var seen = {};
+  keywords.forEach(function (word, index) {
+    var at = 'keywords[' + index + ']';
+    var en = String((word && word.en) || '').trim();
+    var ko = String((word && word.ko) || '').trim();
+    var usage = String((word && word.usageKo) || '').trim();
+
+    if (!en) {
+      fail(at + '.en', '비어 있습니다.');
+    } else {
+      if (RM_HANGUL_PATTERN.test(en)) fail(at + '.en', '영어 표현에 한글이 있습니다.');
+      if (!RM_LATIN_PATTERN.test(en)) fail(at + '.en', '영어 표현에 영어가 없습니다.');
+      if (en.split(/\s+/).filter(Boolean).length > RM_DAILY_TALK_NEWS.KEYWORD_MAX_WORDS) fail(at + '.en', '키워드가 너무 깁니다.');
+      var key = en.toLowerCase();
+      if (seen[key]) fail(at + '.en', '키워드가 중복됩니다.');
+      seen[key] = true;
+    }
+    if (!ko) {
+      fail(at + '.ko', '비어 있습니다.');
+    } else if (!RM_HANGUL_PATTERN.test(ko)) {
+      fail(at + '.ko', '한글 뜻이 없습니다.');
+    }
+    if (!usage) {
+      fail(at + '.usageKo', '비어 있습니다.');
+    } else if (!RM_HANGUL_PATTERN.test(usage)) {
+      fail(at + '.usageKo', '한글 설명이 없습니다.');
+    } else if (usage.length > RM_DAILY_TALK_NEWS.USAGE_MAX_CHARS) {
+      fail(at + '.usageKo', '설명이 너무 깁니다.');
+    }
+
+    var drills = Array.isArray(word && word.drills) ? word.drills : [];
+    if (drills.length !== RM_DAILY_TALK_NEWS.DRILL_COUNT) {
+      fail(at + '.drills', '패턴 드릴은 ' + RM_DAILY_TALK_NEWS.DRILL_COUNT + '문장이어야 합니다.');
+    }
+    drills.forEach(function (drill, drillIndex) {
+      var where = at + '.drills[' + drillIndex + ']';
+      var sentence = String((drill && drill.en) || '').trim();
+      var meaning = String((drill && drill.ko) || '').trim();
+      var highlight = String((drill && drill.highlight) || '').trim();
+
+      if (!sentence) {
+        fail(where + '.en', '비어 있습니다.');
+      } else {
+        if (RM_HANGUL_PATTERN.test(sentence)) fail(where + '.en', '영어 문장에 한글이 있습니다.');
+        if (!RM_LATIN_PATTERN.test(sentence)) fail(where + '.en', '영어 문장에 영어가 없습니다.');
+        if (sentence.split(/\s+/).filter(Boolean).length > RM_DAILY_TALK_NEWS.DRILL_MAX_WORDS) fail(where + '.en', '문장이 너무 깁니다.');
+      }
+      if (!meaning) {
+        fail(where + '.ko', '비어 있습니다.');
+      } else if (!RM_HANGUL_PATTERN.test(meaning)) {
+        fail(where + '.ko', '한글 해석이 없습니다.');
+      }
+      if (!highlight) {
+        fail(where + '.highlight', '하이라이트할 패턴이 비어 있습니다.');
+      } else if (sentence && !dailyTalkHighlightAppears_(sentence, highlight)) {
+        fail(where + '.highlight', '패턴이 문장에 그대로 들어 있지 않습니다: ' + highlight);
+      }
+    });
+  });
+
+  return { ok: errors.length === 0, errors: errors };
 }
 
 /** STEP 1: exactly three words, each an English word/expression with a Korean meaning. */
@@ -823,6 +1419,7 @@ function buildStep5ScriptText_(step5, lang) {
 
 /** The practice cue for a structure type (YOUR_TURN_*). */
 function dailyTalkPracticeCue_(structureType) {
+  if (structureType === 'NEWS_DRILLS') return RM_DAILY_TALK_PRACTICE_CUES.NEWS_DRILLS;
   return RM_DAILY_TALK_PRACTICE_CUES[structureType === 'MESSAGE_HOUSE' ? 'MESSAGE_HOUSE' : 'AAA'];
 }
 
@@ -861,10 +1458,72 @@ function buildKakaoTeaser(content) {
   var value = content || {};
   var title = String(value.topicKo || value.topicEn || '오늘의 영어').trim();
   var lines = ['(광고) 라이언멤버스 Ryan Daily Talk', title, ''];
+
+  if (dailyTalkStructureTypeOf_(value) === 'NEWS_DRILLS') {
+    var news = value.news || {};
+    var summary = Array.isArray(news.summaryKo) ? news.summaryKo : [];
+    if (summary[0]) lines.push(String(summary[0]).trim());
+    var keywords = Array.isArray(value.keywords) ? value.keywords : [];
+    if (keywords.length) {
+      lines.push('');
+      lines.push('오늘의 키워드 ' + keywords.length + '개 · 패턴 문장 ' + (keywords.length * RM_DAILY_TALK_NEWS.DRILL_COUNT) +
+        '개는 게시물에서 확인하세요.');
+    }
+    var sources = Array.isArray(news.sources) ? news.sources : [];
+    if (sources.length) {
+      lines.push('');
+      lines.push('출처: ' + sources.map(function (source) {
+        return [source.publisher, source.date].filter(Boolean).join(' ');
+      }).filter(Boolean).join(' / '));
+    }
+    return lines.join('\n');
+  }
+
   if (value.snackKo) lines.push(String(value.snackKo).trim());
   lines.push('');
   lines.push('오늘의 표현과 말하기 미션은 게시물에서 확인하세요.');
   return lines.join('\n');
+}
+
+/**
+ * The news card as the STRUCTURE_JSON payload: the briefing with its real
+ * sources, then the five keywords with their drills. The publisher reads it
+ * back to draw the article, so the queue stays the single source of truth.
+ */
+function buildDailyTalkNewsStructure_(content) {
+  var value = content || {};
+  var news = value.news || {};
+  return {
+    type: 'NEWS_DRILLS',
+    news: {
+      headlineEn: String(news.headlineEn || '').trim(),
+      summaryKo: (Array.isArray(news.summaryKo) ? news.summaryKo : []).map(function (line) {
+        return String(line || '').trim();
+      }).filter(Boolean),
+      sources: (Array.isArray(news.sources) ? news.sources : []).map(function (source) {
+        return {
+          title: String((source && source.title) || '').trim(),
+          publisher: String((source && source.publisher) || '').trim(),
+          date: String((source && source.date) || '').trim(),
+          url: String((source && source.url) || '').trim()
+        };
+      })
+    },
+    keywords: (Array.isArray(value.keywords) ? value.keywords : []).map(function (word) {
+      return {
+        en: String((word && word.en) || '').trim(),
+        ko: String((word && word.ko) || '').trim(),
+        usageKo: String((word && word.usageKo) || '').trim(),
+        drills: (Array.isArray(word && word.drills) ? word.drills : []).map(function (drill) {
+          return {
+            en: String((drill && drill.en) || '').trim(),
+            ko: String((drill && drill.ko) || '').trim(),
+            highlight: String((drill && drill.highlight) || '').trim()
+          };
+        })
+      };
+    })
+  };
 }
 
 /**
@@ -895,19 +1554,36 @@ function buildQueueRowValues(headerMap, content, meta) {
   put('TOPIC_KO', value.topicKo || '');
   put('SNACK_EN', value.snackEn || '');
   put('SNACK_KO', value.snackKo || '');
-  put('CHUNKS_JSON', JSON.stringify(value.words || []));
-  put('WORD_ORDER_JSON', JSON.stringify(value.sentences || []));
-  var step5 = buildDailyTalkStep5_(value);
-  put('STRUCTURE_JSON', JSON.stringify({
-    type: step5.type,
-    pick: step5.pick,
-    steps: step5.steps
-  }));
-  put('SUBSTITUTIONS_JSON', '');
-  put('MODEL_EN', buildStep5ScriptText_(step5, 'en'));
-  put('MODEL_KO', buildStep5ScriptText_(step5, 'ko'));
-  put('YOUR_TURN_EN', dailyTalkPracticeCue_(step5.type).en);
-  put('YOUR_TURN_KO', dailyTalkPracticeCue_(step5.type).ko);
+
+  if (dailyTalkStructureTypeOf_(value) === 'NEWS_DRILLS') {
+    var news = value.news || {};
+    put('CHUNKS_JSON', JSON.stringify((value.keywords || []).map(function (word) {
+      return { en: word.en || '', ko: word.ko || '', usageKo: word.usageKo || '' };
+    })));
+    put('WORD_ORDER_JSON', '');
+    put('STRUCTURE_JSON', JSON.stringify(buildDailyTalkNewsStructure_(value)));
+    put('SUBSTITUTIONS_JSON', '');
+    put('MODEL_EN', String(news.headlineEn || '').trim());
+    put('MODEL_KO', (Array.isArray(news.summaryKo) ? news.summaryKo : []).join('\n'));
+    var newsCue = dailyTalkPracticeCue_('NEWS_DRILLS');
+    put('YOUR_TURN_EN', newsCue.en);
+    put('YOUR_TURN_KO', newsCue.ko);
+  } else {
+    put('CHUNKS_JSON', JSON.stringify(value.words || []));
+    put('WORD_ORDER_JSON', JSON.stringify(value.sentences || []));
+    var step5 = buildDailyTalkStep5_(value);
+    put('STRUCTURE_JSON', JSON.stringify({
+      type: step5.type,
+      pick: step5.pick,
+      steps: step5.steps
+    }));
+    put('SUBSTITUTIONS_JSON', '');
+    put('MODEL_EN', buildStep5ScriptText_(step5, 'en'));
+    put('MODEL_KO', buildStep5ScriptText_(step5, 'ko'));
+    put('YOUR_TURN_EN', dailyTalkPracticeCue_(step5.type).en);
+    put('YOUR_TURN_KO', dailyTalkPracticeCue_(step5.type).ko);
+  }
+
   put('SOURCES', info.sources || '');
   put('카카오본문', buildKakaoTeaser(value));
   put('생성시각', info.generatedAt || '');
@@ -1021,18 +1697,52 @@ function generateDailyTalkContent_(options) {
 
   pendingTracks.forEach(function (track) {
     try {
+      // BUSINESS talks about today's real news: read the feeds first and hand
+      // the model a numbered list, so it cannot invent a story or a source.
+      var news = [];
+      if (normalizeTrack(track) === RM_TRACKS.BUSINESS) {
+        var newsResult = fetchBusinessNewsCandidates({ limit: RM_DAILY_TALK_NEWS.CANDIDATE_LIMIT });
+        news = (newsResult && newsResult.candidates) || [];
+        if (!news.length) {
+          throw new Error('최신 경제 뉴스 후보를 가져오지 못했습니다.' +
+            ((newsResult && newsResult.errors && newsResult.errors.length)
+              ? ' (' + newsResult.errors.slice(0, 2).join(' / ') + ')'
+              : ''));
+        }
+      }
+
       var prompt = buildContentPrompt(track, {
         date: dateKey,
         level: level,
         recentTopics: recentTopicsForTrack(items, track),
-        seed: opts.seed
+        seed: opts.seed,
+        news: news
       });
       var attempt = callOpenAiForContent_(prompt, modelChain);
       var content = normalizeGeneratedContent(parseGeneratedContent(extractOpenAiText(attempt.payload)), {
         track: track,
-        level: level
+        level: level,
+        news: news
       });
       var validation = validateGeneratedContent(content);
+
+      // One repair pass: the same card, the failed checks spelled out.
+      if (!validation.ok && !toBoolean(opts.noRepair)) {
+        var repairPrompt = buildContentRepairPrompt(prompt, validation);
+        var repairAttempt = callOpenAiForContent_(repairPrompt, modelChain);
+        var repaired = normalizeGeneratedContent(parseGeneratedContent(extractOpenAiText(repairAttempt.payload)), {
+          track: track,
+          level: level,
+          news: news
+        });
+        var repairedValidation = validateGeneratedContent(repaired);
+        if (repairedValidation.ok) {
+          content = repaired;
+          attempt = repairAttempt;
+          validation = repairedValidation;
+        }
+      }
+
       if (!validation.ok) {
         throw new Error('생성 결과 검증 실패: ' + validation.errors.map(function (error) {
           return error.field + ' (' + error.message + ')';
@@ -1051,11 +1761,15 @@ function generateDailyTalkContent_(options) {
 
       if (!dryRun) {
         var rowNumber = sheet.getLastRow() + 1;
+        var sources = RM_DAILY_TALK_GEN.SOURCE_PREFIX + attempt.model;
+        if (content.news && Array.isArray(content.news.sources) && content.news.sources.length) {
+          sources += '\n' + content.news.sources.map(function (source) { return source.url; }).filter(Boolean).join('\n');
+        }
         var values = buildQueueRowValues(headerMap, content, {
           contentId: contentId,
           sendDate: dateKey,
           status: status,
-          sources: RM_DAILY_TALK_GEN.SOURCE_PREFIX + attempt.model,
+          sources: sources,
           generatedAt: new Date()
         });
         sheet.getRange(rowNumber, 1, 1, values.length).setValues([values]);
@@ -1087,6 +1801,56 @@ function generateDailyTalkContent_(options) {
     requestedTracks: requestedTracks,
     generated: generated,
     failures: failures
+  };
+}
+
+/**
+ * Reads the public economy/business RSS feeds and returns the newest neutral
+ * stories, numbered for the prompt. One failing feed does not stop the others;
+ * if every feed fails the caller sees why instead of a card without news.
+ * options: { feeds, limit, freshHours, now }
+ */
+function fetchBusinessNewsCandidates(options) {
+  var opts = options || {};
+  var feeds = Array.isArray(opts.feeds) && opts.feeds.length ? opts.feeds : RM_DAILY_TALK_NEWS.FEEDS;
+  var items = [];
+  var errors = [];
+
+  feeds.forEach(function (feed) {
+    if (!feed || !feed.url) return;
+    try {
+      var response = UrlFetchApp.fetch(feed.url, {
+        method: 'get',
+        muteHttpExceptions: true,
+        followRedirects: true,
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; RyanMembersDailyTalk/1.0)' }
+      });
+      var code = response.getResponseCode();
+      if (code < 200 || code >= 300) {
+        errors.push(feed.publisher + ' ' + code);
+        return;
+      }
+      var parsed = parseNewsRssFeed(response.getContentText(), { publisher: feed.publisher });
+      if (!parsed.length) {
+        errors.push(feed.publisher + ' 빈 피드');
+        return;
+      }
+      items = items.concat(parsed);
+    } catch (error) {
+      errors.push(feed.publisher + ' ' + String(error && error.message ? error.message : error).slice(0, 80));
+    }
+  });
+
+  var candidates = selectNewsCandidates(items, {
+    limit: opts.limit || RM_DAILY_TALK_NEWS.CANDIDATE_LIMIT,
+    freshHours: opts.freshHours,
+    now: opts.now
+  });
+  return {
+    ok: candidates.length > 0,
+    candidates: candidates,
+    collected: items.length,
+    errors: errors
   };
 }
 
@@ -1235,11 +1999,13 @@ function checkDailyTalkGeneratorSetup() {
     fallbacks: resolveModelChain(settings.OPENAI_MODEL),
     tracks: parseTrackList(settings.TRACKS_TO_GENERATE),
     level: String(settings.DEFAULT_LEVEL || RM_DAILY_TALK_GEN.DEFAULT_LEVEL),
-    // STEP 5 differs by track: small talk AAA, business Message House.
+    // Card shape by track: small talk is the five-step AAA card, business is
+    // today's news + five keywords + ten pattern drills.
     structures: parseTrackList(settings.TRACKS_TO_GENERATE).reduce(function (map, track) {
       map[track] = dailyTalkStructureTypeFor(track);
       return map;
     }, {}),
+    newsFeeds: RM_DAILY_TALK_NEWS.FEEDS.map(function (feed) { return feed.publisher; }),
     autoGenerate: isAutoGenerateEnabled_(settings),
     autoApprove: toBoolean(settings.AUTO_APPROVE),
     statusOnCreate: toBoolean(settings.AUTO_APPROVE) ? RM_DAILY_TALK_GEN.STATUS_APPROVED : RM_DAILY_TALK_GEN.STATUS_DRAFT,

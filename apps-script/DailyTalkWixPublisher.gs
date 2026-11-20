@@ -463,7 +463,10 @@ var RM_DAILY_TALK_LESSON = Object.freeze({
     order: 'STEP 3 · ENGLISH WORD ORDER',
     english: 'STEP 4 · ENGLISH SENTENCES',
     aaa: 'STEP 5 · AAA IN ACTION',
-    messageHouse: 'STEP 5 · MESSAGE HOUSE'
+    messageHouse: 'STEP 5 · MESSAGE HOUSE',
+    // Business cards since 2026-11-21: today's news, then five keywords.
+    news: 'TODAY\'S BUSINESS NEWS',
+    keyword: 'KEYWORD'
   },
   LEADS: {
     words: '오늘 대화에 바로 쓰는 단어 3개. 뜻과 함께 소리 내어 세 번씩 읽어 보세요.',
@@ -501,12 +504,120 @@ var RM_DAILY_TALK_LESSON = Object.freeze({
 /** One structured block of the article; tag is the richest HTML tag it needs. */
 function buildDailyTalkLessonBlocks_(item, words) {
   var value = item || {};
+  // A business news card carries its own structure: news briefing + keywords.
+  var newsCard = parseDailyTalkNewsPayload_(value.structureJson);
+  if (newsCard) return buildDailyTalkNewsBlocks_(value, newsCard);
   var list = words || normalizeDailyTalkChunks_(value.chunksJson);
   var rows = parseDailyTalkSentenceRows_(value.wordOrderJson);
   if (rows.length) {
     return buildDailyTalkFiveStepBlocks_(value, list, rows, parseDailyTalkStep5_(value.structureJson));
   }
   return buildDailyTalkLegacyBlocks_(value, list);
+}
+
+/**
+ * STRUCTURE_JSON of a business news card -> {headlineEn, summaryKo, sources,
+ * keywords}; null for every other card shape.
+ */
+function parseDailyTalkNewsPayload_(structureJson) {
+  var raw = safeJsonParse(String(structureJson === null || structureJson === undefined ? '' : structureJson), null);
+  if (!raw || String(raw.type || '').trim().toUpperCase() !== 'NEWS_DRILLS') return null;
+
+  var news = raw.news || {};
+  var summary = (Array.isArray(news.summaryKo) ? news.summaryKo : []).map(function (line) {
+    return String(line === null || line === undefined ? '' : line).trim();
+  }).filter(Boolean);
+  var sources = (Array.isArray(news.sources) ? news.sources : []).map(function (source) {
+    return {
+      title: String((source && source.title) || '').trim(),
+      publisher: String((source && source.publisher) || '').trim(),
+      date: String((source && source.date) || '').trim(),
+      url: String((source && source.url) || '').trim()
+    };
+  }).filter(function (source) { return source.publisher || source.title; });
+
+  var keywords = (Array.isArray(raw.keywords) ? raw.keywords : []).map(function (word) {
+    return {
+      en: String((word && word.en) || '').trim(),
+      ko: String((word && word.ko) || '').trim(),
+      usageKo: String((word && word.usageKo) || '').trim(),
+      drills: (Array.isArray(word && word.drills) ? word.drills : []).map(function (drill) {
+        return {
+          en: String((drill && drill.en) || '').trim(),
+          ko: String((drill && drill.ko) || '').trim(),
+          highlight: String((drill && drill.highlight) || '').trim()
+        };
+      }).filter(function (drill) { return drill.en; })
+    };
+  }).filter(function (word) { return word.en; });
+
+  if (!keywords.length && !summary.length) return null;
+  return {
+    headlineEn: String(news.headlineEn || '').trim(),
+    summaryKo: summary,
+    sources: sources,
+    keywords: keywords
+  };
+}
+
+/** '출처 · 매일경제 · 2026-11-21 / 연합뉴스 · 2026-11-21' */
+function buildDailyTalkNewsSourceLine_(sources) {
+  var parts = (sources || []).map(function (source) {
+    return [source.publisher, source.date].filter(Boolean).join(' · ');
+  }).filter(Boolean);
+  if (!parts.length) return '';
+  var seen = {};
+  var unique = parts.filter(function (part) {
+    if (seen[part]) return false;
+    seen[part] = true;
+    return true;
+  });
+  return '출처 · ' + unique.join(' / ');
+}
+
+/**
+ * The business news card as the page reads it (2026-11-21):
+ *   TODAY'S BUSINESS NEWS   headline, 3-4 Korean lines, source and date
+ *   KEYWORD 1 · <expression>  meaning, how today's news used it,
+ *                             and two pattern drills (EN / KO / pattern)
+ * The renderer rebuilds these into cards; the plain text is readable on its
+ * own if the script ever fails to load.
+ */
+function buildDailyTalkNewsBlocks_(value, news) {
+  var item = value || {};
+  var card = news || {};
+  var blocks = [];
+
+  function push(tag, text, cls, marker) {
+    var body = String(text === null || text === undefined ? '' : text).trim();
+    if (!body) return;
+    blocks.push({ tag: tag, text: body, cls: cls || '', marker: marker || '' });
+  }
+
+  push('h2', item.topicEn, 'dt-topic-en');
+  push('p', item.topicKo, 'dt-topic-ko');
+
+  if (card.headlineEn || card.summaryKo.length) {
+    push('h3', RM_DAILY_TALK_LESSON.STEPS.news, 'dt-step-title', 'NEWS');
+    push('p', card.headlineEn, 'dt-news-headline', 'NEWS_HEADLINE');
+    card.summaryKo.forEach(function (line) {
+      push('p', line, 'dt-news-line', 'NEWS_LINE');
+    });
+    push('p', buildDailyTalkNewsSourceLine_(card.sources), 'dt-news-source', 'NEWS_SOURCE');
+  }
+
+  card.keywords.forEach(function (word, index) {
+    push('h3', RM_DAILY_TALK_LESSON.STEPS.keyword + ' ' + (index + 1) + ' · ' + word.en, 'dt-step-title', 'KEYWORD');
+    push('p', '뜻 · ' + word.ko, 'dt-kw-ko', 'KW_KO');
+    push('p', '뉴스 속 쓰임 · ' + word.usageKo, 'dt-kw-usage', 'KW_USAGE');
+    word.drills.forEach(function (drill, drillIndex) {
+      var lines = ['패턴 드릴 ' + (drillIndex + 1), drill.en, drill.ko];
+      if (drill.highlight) lines.push('패턴 · ' + drill.highlight);
+      push('p', lines.join('\n'), 'dt-drill', 'DRILL');
+    });
+  });
+
+  return blocks;
 }
 
 /** The five steps as they are published (2026-11-20 onward). */

@@ -146,6 +146,66 @@ const BUSINESS_MESSAGE_HOUSE_ITEM = {
   sources: 'OPENAI:gpt-5.5'
 };
 
+/** A business news card (2026-11-21): news briefing + 5 keywords x 2 drills. */
+const NEWS_KEYWORDS = [
+  { en: 'hold rates steady', ko: '금리를 동결하다', usageKo: '연준이 기준금리를 그대로 두었다는 뜻으로 쓰였습니다.',
+    drills: [
+      { en: 'The Fed held rates steady at its November meeting.', ko: '연준은 11월 회의에서 금리를 동결했습니다.', highlight: 'held rates steady' },
+      { en: "We're holding prices steady through the quarter.", ko: '우리는 이번 분기 동안 가격을 동결하고 있습니다.', highlight: 'holding prices steady' }
+    ] },
+  { en: 'signal a cut', ko: '인하 신호를 보내다', usageKo: '다음 회의에서 금리를 내릴 수 있다는 신호를 줬습니다.',
+    drills: [
+      { en: 'The Fed signaled a cut in December.', ko: '연준은 12월 인하 신호를 보냈습니다.', highlight: 'signaled a cut' },
+      { en: 'The report signals a cut in our budget.', ko: '그 보고서는 예산 축소 신호를 보여 줍니다.', highlight: 'signals a cut' }
+    ] },
+  { en: 'inflation report', ko: '물가 보고서', usageKo: '금리 결정 전에 나온 물가 보고서가 근거로 언급되었습니다.',
+    drills: [
+      { en: 'The inflation report came out before the meeting.', ko: '물가 보고서는 회의 전에 나왔습니다.', highlight: 'inflation report' },
+      { en: 'I read the inflation report on my commute.', ko: '출근길에 물가 보고서를 읽었습니다.', highlight: 'inflation report' }
+    ] },
+  { en: 'policy meeting', ko: '정책 회의', usageKo: '연준의 정책 회의 결과가 시장의 관심을 모았습니다.',
+    drills: [
+      { en: 'The policy meeting ended at two oclock.', ko: '정책 회의는 두 시에 끝났습니다.', highlight: 'policy meeting' },
+      { en: 'Our policy meeting is on Thursday.', ko: '우리 정책 회의는 목요일에 있습니다.', highlight: 'policy meeting' }
+    ] },
+  { en: 'rate cut', ko: '금리 인하', usageKo: '연내 금리 인하 가능성이 낮아졌다는 해석이 나왔습니다.',
+    drills: [
+      { en: 'Investors expect one more rate cut this year.', ko: '투자자들은 올해 금리 인하가 한 번 더 있을 것으로 봅니다.', highlight: 'rate cut' },
+      { en: 'A rate cut would help our loan.', ko: '금리 인하면 우리 대출에 도움이 됩니다.', highlight: 'rate cut' }
+    ] }
+];
+
+const NEWS_SUMMARY = [
+  '미 연방준비제도가 기준금리를 3.75%로 동결했습니다.',
+  '물가가 목표치에 가까워졌지만 인하 시점은 더 지켜보겠다고 발표했습니다.',
+  '한국은행도 당분간 금리를 유지할 가능성이 커졌습니다.'
+];
+
+const NEWS_ITEM = {
+  contentId: 'BUSINESS-20261121-rates-on-hold',
+  sendDate: '2026-11-21',
+  track: 'BUSINESS',
+  level: 'BASIC',
+  topicEn: 'Rates On Hold',
+  topicKo: '금리 동결',
+  chunksJson: JSON.stringify(NEWS_KEYWORDS.map((word) => ({ en: word.en, ko: word.ko, usageKo: word.usageKo }))),
+  wordOrderJson: '',
+  structureJson: JSON.stringify({
+    type: 'NEWS_DRILLS',
+    news: {
+      headlineEn: 'Fed holds rates steady, signals one more cut',
+      summaryKo: NEWS_SUMMARY,
+      sources: [{ title: '연준, 기준금리 동결', publisher: '매일경제', date: '2026-11-21', url: 'https://www.mk.co.kr/news/economy/1' }]
+    },
+    keywords: NEWS_KEYWORDS
+  }),
+  modelEn: 'Fed holds rates steady, signals one more cut',
+  modelKo: NEWS_SUMMARY.join('\n'),
+  yourTurnEn: 'Say all ten sentences out loud today: two pattern drills for each of the five keywords.',
+  yourTurnKo: '오늘 문장 10개를 소리 내어 말해 보세요. 키워드 다섯 개마다 두 문장씩입니다.',
+  sources: 'OPENAI:gpt-5.5'
+};
+
 const LEGACY_ITEM = {
   contentId: 'SMALL_TALK-20261119-cold-morning-chat',
   track: 'SMALL_TALK',
@@ -386,6 +446,88 @@ function texts(root, selector) {
     }
   });
   shortHouse.window.close();
+
+  // --- a business news card: briefing + 5 keyword cards ---------------------
+  const newsPage = renderPage(NEWS_ITEM, '[Business Talk] 금리 동결');
+  await wait(600);
+  const newsDoc = newsPage.window.document;
+
+  check('a news card draws the briefing first, then five keyword cards', () => {
+    const cards = Array.from(newsDoc.querySelectorAll('.rmdt-card'));
+    const steps = cards.map((card) => card.dataset.step).join(',');
+    if (steps !== 'news,keyword,keyword,keyword,keyword,keyword') throw new Error('steps: ' + steps);
+    const newsCard = cards[0];
+    if (newsCard.querySelector('.rmdt-name').textContent.trim() !== "TODAY'S BUSINESS NEWS") {
+      throw new Error('news name: ' + newsCard.textContent.slice(0, 80));
+    }
+    if (newsCard.querySelector('.rmdt-news-headline').textContent.trim() !== 'Fed holds rates steady, signals one more cut') {
+      throw new Error('headline');
+    }
+    const lines = texts(newsCard, '.rmdt-news-line');
+    if (lines.join('|') !== NEWS_SUMMARY.join('|')) throw new Error('lines: ' + lines.join('|'));
+    if (newsCard.querySelector('.rmdt-news-source-text').textContent.trim() !== '매일경제 · 2026-11-21') {
+      throw new Error('source: ' + newsCard.querySelector('.rmdt-news-source').textContent);
+    }
+  });
+
+  check('the briefing lists the five keywords as jump links to their cards', () => {
+    const newsCard = newsDoc.querySelector('.rmdt-card[data-step="news"]');
+    const links = Array.from(newsCard.querySelectorAll('.rmdt-kw-index-link'));
+    if (links.length !== 5) throw new Error('links: ' + links.length);
+    if (links[0].getAttribute('href') !== '#rmdt-keyword-1') throw new Error('href: ' + links[0].getAttribute('href'));
+    if (links[4].querySelector('.rmdt-kw-index-text').textContent.trim() !== 'rate cut') throw new Error('last label');
+    if (!newsDoc.getElementById('rmdt-keyword-5')) throw new Error('no keyword 5 anchor');
+  });
+
+  check('each keyword card shows the expression, meaning, usage and two drills', () => {
+    const cards = Array.from(newsDoc.querySelectorAll('.rmdt-card[data-step="keyword"]'));
+    if (cards.length !== 5) throw new Error('cards: ' + cards.length);
+    cards.forEach((card, index) => {
+      const word = NEWS_KEYWORDS[index];
+      if (card.querySelector('.rmdt-step').textContent.trim() !== 'KEYWORD ' + (index + 1)) throw new Error('badge ' + index);
+      if (card.querySelector('.rmdt-kw-title').textContent.trim() !== word.en) throw new Error('title ' + index);
+      if (card.querySelector('.rmdt-kw-ko').textContent.trim() !== word.ko) throw new Error('meaning ' + index);
+      if (card.querySelector('.rmdt-kw-usage-text').textContent.trim() !== word.usageKo) throw new Error('usage ' + index);
+      const drills = Array.from(card.querySelectorAll('.rmdt-drill'));
+      if (drills.length !== 2) throw new Error('drills ' + index + ': ' + drills.length);
+      drills.forEach((drill, drillIndex) => {
+        if (drill.querySelector('.rmdt-drill-badge').textContent.trim() !== 'DRILL ' + (drillIndex + 1)) throw new Error('badge');
+        if (drill.querySelector('.rmdt-drill-en').textContent.trim() !== word.drills[drillIndex].en) throw new Error('en ' + index + '/' + drillIndex);
+        if (drill.querySelector('.rmdt-drill-ko').textContent.trim() !== word.drills[drillIndex].ko) throw new Error('ko');
+      });
+    });
+  });
+
+  check('each drill marks its pattern inside the English sentence', () => {
+    const newsCards = Array.from(newsDoc.querySelectorAll('.rmdt-card[data-step="keyword"]'));
+    const marks = [];
+    newsCards.forEach((card) => {
+      Array.from(card.querySelectorAll('.rmdt-hl')).forEach((mark) => marks.push(mark.textContent));
+    });
+    if (marks.length !== 10) throw new Error('highlights: ' + marks.length);
+    if (marks[0] !== 'held rates steady') throw new Error('first highlight: ' + marks[0]);
+    if (marks[1] !== 'holding prices steady') throw new Error('second highlight: ' + marks[1]);
+    marks.forEach((mark, index) => {
+      const word = NEWS_KEYWORDS[Math.floor(index / 2)];
+      const expected = word.drills[index % 2].highlight;
+      if (mark !== expected) throw new Error('highlight ' + index + ': ' + mark + ' != ' + expected);
+    });
+  });
+
+  check('the news card keeps the closing CTA and its live links', () => {
+    const cta = newsDoc.querySelector('.rmdt-cta');
+    if (!cta) throw new Error('no CTA');
+    if (cta.querySelector('.rmdt-cta-btn').getAttribute('href') !== 'https://www.ryanmembers.com/?dailytalk=1') {
+      throw new Error('CTA href');
+    }
+    if (cta.querySelectorAll('a').length !== 3) throw new Error('CTA links');
+  });
+
+  check('the news card does not draw the five-step cards', () => {
+    if (newsDoc.querySelector('.rmdt-card[data-step="1"]')) throw new Error('unexpected step 1');
+    if (newsDoc.querySelector('.rmdt-snack')) throw new Error('unexpected snack block');
+  });
+  newsPage.window.close();
 
   // --- articles published before 2026-11-20 -------------------------------
   const legacy = renderPage(LEGACY_ITEM, '[Small Talk] 쌀쌀한 엘리베이터 인사');

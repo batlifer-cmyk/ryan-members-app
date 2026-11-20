@@ -86,6 +86,90 @@ const BUSINESS_MESSAGE_HOUSE_SHORT = Object.assign({}, BUSINESS_MESSAGE_HOUSE, {
   suggestion: { en: '', ko: '' }
 });
 
+/** The real news list the BUSINESS prompt is handed (numbered candidates). */
+const NEWS_CANDIDATES = [
+  {
+    index: 1,
+    title: '연준, 기준금리 3.75%로 동결…연내 추가 인하엔 신중',
+    publisher: '매일경제',
+    dateKey: '2026-11-21',
+    url: 'https://www.mk.co.kr/news/economy/1',
+    summary: '미 연방준비제도가 기준금리를 3.75%로 동결하고 물가 흐름을 더 지켜보겠다고 밝혔다.'
+  },
+  {
+    index: 2,
+    title: '원·달러 환율 1,380원대 마감…수출 기업 결제 부담',
+    publisher: '연합뉴스',
+    dateKey: '2026-11-21',
+    url: 'https://www.yna.co.kr/view/2',
+    summary: '원·달러 환율이 1,380원대에서 마감하며 수출 기업의 결제 부담이 커졌다.'
+  }
+];
+
+/** A BUSINESS card: today's news + five keywords with two drills each. */
+const NEWS_SAMPLE_KEYWORDS = [
+  {
+    en: 'hold rates steady',
+    ko: '금리를 동결하다',
+    usageKo: '연준이 기준금리를 그대로 두었다는 뜻으로 쓰였습니다.',
+    drills: [
+      { en: 'The Fed held rates steady at its November meeting.', ko: '연준은 11월 회의에서 금리를 동결했습니다.', highlight: 'held rates steady' },
+      { en: "We're holding prices steady through the quarter.", ko: '우리는 이번 분기 동안 가격을 동결하고 있습니다.', highlight: 'holding prices steady' }
+    ]
+  },
+  {
+    en: 'signal a cut',
+    ko: '인하 신호를 보내다',
+    usageKo: '다음 회의에서 금리를 내릴 수 있다는 신호를 줬습니다.',
+    drills: [
+      { en: 'The Fed signaled a cut in December.', ko: '연준은 12월 인하 신호를 보냈습니다.', highlight: 'signaled a cut' },
+      { en: 'The report signals a cut in our budget.', ko: '그 보고서는 예산 축소 신호를 보여 줍니다.', highlight: 'signals a cut' }
+    ]
+  },
+  {
+    en: 'inflation report',
+    ko: '물가 보고서',
+    usageKo: '금리 결정 전에 나온 물가 보고서가 근거로 언급되었습니다.',
+    drills: [
+      { en: 'The inflation report came out before the meeting.', ko: '물가 보고서는 회의 전에 나왔습니다.', highlight: 'inflation report' },
+      { en: 'I read the inflation report on my commute.', ko: '출근길에 물가 보고서를 읽었습니다.', highlight: 'inflation report' }
+    ]
+  },
+  {
+    en: 'policy meeting',
+    ko: '정책 회의',
+    usageKo: '연준의 정책 회의 결과가 시장의 관심을 모았습니다.',
+    drills: [
+      { en: 'The policy meeting ended at two oclock.', ko: '정책 회의는 두 시에 끝났습니다.', highlight: 'policy meeting' },
+      { en: 'Our policy meeting is on Thursday.', ko: '우리 정책 회의는 목요일에 있습니다.', highlight: 'policy meeting' }
+    ]
+  },
+  {
+    en: 'rate cut',
+    ko: '금리 인하',
+    usageKo: '연내 금리 인하 가능성이 낮아졌다는 해석이 나왔습니다.',
+    drills: [
+      { en: 'Investors expect one more rate cut this year.', ko: '투자자들은 올해 금리 인하가 한 번 더 있을 것으로 봅니다.', highlight: 'rate cut' },
+      { en: 'A rate cut would help our loan.', ko: '금리 인하면 우리 대출에 도움이 됩니다.', highlight: 'rate cut' }
+    ]
+  }
+];
+
+const NEWS_SAMPLE = {
+  topicEn: 'Rates On Hold',
+  topicKo: '금리 동결',
+  news: {
+    headlineEn: 'Fed holds rates steady, signals one more cut',
+    summaryKo: [
+      '미 연방준비제도가 기준금리를 3.75%로 동결했습니다.',
+      '물가가 목표치에 가까워졌지만 인하 시점은 더 지켜보겠다고 밝혔습니다.',
+      '한국은행도 당분간 금리를 유지할 가능성이 커졌습니다.'
+    ],
+    sourceIndexes: [1]
+  },
+  keywords: NEWS_SAMPLE_KEYWORDS
+};
+
 const SAMPLE = {
   topicEn: 'Warm Coffee Morning',
   topicKo: '따뜻한 커피 아침',
@@ -164,9 +248,9 @@ describe('buildContentPrompt', () => {
     assert.equal(business.track, 'BUSINESS');
     assert.equal(business.level, 'BASIC');
     assert.includes(business.system, 'Ryan Members');
-    assert.includes(business.user, 'workplace English');
+    assert.includes(business.system, 'office workers');
     assert.includes(business.user, '2026-11-20');
-    assert.equal(business.schemaName, 'ryan_daily_talk_business');
+    assert.equal(business.schemaName, 'ryan_daily_talk_business_news');
   });
 
   test('lists recent topics so the model does not repeat them', () => {
@@ -197,26 +281,38 @@ describe('buildContentPrompt', () => {
     assert.ok(system.indexOf('Step 4') < system.indexOf('Step 5'));
   });
 
-  test('both tracks use the same five steps, and step 5 follows the track', () => {
+  test('small talk keeps the five steps, business turns into the news card', () => {
     const small = buildContentPrompt('SMALL_TALK', {});
     assert.equal(small.structureType, 'AAA');
     assert.includes(small.system, 'This card is SMALL TALK');
     assert.includes(small.system, 'Step 5 AAA');
 
     const business = buildContentPrompt('BUSINESS', {});
-    assert.equal(business.structureType, 'MESSAGE_HOUSE');
-    assert.includes(business.system, 'This card is BUSINESS TALK');
-    assert.includes(business.system, 'Step 5 Message House');
-    assert.includes(business.system, 'Conclusion (say the point first)');
+    assert.equal(business.structureType, 'NEWS_DRILLS');
+    assert.includes(business.system, 'Ryan Daily Talk BUSINESS');
+    assert.includes(business.system, 'five English keywords');
+    assert.includes(business.system, 'two pattern drills for each keyword');
     assert.excludes(business.system, 'Step 5 AAA');
   });
 
-  test('a business prompt asks for the Message House sentences instead of AAA', () => {
-    const business = buildContentPrompt('BUSINESS', {});
-    ['messageHouse', 'conclusion', 'reason', 'detail', 'suggestion']
+  test('a business prompt hands over today\'s news and asks for 5 keywords with 2 drills each', () => {
+    const business = buildContentPrompt('BUSINESS', { news: NEWS_CANDIDATES });
+    assert.includes(business.user, '[1] 2026-11-21 · 매일경제');
+    assert.includes(business.user, NEWS_CANDIDATES[0].title);
+    assert.includes(business.user, '[2] 2026-11-21 · 연합뉴스');
+    ['news.headlineEn', 'news.summaryKo', 'news.sourceIndexes', 'keywords', 'usageKo', 'drills', 'highlight']
       .forEach((field) => assert.includes(business.user, field));
-    assert.includes(business.user, '3 sentences (no suggestion) or 4 sentences (with suggestion)');
-    assert.excludes(business.user, '- aaa:');
+    assert.includes(business.user, 'exactly 5 items');
+    assert.includes(business.user, 'exactly 2 practice sentences');
+    assert.excludes(business.user, 'messageHouse');
+  });
+
+  test('the business prompt forbids politics, forecasts and invented numbers', () => {
+    const business = buildContentPrompt('BUSINESS', {});
+    assert.includes(business.system, 'Never choose politics');
+    assert.includes(business.system, 'Never add an opinion');
+    assert.includes(business.user, 'no political opinion, no stock tip');
+    assert.includes(business.user, 'Facts from the news list only');
   });
 
   test('asks for the steps to point at the same three sentences', () => {
@@ -227,10 +323,9 @@ describe('buildContentPrompt', () => {
   });
 
   test('ties the Message House back to the picked sentence and the words', () => {
-    const prompt = buildContentPrompt('BUSINESS', {});
-    assert.includes(prompt.user, 'The Conclusion must be built on the picked sentence');
-    assert.includes(prompt.user, 'reuse at least one of the three words of Step 1');
-    assert.excludes(prompt.user, 'The answer must be built');
+    const prompt = buildContentPrompt('SMALL_TALK', {});
+    assert.includes(prompt.user, 'The answer must be built on the picked sentence');
+    assert.includes(prompt.user, 'At least two of the three words must visibly appear');
   });
 });
 
@@ -781,8 +876,252 @@ describe('five-step constants', () => {
 
   test('legacy track scaffolding is still readable for old rows', () => {
     assert.equal(dailyTalkStructureTypeFor('SMALL_TALK'), 'AAA');
-    assert.equal(dailyTalkStructureTypeFor('BUSINESS'), 'MESSAGE_HOUSE');
+    assert.equal(dailyTalkStructureTypeFor('BUSINESS'), 'NEWS_DRILLS');
     assert.deepEqual(dailyTalkStructureLabels('MESSAGE_HOUSE'), ['Conclusion', 'Reason', 'Detail', 'Suggestion']);
+    assert.deepEqual(dailyTalkStructureLabels('NEWS_DRILLS'), []);
+  });
+});
+
+describe('parseNewsRssFeed', () => {
+  const RSS = '<rss><channel>' +
+    '<item>' +
+    '<title>연준, 기준금리 동결 - 매일경제</title>' +
+    '<link>https://news.google.com/rss/articles/1</link>' +
+    '<pubDate>Fri, 21 Nov 2026 00:10:00 GMT</pubDate>' +
+    '<source url="https://www.mk.co.kr">매일경제</source>' +
+    '<description><![CDATA[<a href="x">연준</a>이 기준금리를 &amp; 동결했다.]]></description>' +
+    '</item>' +
+    '<item>' +
+    '<title>원·달러 환율 1,380원대 마감</title>' +
+    '<link>https://www.yna.co.kr/view/2</link>' +
+    '<pubDate>Thu, 20 Nov 2026 22:05:00 GMT</pubDate>' +
+    '<description>환율이 1,380원대에서 마감했다.</description>' +
+    '</item>' +
+    '</channel></rss>';
+
+  test('reads the Google News item shape: publisher, title, date, link, summary', () => {
+    const items = parseNewsRssFeed(RSS, { publisher: '연합뉴스' });
+    assert.equal(items.length, 2);
+    assert.equal(items[0].publisher, '매일경제');
+    assert.equal(items[0].title, '연준, 기준금리 동결');
+    assert.equal(items[0].url, 'https://news.google.com/rss/articles/1');
+    assert.equal(items[0].dateKey, '2026-11-21');
+    assert.equal(items[0].summary, '연준이 기준금리를 & 동결했다.');
+  });
+
+  test('falls back to the feed name and converts the date to Seoul time', () => {
+    const items = parseNewsRssFeed(RSS, { publisher: '연합뉴스' });
+    assert.equal(items[1].publisher, '연합뉴스');
+    // 22:05 UTC on the 20th is 07:05 on the 21st in Seoul.
+    assert.equal(items[1].dateKey, '2026-11-21');
+  });
+
+  test('ignores an item without a title', () => {
+    assert.equal(parseNewsRssFeed('<rss><item><link>x</link></item></rss>', {}).length, 0);
+    assert.equal(parseNewsRssFeed('', {}).length, 0);
+  });
+});
+
+describe('selectNewsCandidates', () => {
+  const base = { publisher: '매일경제', url: 'https://a', dateKey: '2026-11-21', summary: '' };
+  const now = '2026-11-21T02:00:00Z';
+
+  test('drops politics, sport and non-business stories', () => {
+    const items = [
+      Object.assign({}, base, { title: '국회 예산안 처리 놓고 여야 대립', publishedMs: Date.parse(now) }),
+      Object.assign({}, base, { title: '프로야구 한국시리즈 7차전 열려', publishedMs: Date.parse(now) }),
+      Object.assign({}, base, { title: '연준 기준금리 동결 결정', publishedMs: Date.parse(now) })
+    ];
+    const picked = selectNewsCandidates(items, { now });
+    assert.equal(picked.length, 1);
+    assert.equal(picked[0].title, '연준 기준금리 동결 결정');
+  });
+
+  test('keeps one copy of a story two feeds reported', () => {
+    const items = [
+      Object.assign({}, base, { title: '연준 기준금리 동결 결정', publishedMs: Date.parse(now) }),
+      Object.assign({}, base, { title: '연준 기준금리 동결 결정!!', publisher: '연합뉴스', publishedMs: Date.parse(now) })
+    ];
+    assert.equal(selectNewsCandidates(items, { now }).length, 1);
+  });
+
+  test('sorts newest first, numbers the list and respects the limit', () => {
+    const items = [
+      Object.assign({}, base, { title: '어제 나온 수출 지표 개선', publishedMs: Date.parse('2026-11-20T03:00:00Z') }),
+      Object.assign({}, base, { title: '오늘 나온 금리 동결 발표', publishedMs: Date.parse('2026-11-21T00:00:00Z') }),
+      Object.assign({}, base, { title: '환율 1,380원대 마감 소식', publishedMs: Date.parse('2026-11-21T01:00:00Z') })
+    ];
+    const picked = selectNewsCandidates(items, { now, limit: 2 });
+    assert.equal(picked.length, 2);
+    assert.equal(picked[0].title, '환율 1,380원대 마감 소식');
+    assert.equal(picked[0].index, 1);
+    assert.equal(picked[1].index, 2);
+  });
+
+  test('leaves out a story older than the freshness window', () => {
+    const items = [
+      Object.assign({}, base, { title: '사흘 전 지난 소식 정리', publishedMs: Date.parse('2026-11-18T00:00:00Z') })
+    ];
+    assert.equal(selectNewsCandidates(items, { now, freshHours: 48 }).length, 0);
+  });
+});
+
+describe('business news card', () => {
+  test('the schema asks for the briefing and exactly five keywords with two drills', () => {
+    const schema = buildDailyTalkContentSchema('NEWS_DRILLS');
+    assert.deepEqual(schema.required, ['topicEn', 'topicKo', 'news', 'keywords']);
+    assert.equal(schema.properties.keywords.minItems, 5);
+    assert.equal(schema.properties.keywords.maxItems, 5);
+    const keyword = schema.properties.keywords.items;
+    assert.deepEqual(keyword.required, ['en', 'ko', 'usageKo', 'drills']);
+    assert.equal(keyword.properties.drills.minItems, 2);
+    assert.deepEqual(keyword.properties.drills.items.required, ['en', 'ko', 'highlight']);
+    assert.equal(schema.properties.news.properties.summaryKo.minItems, 3);
+    assert.equal(schema.properties.news.properties.summaryKo.maxItems, 4);
+    assert.equal(schema.properties.news.properties.sourceIndexes.maxItems, 3);
+    assert.equal(schema.properties.news.additionalProperties, false);
+  });
+
+  test('normalizes the payload and resolves the real publisher and date', () => {
+    const content = normalizeGeneratedContent(NEWS_SAMPLE, { track: 'BUSINESS', level: 'basic', news: NEWS_CANDIDATES });
+    assert.equal(content.structureType, 'NEWS_DRILLS');
+    assert.equal(content.level, 'BASIC');
+    assert.equal(content.topicEn, 'Rates On Hold');
+    assert.equal(content.news.summaryKo.length, 3);
+    assert.equal(content.news.sources.length, 1);
+    assert.equal(content.news.sources[0].publisher, '매일경제');
+    assert.equal(content.news.sources[0].date, '2026-11-21');
+    assert.equal(content.news.sources[0].url, 'https://www.mk.co.kr/news/economy/1');
+    assert.equal(content.keywords.length, 5);
+    assert.equal(content.keywords[0].drills[1].highlight, 'holding prices steady');
+  });
+
+  test('an out-of-range sourceIndex leaves the card without a source', () => {
+    const content = normalizeGeneratedContent(
+      Object.assign({}, NEWS_SAMPLE, { news: Object.assign({}, NEWS_SAMPLE.news, { sourceIndexes: [9] }) }),
+      { track: 'BUSINESS', news: NEWS_CANDIDATES }
+    );
+    assert.equal(content.news.sources.length, 0);
+    const result = validateGeneratedContent(content);
+    assert.ok(result.errors.some((error) => error.field === 'news.sources'));
+  });
+
+  test('accepts a complete card', () => {
+    const content = normalizeGeneratedContent(NEWS_SAMPLE, { track: 'BUSINESS', news: NEWS_CANDIDATES });
+    assert.deepEqual(validateGeneratedContent(content), { ok: true, errors: [] });
+  });
+
+  test('requires five keywords, two drills each and a highlighted pattern in the sentence', () => {
+    const four = normalizeGeneratedContent(
+      Object.assign({}, NEWS_SAMPLE, { keywords: NEWS_SAMPLE.keywords.slice(0, 4) }),
+      { track: 'BUSINESS', news: NEWS_CANDIDATES }
+    );
+    assert.ok(validateGeneratedContent(four).errors.some((error) => error.field === 'keywords'));
+
+    const oneDrill = normalizeGeneratedContent(Object.assign({}, NEWS_SAMPLE, {
+      keywords: [Object.assign({}, NEWS_SAMPLE.keywords[0], { drills: NEWS_SAMPLE.keywords[0].drills.slice(0, 1) })].concat(NEWS_SAMPLE.keywords.slice(1))
+    }), { track: 'BUSINESS', news: NEWS_CANDIDATES });
+    assert.ok(validateGeneratedContent(oneDrill).errors.some((error) => error.field === 'keywords[0].drills'));
+
+    const detached = normalizeGeneratedContent(Object.assign({}, NEWS_SAMPLE, {
+      keywords: [Object.assign({}, NEWS_SAMPLE.keywords[0], {
+        drills: [{ en: 'The Fed held rates steady.', ko: '연준이 금리를 동결했습니다.', highlight: 'cut rates' }, NEWS_SAMPLE.keywords[0].drills[1]]
+      })].concat(NEWS_SAMPLE.keywords.slice(1))
+    }), { track: 'BUSINESS', news: NEWS_CANDIDATES });
+    assert.ok(validateGeneratedContent(detached).errors.some((error) => error.field === 'keywords[0].drills[0].highlight'));
+  });
+
+  test('rejects a summary that is too short, or a keyword written in Hangul', () => {
+    const shortSummary = normalizeGeneratedContent(Object.assign({}, NEWS_SAMPLE, {
+      news: Object.assign({}, NEWS_SAMPLE.news, { summaryKo: NEWS_SAMPLE.news.summaryKo.slice(0, 2) })
+    }), { track: 'BUSINESS', news: NEWS_CANDIDATES });
+    assert.ok(validateGeneratedContent(shortSummary).errors.some((error) => error.field === 'news.summaryKo'));
+
+    const hangulKeyword = normalizeGeneratedContent(Object.assign({}, NEWS_SAMPLE, {
+      keywords: [Object.assign({}, NEWS_SAMPLE.keywords[0], { en: '금리 동결' })].concat(NEWS_SAMPLE.keywords.slice(1))
+    }), { track: 'BUSINESS', news: NEWS_CANDIDATES });
+    assert.ok(validateGeneratedContent(hangulKeyword).errors.some((error) => error.field === 'keywords[0].en'));
+  });
+
+  test('rejects a repeated keyword and a Korean drill sentence', () => {
+    const repeated = normalizeGeneratedContent(Object.assign({}, NEWS_SAMPLE, {
+      keywords: [NEWS_SAMPLE.keywords[0], Object.assign({}, NEWS_SAMPLE.keywords[1], { en: 'hold rates steady' })].concat(NEWS_SAMPLE.keywords.slice(2))
+    }), { track: 'BUSINESS', news: NEWS_CANDIDATES });
+    assert.ok(validateGeneratedContent(repeated).errors.some((error) => error.field === 'keywords[1].en'));
+
+    const koreanDrill = normalizeGeneratedContent(Object.assign({}, NEWS_SAMPLE, {
+      keywords: [Object.assign({}, NEWS_SAMPLE.keywords[0], {
+        drills: [Object.assign({}, NEWS_SAMPLE.keywords[0].drills[0], { en: '연준이 금리를 동결했다' }), NEWS_SAMPLE.keywords[0].drills[1]]
+      })].concat(NEWS_SAMPLE.keywords.slice(1))
+    }), { track: 'BUSINESS', news: NEWS_CANDIDATES });
+    assert.ok(validateGeneratedContent(koreanDrill).errors.some((error) => error.field === 'keywords[0].drills[0].en'));
+  });
+});
+
+describe('the news card in the queue', () => {
+  const headerMap = {};
+  RM_DAILY_TALK_GEN.QUEUE_HEADERS.forEach((header, index) => { headerMap[header] = index + 1; });
+  headerMap.WORD_ORDER_JSON = 20;
+  headerMap.STRUCTURE_JSON = 21;
+  headerMap.SUBSTITUTIONS_JSON = 22;
+  const content = normalizeGeneratedContent(NEWS_SAMPLE, { track: 'BUSINESS', level: 'BASIC', news: NEWS_CANDIDATES });
+  const row = buildQueueRowValues(headerMap, content, {
+    contentId: 'BUSINESS-20261121-rates-on-hold',
+    sendDate: '2026-11-21',
+    status: 'TEST',
+    sources: 'OPENAI:gpt-5.5\nhttps://www.mk.co.kr/news/economy/1'
+  });
+
+  test('CHUNKS_JSON holds the five keywords with their Korean usage', () => {
+    const words = JSON.parse(row[headerMap.CHUNKS_JSON - 1]);
+    assert.equal(words.length, 5);
+    assert.equal(words[0].en, 'hold rates steady');
+    assert.equal(words[0].ko, '금리를 동결하다');
+    assert.includes(words[0].usageKo, '연준');
+  });
+
+  test('STRUCTURE_JSON holds the briefing, its real sources and the keywords', () => {
+    const structure = JSON.parse(row[headerMap.STRUCTURE_JSON - 1]);
+    assert.equal(structure.type, 'NEWS_DRILLS');
+    assert.equal(structure.news.headlineEn, NEWS_SAMPLE.news.headlineEn);
+    assert.equal(structure.news.summaryKo.length, 3);
+    assert.equal(structure.news.sources[0].publisher, '매일경제');
+    assert.equal(structure.keywords.length, 5);
+    assert.equal(structure.keywords[0].drills.length, 2);
+    assert.equal(structure.keywords[0].drills[0].highlight, 'held rates steady');
+  });
+
+  test('WORD_ORDER_JSON stays empty and MODEL_* carries the headline and summary', () => {
+    assert.equal(row[19], '');
+    assert.equal(row[headerMap.MODEL_EN - 1], NEWS_SAMPLE.news.headlineEn);
+    assert.equal(row[headerMap.MODEL_KO - 1], NEWS_SAMPLE.news.summaryKo.join('\n'));
+    assert.equal(row[headerMap.YOUR_TURN_EN - 1], RM_DAILY_TALK_PRACTICE_CUES.NEWS_DRILLS.en);
+    assert.equal(row[headerMap.YOUR_TURN_KO - 1], RM_DAILY_TALK_PRACTICE_CUES.NEWS_DRILLS.ko);
+  });
+
+  test('the Kakao teaser carries the first line, the count and the source', () => {
+    const teaser = row[headerMap['카카오본문'] - 1];
+    assert.includes(teaser, '(광고) 라이언멤버스 Ryan Daily Talk');
+    assert.includes(teaser, NEWS_SAMPLE.topicKo);
+    assert.includes(teaser, NEWS_SAMPLE.news.summaryKo[0]);
+    assert.includes(teaser, '오늘의 키워드 5개 · 패턴 문장 10개');
+    assert.includes(teaser, '출처: 매일경제 2026-11-21');
+    assert.excludes(teaser, 'http');
+  });
+});
+
+describe('buildContentRepairPrompt', () => {
+  test('keeps the schema and lists the failed checks', () => {
+    const prompt = buildContentPrompt('BUSINESS', { news: NEWS_CANDIDATES });
+    const repair = buildContentRepairPrompt(prompt, {
+      ok: false,
+      errors: [{ field: 'keywords[0].drills[0].highlight', message: '패턴이 문장에 그대로 들어 있지 않습니다.' }]
+    });
+    assert.equal(repair.schemaName, prompt.schemaName);
+    assert.deepEqual(repair.schema, prompt.schema);
+    assert.includes(repair.user, prompt.user);
+    assert.includes(repair.user, 'keywords[0].drills[0].highlight');
+    assert.includes(repair.user, 'Return the whole JSON again');
   });
 });
 

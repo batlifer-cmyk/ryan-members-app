@@ -10,17 +10,21 @@ Wix CMS 컬렉션 `RyanDailyTalkContent`의 `contentRich`(리치 텍스트)를 �
 | 파일 | 역할 |
 | --- | --- |
 | `rm-daily-talk.css` | 기사 카드·타이포·간격, 하단 CTA 카드, 하단 여백, 플로팅 수강료 계산기 버튼 크기 조정 |
-| `rm-daily-talk.js` | 리치 텍스트를 STEP 1~5로 파싱해 카드로 재구성(4단계 기사는 옛 카드로), `contentId`/`slug` 노출 숨김, 글 맨 아래 Daily Talk CTA 삽입 |
+| `rm-daily-talk.js` | 리치 텍스트를 비즈니스 뉴스 카드·5단계·옛 4단계로 파싱해 카드로 재구성, `contentId`/`slug` 노출 숨김, 글 맨 아래 Daily Talk CTA 삽입 |
 
 동작 원리:
 
-1. `contentRich`는 `STEP 1 · KEY WORDS` … `STEP 5 · AAA IN ACTION`(스몰톡) 또는
-   `STEP 5 · MESSAGE HOUSE`(비즈니스) 제목과 문단으로 게시됩니다(`DailyTalkWixPublisher.gs`의
-   `buildDailyTalkFiveStepBlocks_`).
-2. 스크립트가 그 텍스트를 읽어 ① 오늘의 단어 3개 ② 그 단어로 만든 한국어 문장 3개
-   ③ 같은 문장의 영어 어순(누가 / 한다 / 무엇을 / 어디서 / 언제 칩) ④ 통번역한 영어 문장 3개
-   ⑤ 그중 하나를 고른 Answer·Add·Ask 3문장(스몰톡) 또는 Conclusion·Reason·Detail·Suggestion
-   3~4문장(비즈니스) 카드로 다시 그립니다. 파싱에 실패하면 **원래 리치 텍스트를 그대로 둡니다**(안전한 기본값).
+1. `contentRich`는 비즈니스 뉴스 카드(`TODAY'S BUSINESS NEWS` + `KEYWORD 1 · …`),
+   `STEP 1 · KEY WORDS` … `STEP 5 · AAA IN ACTION`(스몰톡),
+   또는 옛 `STEP 5 · MESSAGE HOUSE`(2026-11-21 이전 비즈니스) 제목과 문단으로 게시됩니다
+   (`DailyTalkWixPublisher.gs`의 `buildDailyTalkNewsBlocks_` / `buildDailyTalkFiveStepBlocks_`).
+2. 스크립트가 그 텍스트를 읽어 카드로 다시 그립니다.
+   * 비즈니스 뉴스 카드 — ① `TODAY'S BUSINESS NEWS`(영어 헤드라인·한국어 요약 3~4줄·출처와 날짜)
+     ② 카드 아래 `오늘의 키워드 5` 점프 칩 ③ `KEYWORD 1`~`KEYWORD 5` 카드(표현 → 한글 뜻 →
+     `뉴스 속 쓰임` → `DRILL 1`·`DRILL 2`: 영어 문장 + 형광펜 패턴 + 한글 해석 + 패턴 칩)
+   * 스몰톡 5단계 — 단어 3개 / 한국어 문장 3개 / 어순 칩 / 영어 문장 3개 / Answer·Add·Ask
+   * 옛 비즈니스(2026-11-21 이전) — Conclusion·Reason·Detail·Suggestion 배지 카드
+   파싱에 실패하면 **원래 리치 텍스트를 그대로 둡니다**(안전한 기본값).
 3. 원문을 숨긴 뒤에만 카드가 보이므로, 스크립트가 없거나 실패해도 글은 읽힙니다.
 4. 카드 아래에는 `Ryan Daily Talk` CTA 카드가 하나 붙습니다. 버튼 하나와 작은 링크 두 개로
    구성되고, 셋 다 **이미 있는 실서비스 주소**만 가리킵니다(새 도메인·새 폼을 만들지 않음).
@@ -52,12 +56,13 @@ Wix CMS 컬렉션 `RyanDailyTalkContent`의 `contentRich`(리치 텍스트)를 �
 
 | 파일 | 스니펫 | SHA |
 | --- | --- | --- |
-| `rm-daily-talk.js` (5단계 + 비즈니스 Message House + CTA → `?dailytalk=1`) | `RM Daily Talk · 기사 4단계 카드` | `b1b0b5cbce5fc5869cf102bcc755c639b8f75253` |
-| `rm-daily-talk.css` (5단계 칩·AAA/MESSAGE HOUSE 배지 포함) | `RM Daily Talk · 기사 스타일` | `b1b0b5cbce5fc5869cf102bcc755c639b8f75253` |
+| `rm-daily-talk.js` (비즈니스 뉴스 카드 + 5단계 + Message House + CTA → `?dailytalk=1`) | `RM Daily Talk · 기사 4단계 카드` | `39a744916152189f178bc14fe84155a50b1a93e2` |
+| `rm-daily-talk.css` (비즈니스 뉴스/키워드 카드 포함) | `RM Daily Talk · 기사 스타일` | `39a744916152189f178bc14fe84155a50b1a93e2` |
 
-스니펫 이름(`RM Daily Talk · 기사 4단계 카드`)은 2026-11-20 5단계 개편과 2026-11-21 비즈니스
-Message House 개편 뒤에도 바꾸지 않고 SHA만 올렸습니다. 이 스니펫 하나가 AAA 스몰톡 기사,
-Message House 비즈니스 기사, 옛 4단계 기사를 모두 그립니다.
+스니펫 이름(`RM Daily Talk · 기사 4단계 카드`)은 2026-11-20 5단계 개편, 2026-11-21 비즈니스
+Message House 개편, 같은 날 비즈니스 뉴스 카드 개편 뒤에도 바꾸지 않고 SHA만 올렸습니다. 이 스니펫 하나가
+비즈니스 뉴스 카드(뉴스 브리핑 + 키워드 5 + 드릴 10문장), 5단계 AAA 스몰톡 기사, Message House
+비즈니스 기사, 옛 4단계 기사를 모두 그립니다.
 | — | `Ryan Members English Passport Preview` | `wix/custom-code/rm-overlay.html` (`?passport=1` / `?dailytalk=1` 전체화면 오버레이) |
 
 ## 확인

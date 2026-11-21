@@ -469,11 +469,11 @@ var RM_DAILY_TALK_LESSON = Object.freeze({
     keyword: 'KEYWORD'
   },
   LEADS: {
-    words: '오늘 대화에 바로 쓰는 단어 3개. 뜻과 함께 소리 내어 세 번씩 읽어 보세요.',
-    korean: 'STEP 1의 단어로 만든 오늘의 문장 3개입니다. 먼저 한국어로 뜻을 확인하세요.',
+    words: '오늘 질문에 답하려면 꼭 필요한 단어 3개. 뜻과 함께 소리 내어 세 번씩 읽어 보세요.',
+    korean: '오늘 질문에 대한 대답을 세 문장으로 나눈 것입니다. ① Answer(답변) → ② Add(이유·디테일) → ③ Ask(되묻기) 순서로 확인하세요.',
     order: '통역하기 전에, 한국어를 영어 어순(누가 → 한다 → 무엇을 → 어디서 → 언제)으로 먼저 놓아 봅니다.',
     english: '같은 문장을 자연스러운 영어로 통번역하면 이렇게 됩니다.',
-    aaa: '오늘 문장 {mark}을 골라, 실제 대화에서는 이렇게 세 문장으로 말합니다. Answer → Add → Ask.',
+    aaa: '이제 오늘 질문에, 방금 연습한 {mark} 문장에서 시작해 Answer → Add → Ask 세 문장으로 답합니다.',
     messageHouse: '업무 메시지는 결론부터. 오늘 문장 {mark}에서 출발해 Conclusion → Reason → Detail, 필요하면 Suggestion까지 세~네 문장으로 말합니다.'
   },
   MARKS: ['①', '②', '③'],

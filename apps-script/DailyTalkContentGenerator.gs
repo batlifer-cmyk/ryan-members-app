@@ -21,16 +21,19 @@
  *
  * Card shapes by track (2026-11-21):
  *
- * SMALL_TALK — the academy's five steps for one real first meeting
- * (영어입담비법서 first-meeting social English; topics rotate through its 16):
- *   STEP 1  words     3 words / expressions with their Korean meaning
- *   STEP 2  sentences 3 Korean sentences built from those words,
- *          the things the learner says to the person they have just met
+ * SMALL_TALK — one 영어입담비법서 question and the learner's AAA answer to it.
+ * The card picks ONE of the 32 questions of the textbook's 개정 통합교재 PART 2
+ * (RM_DAILY_TALK_SOCIAL_QUESTIONS), walks the list in book order and skips any
+ * question asked recently; the question is stored with the row (in
+ * SUBSTITUTIONS_JSON) so the next day's pick can avoid it.
+ *   STEP 1  words     3 words / expressions the answer needs, with their Korean meaning
+ *   STEP 2  sentences 3 Korean sentences that answer the question in order:
+ *          ① Answer, ② Add (a reason or detail), ③ Ask (a question back)
  *   STEP 3  sentences[].order  the same Korean sentences cut up and reordered
  *          into English word order (누가 / 한다 / 무엇을 / 어디서 / 언제)
  *   STEP 4  sentences[].en     the same sentences in natural English
- *   STEP 5  aaa       one of those sentences said in a real conversation as
- *          Answer -> Add -> Ask
+ *   STEP 5  aaa       the same three sentences said as one answer in a real
+ *          first meeting: Answer -> Add -> Ask
  *
  * BUSINESS — today's real economy/business news, read from public RSS feeds
  * (RM_DAILY_TALK_NEWS) and handed to the model:
@@ -46,8 +49,9 @@
  * way they were generated.
  * Storage keeps the existing queue columns: CHUNKS_JSON <- words,
  * WORD_ORDER_JSON <- sentences, STRUCTURE_JSON <- the step 5 script (type AAA
- * or MESSAGE_HOUSE), MODEL_EN/KO <- the same lines as labelled text. No sheet
- * migration is needed, and rows written before today keep their AAA shape.
+ * or MESSAGE_HOUSE), MODEL_EN/KO <- the same lines as labelled text, and
+ * SUBSTITUTIONS_JSON <- {questionEn} on a small-talk row. No sheet migration is
+ * needed, and rows written before today keep their AAA shape.
  */
 
 var RM_DAILY_TALK_GEN = Object.freeze({
@@ -203,46 +207,168 @@ function dailyTalkStructureSteps(type) {
 }
 
 /**
- * The academy's 영어입담비법서 first-meeting topics (1권~3권 14개 + 보강 2개 = 16개).
- * Each SMALL_TALK card picks one of these and rotates, so the week does not
- * come back to the same subject day after day.
+ * 영어입담비법서 개정 통합교재 PART 2 — the academy's own 32 small-talk
+ * questions, in the book's order (eight groups of four).
+ *
+ * A SMALL_TALK card is ONE of these questions and the learner's Answer → Add →
+ * Ask answer to it. The pool is walked in book order so the week covers the
+ * textbook instead of inventing a scene of the day, and a question that was
+ * asked recently is skipped (see pickDailyTalkQuestion_).
  */
-var RM_DAILY_TALK_SOCIAL_TOPICS = Object.freeze([
-  '01 날씨·계절 / weather and seasons',
-  '02 음식·요리·카페 / food, cooking and cafés',
-  '03 가족·일상 / family and everyday life',
-  '04 고향·거주지 / hometown and where you live',
-  '05 취미·자유시간 / hobbies and free time',
-  '06 직업·전공 / work and studies',
-  '07 여행·방문 경험 / travel and places you have visited',
-  '08 현장 상황·공유 경험 / this place and the event you are both at',
-  '09 가정·상상 질문 / what-if and imaginary questions',
-  '10 인간관계·친구 / relationships and friends',
-  '11 대학·학교 추억 / college and school memories',
-  '12 매력·좋은 인상 / attraction and a good first impression',
-  '13 자동차·이동 / cars and getting around',
-  '14 쇼핑·좋은 물건 / shopping and good finds',
-  '15 지금 이곳·방문 목적 / now and here: what brought you',
-  '16 근황·주말 계획 / recent life and weekend plans'
+var RM_DAILY_TALK_SOCIAL_QUESTIONS = Object.freeze([
+  {
+    ko: '날씨·계절', en: 'weather and seasons',
+    questions: [
+      'Do you like cold weather?',
+      "Isn't it freezing today?",
+      'Do you like rainy days?',
+      'How do you feel about summer?'
+    ]
+  },
+  {
+    ko: '근황·주말', en: 'how things are and weekend plans',
+    questions: [
+      'How was your weekend?',
+      "What's new with you?",
+      "How's work going?",
+      'Any plans for the weekend?'
+    ]
+  },
+  {
+    ko: '출신지·거주지·방문 목적', en: 'hometown, where you live and why you are here',
+    questions: [
+      'Where are you from?',
+      'What do you like about where you live?',
+      'What brings you here?',
+      'Is this your first time here?'
+    ]
+  },
+  {
+    ko: '지역 정보·맛집·음식', en: 'the area, good restaurants and food',
+    questions: [
+      'What food should I try in Busan?',
+      'Where should I go in Busan?',
+      'What kind of restaurants do you like?',
+      'Do you like cooking?'
+    ]
+  },
+  {
+    ko: '취미·여가·직업', en: 'hobbies, free time and work',
+    questions: [
+      'Do you work out?',
+      'What do you like reading about?',
+      'What do you do for a living?',
+      'What do you do in your free time?'
+    ]
+  },
+  {
+    ko: '여행·특별한 경험', en: 'travel and memorable experiences',
+    questions: [
+      "What's a memorable travel experience?",
+      'Did you have good weather on your trip?',
+      'What do you love most about traveling?',
+      'Where would you like to live for a year?'
+    ]
+  },
+  {
+    ko: '가족·친구·인간관계', en: 'family, friends and people',
+    questions: [
+      'What does your family usually do on holidays?',
+      'Tell me about one of your close friends.',
+      'What do you enjoy about spending time with kids?',
+      'Are you a social person?'
+    ]
+  },
+  {
+    ko: '의견·비교·유머·상상', en: 'opinions, comparisons, humour and imagination',
+    questions: [
+      "What's important in a good conversation?",
+      'Do you always try to be productive?',
+      'Do funny things happen to you often?',
+      'If you could have any superpower, what would it be?'
+    ]
+  }
 ]);
 
-/** The sixteen topics as the prompt lists them, four to a line. */
-function dailyTalkSocialTopicLines_() {
-  var lines = [];
-  for (var i = 0; i < RM_DAILY_TALK_SOCIAL_TOPICS.length; i += 4) {
-    lines.push('  ' + RM_DAILY_TALK_SOCIAL_TOPICS.slice(i, i + 4).join(' · '));
+/** The 32 questions of the book, in order, as plain strings. */
+function dailyTalkQuestionPool_() {
+  var pool = [];
+  RM_DAILY_TALK_SOCIAL_QUESTIONS.forEach(function (group) {
+    (group.questions || []).forEach(function (question) {
+      var text = String(question === null || question === undefined ? '' : question).trim();
+      if (text) pool.push(text);
+    });
+  });
+  return pool;
+}
+
+/** One form to compare questions with: case, quotes and punctuation dropped. */
+function normalizeDailyTalkQuestion_(text) {
+  return String(text === null || text === undefined ? '' : text)
+    .replace(/[\u2018\u2019\u201c\u201d]/g, "'")
+    .toLowerCase()
+    .replace(/[^a-z0-9'\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/** The 32 questions as the prompt prints them, one textbook group a line. */
+function dailyTalkSocialQuestionLines_() {
+  return RM_DAILY_TALK_SOCIAL_QUESTIONS.map(function (group, index) {
+    var number = (index < 9 ? '0' : '') + (index + 1);
+    var name = String(group.ko || '').trim();
+    var en = String(group.en || '').trim();
+    return '  ' + number + ' ' + name + (en ? ' / ' + en : '') + ': ' + (group.questions || []).join(' | ');
+  });
+}
+
+/**
+ * Today's question.
+ * options: { seed, recentQuestions: [oldest...newest], lastQuestion }
+ *
+ * A seed that is one of the 32 wins (the owner's manual pick). Otherwise the
+ * pool is walked from the question after the last card's one and the first
+ * question nobody asked recently is taken, so the book is covered in order and
+ * no question comes back the next day.
+ */
+function pickDailyTalkQuestion_(options) {
+  var opts = options || {};
+  var pool = dailyTalkQuestionPool_();
+  if (!pool.length) return '';
+  var seed = String(opts.seed || '').trim();
+  if (seed) {
+    var wanted = normalizeDailyTalkQuestion_(seed);
+    for (var s = 0; s < pool.length; s += 1) {
+      if (normalizeDailyTalkQuestion_(pool[s]) === wanted) return pool[s];
+    }
   }
-  return lines;
+  var recent = (opts.recentQuestions || []).map(function (question) {
+    return normalizeDailyTalkQuestion_(question);
+  });
+  var start = 0;
+  var last = normalizeDailyTalkQuestion_(opts.lastQuestion || (recent.length ? recent[recent.length - 1] : ''));
+  if (last) {
+    for (var i = 0; i < pool.length; i += 1) {
+      if (normalizeDailyTalkQuestion_(pool[i]) === last) {
+        start = (i + 1) % pool.length;
+        break;
+      }
+    }
+  }
+  for (var step = 0; step < pool.length; step += 1) {
+    var candidate = pool[(start + step) % pool.length];
+    if (recent.indexOf(normalizeDailyTalkQuestion_(candidate)) === -1) return candidate;
+  }
+  return pool[start];
 }
 
 var RM_DAILY_TALK_TRACK_BRIEFS = Object.freeze({
-  // A small-talk card is not a diary page: it is one real first meeting, in
-  // the words the learner says to the person in front of them.
-  SMALL_TALK: 'Daily Small Talk — real first-meeting social English: what an adult learner actually says to someone they have just met ' +
-    'at a gathering, an event or conference, a café, a networking meeting, a class or on a trip — opening the conversation, answering about themselves ' +
-    'and handing the turn back. Topics come from the academy\'s 영어입담비법서: weather and seasons, food and cafés, family and everyday life, ' +
-    'hometown and where you live, hobbies, work and studies, travel, the event you are both at, what-if questions, friends and relationships, ' +
-    'school memories, first impressions, cars and getting around, shopping and good finds, what brought you here, recent life and weekend plans. ' +
+  // A small-talk card is one textbook question and the learner's answer to it,
+  // in the words they say to the person in front of them.
+  SMALL_TALK: 'Daily Small Talk — real first-meeting social English: one question from the academy\'s 영어입담비법서 (개정 통합교재 PART 2, 32 questions) ' +
+    'answered the way an adult learner answers it to someone they have just met at a gathering, an event or conference, a café, a networking meeting, a class or on a trip — ' +
+    'Answer, Add and Ask. The question groups: weather and seasons, how things are and weekend plans, hometown and where you live, the area and food, ' +
+    'hobbies and work, travel, family and friends, opinions and imagination. ' +
     'Never a solo description of daily life such as receiving a parcel or doing chores at home.',
   BUSINESS: 'Daily Business Talk: today\'s real economy and business news, its five English keywords and ten pattern drills.'
 });
@@ -665,12 +791,14 @@ function buildContentPrompt(track, options) {
   return buildSmallTalkPrompt_(options);
 }
 
-/** The five-step small talk card. */
+/** The five-step small talk card: one textbook question, answered in AAA. */
 function buildSmallTalkPrompt_(options) {
   var opts = options || {};
   var level = String(opts.level || RM_DAILY_TALK_GEN.DEFAULT_LEVEL).trim().toUpperCase();
   var recent = (opts.recentTopics || []).filter(Boolean).slice(0, RM_DAILY_TALK_GEN.RECENT_TOPIC_LOOKBACK);
+  var recentQuestions = (opts.recentQuestions || []).filter(Boolean).slice(0, RM_DAILY_TALK_GEN.RECENT_TOPIC_LOOKBACK);
   var seed = String(opts.seed || '').trim();
+  var question = String(opts.questionEn || '').trim();
 
   var system = [
     'You write Ryan Daily Talk, the weekday English-learning card that Ryan Members, an English conversation academy in Busan,',
@@ -678,28 +806,34 @@ function buildSmallTalkPrompt_(options) {
     'The reader is a busy Korean adult at ' + level + ' level (CEFR A2-B1): they understand everyday English but',
     'freeze when they have to speak. Write warm, practical, natural English they can actually say today.',
     '',
-    'Every card teaches ONE situation in five steps, in this exact order:',
-    'Step 1 Key words: three words or expressions of the day, each with its Korean meaning.',
-    'Step 2 Korean sentences: three Korean sentences that use those words.',
+    'Every SMALL TALK card teaches ONE answer to ONE question from the academy\'s own textbook, 영어입담비법서',
+    '(개정 통합교재 PART 2): the 32 small-talk questions an adult learner is really asked in a first conversation.',
+    'Today\'s question is handed to you below. Use it word for word; never swap it for a question of your own,',
+    'and never turn the card into a made-up scene of the day.',
+    '',
+    'Every card teaches that answer in five steps, in this exact order:',
+    'Step 1 Key words: three words or expressions the learner needs to answer today\'s question, each with its Korean meaning.',
+    'Step 2 Korean sentences: three Korean sentences that answer today\'s question in the order the learner says them —',
+    '① Answer answers the question in one sentence, ② Add adds the reason, the detail or the example,',
+    '③ Ask asks the other person a fitting question and hands the turn over.',
     'Step 3 English word order: the same three Korean sentences, cut into meaning pieces and rearranged into English word order',
     '(누가 / 한다 / 무엇을 / 어디서 / 언제), so the learner stops translating word for word from Korean.',
     'Step 4 English sentences: the same three sentences translated into natural spoken English.',
-    'Step 5 AAA: pick ONE of the three sentences and show how the learner says it in a real conversation in three sentences —',
+    'Step 5 AAA: the same three sentences said as one answer to today\'s question in a real conversation —',
     'Answer (answer in one sentence), Add (one reason or detail), Ask (ask back and hand the turn over).',
     'This card is SMALL TALK: real first-meeting social English, the words the learner says to someone they have just met.',
     '',
     'The scene of every SMALL TALK card is a first meeting. The reader is at a meetup, a conference or workshop, a class, a café, a building party,',
-    'a networking event or a trip, has just met one person there, and has to say something to them out loud within the first minute.',
-    'So the three sentences are the things the learner actually says to that person — a short opinion or answer to open up (It\'s pretty chilly today, isn\'t it?),',
-    'a question to start or keep the talk going (What brings you here? / Have you tried the food here?), or a piece of their own story (I\'m here for a workshop).',
-    'At least one of the three is a question the learner asks the other person.',
-    'Step 5 AAA is how one of those turns then really goes: Answer says the picked sentence as the learner\'s own answer or short story,',
-    'Add adds one reason or detail so the answer is not a dead end, and Ask asks the other person something that fits and gives the turn back to them.',
+    'a networking event or a trip, has just met one person there, and that person asks today\'s question, or the learner answers it while they talk.',
+    'So ① is the answer the learner gives, ② is the reason or detail that keeps it alive, and ③ is the question they ask back',
+    '(What about you? / Do you live near here? / Have you tried the food here?) — the one line that gives the turn back.',
+    'Step 5 AAA is how that same answer really comes out: Answer says ① as the learner\'s own answer,',
+    'Add says ② so the answer is not a dead end, and Ask says ③ to give the turn back to the other person.',
     'A card is not a diary or a self-talk script: no narrating chores, no receiving a parcel or a delivery at home, no describing the rooms of the learner\'s own house,',
     'no instructions or labels the learner would never say out loud.',
     '',
-    'The five steps must all point at the same three sentences: the words of Step 1 are the words used in Steps 2-4,',
-    'and Step 5 grows out of the sentence it picks.',
+    'The five steps must all point at the same question: the words of Step 1 are the words used in Steps 2-4,',
+    'Steps 2-4 are exactly the Answer, the Add and the Ask, and Step 5 says those same three sentences as one answer.',
     'Never use markdown, emoji, hashtags or quotation marks around whole fields. Return JSON only.'
   ].join('\n');
 
@@ -707,26 +841,33 @@ function buildSmallTalkPrompt_(options) {
     'Track: ' + RM_DAILY_TALK_TRACK_BRIEFS.SMALL_TALK,
     'Learner level: ' + level,
     (opts.date ? 'Send date: ' + opts.date : ''),
+    (question ? 'Today\'s question (from 영어입담비법서, PART 2) — use it word for word: "' + question + '"' : ''),
+    (recentQuestions.length ? 'Do NOT use these questions, they were asked recently: ' + recentQuestions.join(' | ') : ''),
     (seed ? 'Topic seed (use it or a close variation): ' + seed : ''),
     recent.length ? 'Do NOT reuse these recent topics: ' + recent.join(' | ') : '',
     '',
-    'Today\'s topic — choose ONE of the academy\'s sixteen first-meeting topics (영어입담비법서) and rotate through them from day to day;',
-    'do not stay on the same topic two days running, and never repeat a recent topic:',
-    dailyTalkSocialTopicLines_().join('\n'),
+    (question
+      ? 'The question is fixed. Build the whole card as this reader\'s answer to it.'
+      : 'Today\'s question — choose ONE of the academy\'s 32 영어입담비법서 small-talk questions below and walk the list from day to day;\n' +
+        'do not stay on the same question two days running, and never repeat a recent question:\n' +
+        dailyTalkSocialQuestionLines_().join('\n')),
     '',
     'The scene: one real first meeting. The learner has just met one person — at a meetup, a conference or workshop, a class, a café,',
-    'a building party, a networking event, or on a trip — and everything on this card happens inside that one conversation.',
+    'a building party, a networking event, or on a trip — and that person asks today\'s question. Everything on this card happens inside that one conversation.',
     '',
-    'One situation, one lesson. Fill every field of the JSON schema:',
-    '- topicEn: a short catchy English title, 2-6 words, no ending period.',
+    'One question, one answer. Fill every field of the JSON schema:',
+    '- topicEn: a short catchy English title, 2-6 words, naming what today\'s question is about (no ending period).',
     '- topicKo: the same title in natural Korean (no English parentheses).',
-    '- snackEn: 2 sentences (max 40 words) that set today\'s first-meeting scene — where the learner is and who they have just met — and name what today\'s lesson is about.',
-    '- snackKo: a faithful, natural Korean translation of snackEn.',
+    '- snackEn: 2 sentences (max 40 words) in this shape: Someone asks: "<today\'s question>" Here is how to answer naturally with Answer, Add and Ask.',
+    '  Add where the learner is when it fits (at a workshop / at a café), and copy today\'s question exactly as given, inside double quotation marks.',
+    '- snackKo: a faithful, natural Korean translation of snackEn, including the question.',
     '- words: exactly ' + RM_DAILY_TALK_GEN.WORD_COUNT + ' items. Each has "en" (the word or expression as it is said, max 5 words)',
     '  and "ko" (its meaning in Korean, dictionary style: 나는 마신다 / 따뜻한 커피 / 출근길에).',
-    '  Pick words the three sentences below really use, and that the learner can reuse in other sentences today.',
-    '- sentences: exactly ' + RM_DAILY_TALK_GEN.SENTENCE_COUNT + ' items, one per learning sentence, in the order the learner meets them:',
-    '  "ko" = one natural Korean sentence that uses at least one of the words (max 20 words) — something the learner says TO the other person in that first meeting.',
+    '  Pick the words today\'s answer really needs, ones the learner can reuse in other sentences today.',
+    '- sentences: exactly ' + RM_DAILY_TALK_GEN.SENTENCE_COUNT + ' items, the answer to today\'s question in the order the learner says it:',
+    '  ① Answer = a statement that answers the question, ② Add = one more statement with the reason, the detail or the example,',
+    '  ③ Ask = one question to the other person, ending with a question mark.',
+    '  "ko" = that sentence in natural Korean (max 20 words) that uses at least one of the words — something the learner says TO the other person.',
     '  "order" = the SAME Korean sentence cut into meaning pieces and rearranged into English word order.',
     '  Each piece is {role / text}: role is one of 누가 (who), 한다 (does), 무엇을 (what), 어디서 (where),',
     '  언제 (when), 어떻게 (how); text is that piece in Korean, exactly as it appears in "ko".',
@@ -734,27 +875,27 @@ function buildSmallTalkPrompt_(options) {
     '  Example for 나는 지난 주말에 바닷가를 걸었다: 누가/나는, 한다/걸었다, 무엇을/바닷가를, 언제/지난 주말.',
     '  Never use the "/" character inside a piece.',
     '  "en" = that same sentence in natural spoken English (max 16 words, contractions).',
-    '- aaa: pick ONE of the three sentences ("pick": 1, 2 or 3 — the one that best opens the real first meeting today)',
-    '  and write the three sentences the learner says in that same conversation, in this order:',
-    '  "answer" = Answer: the picked sentence said as the learner\'s own answer or short story — it opens the talk or answers the other person;',
-    '  "add" = Add: one more sentence with the reason, the detail or the example, so the answer is not a dead end;',
-    '  "ask" = Ask: one natural question back to the other person that fits what was just said and hands the turn over to them.',
+    '- aaa: "pick": 1 — the ① Answer sentence opens the answer. Then write those same three sentences as one spoken answer:',
+    '  "answer" = Answer: ① said as the learner\'s own answer to today\'s question;',
+    '  "add" = Add: ② with the reason, the detail or the example, so the answer is not a dead end;',
+    '  "ask" = Ask: ③, one natural question back to the other person that fits what was just said and ends with a question mark.',
     '  Each of answer / add / ask has "en" and "ko".',
     '',
     'Hard rules:',
-    '- Every sentence is something the learner says TO the other person in a first meeting: no talking to oneself, no narrating chores,',
+    '- Every sentence answers today\'s question the way a real person would: no talking to oneself, no narrating chores,',
     '  no receiving a parcel or a delivery at home, no describing the rooms of the learner\'s own house.',
-    '- At least one of the three sentences is a question the learner asks the other person.',
-    '- The three sentences each do a different job and never repeat each other: one answers about the learner, one adds a detail or a short story,',
-    '  one asks the other person — not two sentences that say the same thing in other words.',
-    '- The three sentences follow one conversation in order (the first opens it, the second answers or adds, the third keeps it going),',
-    '  and the Step 5 answer, add and ask belong to that same scene.',
+    '- Sentence ③ is the only question and ends with "?", while ① and ② are statements.',
+    '- The three sentences each do a different job and never repeat each other: ① answers, ② adds a detail or a short story,',
+    '  ③ asks the other person — not two sentences that say the same thing in other words.',
+    '- The three sentences follow one answer in order (① answers, ② adds, ③ hands the turn over),',
+    '  and the Step 5 answer, add and ask are that same answer.',
     '- At least two of the three words must visibly appear in the three English sentences (sentences[].en).',
-    '- The answer must be built on the picked sentence: keep its key words so the learner hears the same expression again.',
+    '- The answer must be built on the ① sentence: keep its key words so the learner hears the same expression again.',
     '- The pieces of "order" must be the Korean words of "ko" itself — the meaning does not change, only the order.',
     '- Each "en" is the translation of its own "ko": same meaning, same length, no extra ideas.',
     '- Write spoken English: use contractions (I\'m, it\'s, we\'ll, don\'t) and avoid textbook stiffness.',
     '- English fields contain English only (no Hangul). Korean fields contain Korean (Hangul) only.',
+    '- snackEn carries today\'s question word for word inside double quotation marks.',
     '- Keep every expression polite and safe for a workplace and a family chat.',
     '- No brand names, no prices, no politics, no religion, no medical or legal advice.',
     '- Nothing too personal for a first meeting: no questions about age, salary, religion, politics, health or relationship status.',
@@ -957,6 +1098,7 @@ function normalizeGeneratedContent(parsed, context) {
     track: track,
     level: String(ctx.level || RM_DAILY_TALK_GEN.DEFAULT_LEVEL).trim().toUpperCase(),
     structureType: structureType,
+    questionEn: cleanText_(ctx.questionEn || raw.questionEn),
     topicEn: cleanText_(raw.topicEn),
     topicKo: cleanText_(raw.topicKo),
     snackEn: cleanText_(raw.snackEn),
@@ -1140,6 +1282,7 @@ function validateGeneratedContent(content) {
     validateDailyTalkAaa_(value.aaa, fail);
   }
   validateDailyTalkStepLinks_(value, fail);
+  validateDailyTalkQuestionLink_(value, fail);
 
   return { ok: errors.length === 0, errors: errors };
 }
@@ -1460,6 +1603,32 @@ function validateDailyTalkStepLinks_(value, fail) {
 }
 
 /**
+ * The question chain of a small-talk card: the snack shows today's question
+ * word for word, the ③ sentence and the AAA Ask are questions, and the answer
+ * starts from the ① sentence. Only checked when the card carries its question —
+ * rows written before 2026-11-21 have none and keep validating the old way.
+ */
+function validateDailyTalkQuestionLink_(value, fail) {
+  var content = value || {};
+  var question = String(content.questionEn || '').trim();
+  if (!question) return;
+
+  if (normalizeDailyTalkQuestion_(content.snackEn).indexOf(normalizeDailyTalkQuestion_(question)) === -1) {
+    fail('snackEn', '오늘의 질문이 snackEn에 그대로 들어 있지 않습니다: ' + question);
+  }
+
+  var sentences = Array.isArray(content.sentences) ? content.sentences : [];
+  var askSentence = String((sentences[2] && sentences[2].en) || '').trim();
+  if (askSentence && askSentence.indexOf('?') === -1) {
+    fail('sentences[2].en', '③ Ask는 물음표로 끝나는 질문이어야 합니다.');
+  }
+  var aaaAsk = String((content.aaa && content.aaa.ask && content.aaa.ask.en) || '').trim();
+  if (aaaAsk && aaaAsk.indexOf('?') === -1) {
+    fail('aaa.ask.en', 'Ask는 물음표로 끝나는 질문이어야 합니다.');
+  }
+}
+
+/**
  * STEP 5 of a content object as {type, pick, steps:[{label, en, ko}]}. One
  * shape for both tracks, so STRUCTURE_JSON, MODEL_EN/KO and the CMS body are
  * written the same way; an empty Suggestion is dropped, leaving 3 sentences.
@@ -1644,7 +1813,10 @@ function buildQueueRowValues(headerMap, content, meta) {
       pick: step5.pick,
       steps: step5.steps
     }));
-    put('SUBSTITUTIONS_JSON', '');
+    // The question the card answers, kept on the row so tomorrow's pick can
+    // skip it (no CMS field, no sheet migration).
+    var questionEn = String(value.questionEn || '').trim();
+    put('SUBSTITUTIONS_JSON', questionEn ? JSON.stringify({ questionEn: questionEn }) : '');
     put('MODEL_EN', buildStep5ScriptText_(step5, 'en'));
     put('MODEL_KO', buildStep5ScriptText_(step5, 'ko'));
     put('YOUR_TURN_EN', dailyTalkPracticeCue_(step5.type).en);
@@ -1688,6 +1860,25 @@ function recentTopicsForTrack(queueItems, track, limit) {
     if (topic) out.push(topic);
   });
   return out.slice(-max).reverse();
+}
+
+/**
+ * The questions the recent cards of a track answered, oldest row first. The
+ * question is stored on the row (SUBSTITUTIONS_JSON.questionEn); rows written
+ * before 2026-11-21 have none and simply do not contribute.
+ */
+function recentQuestionsForTrack(queueItems, track, limit) {
+  var wanted = normalizeTrack(track);
+  var max = Number(limit) || RM_DAILY_TALK_GEN.RECENT_TOPIC_LOOKBACK;
+  var out = [];
+  (queueItems || []).forEach(function (item) {
+    if (!item) return;
+    if (normalizeTrack(item.track) !== wanted) return;
+    var parsed = safeJsonParse(String(item.substitutionsJson || ''), null);
+    var question = String((parsed && parsed.questionEn) || '').trim();
+    if (question) out.push(question);
+  });
+  return out.slice(-max);
 }
 
 /** Model list: configured model first, then the fallbacks without duplicates. */
@@ -1764,6 +1955,19 @@ function generateDailyTalkContent_(options) {
 
   pendingTracks.forEach(function (track) {
     try {
+      // SMALL_TALK answers one 영어입담비법서 question a day: pick it here, so
+      // the same question never comes twice in a row and the book is walked
+      // in order. BUSINESS talks about today's real news instead.
+      var isSmallTalk = normalizeTrack(track) !== RM_TRACKS.BUSINESS;
+      var smallTalkQuestions = isSmallTalk ? recentQuestionsForTrack(items, track) : [];
+      var smallTalkQuestion = isSmallTalk
+        ? pickDailyTalkQuestion_({
+            seed: opts.seed,
+            recentQuestions: smallTalkQuestions,
+            lastQuestion: smallTalkQuestions.length ? smallTalkQuestions[smallTalkQuestions.length - 1] : ''
+          })
+        : '';
+
       // BUSINESS talks about today's real news: read the feeds first and hand
       // the model a numbered list, so it cannot invent a story or a source.
       var news = [];
@@ -1782,6 +1986,8 @@ function generateDailyTalkContent_(options) {
         date: dateKey,
         level: level,
         recentTopics: recentTopicsForTrack(items, track),
+        recentQuestions: smallTalkQuestions.slice().reverse(),
+        questionEn: smallTalkQuestion,
         seed: opts.seed,
         news: news
       });
@@ -1789,8 +1995,10 @@ function generateDailyTalkContent_(options) {
       var content = normalizeGeneratedContent(parseGeneratedContent(extractOpenAiText(attempt.payload)), {
         track: track,
         level: level,
-        news: news
+        news: news,
+        questionEn: smallTalkQuestion
       });
+      if (smallTalkQuestion) content.questionEn = smallTalkQuestion;
       var validation = validateGeneratedContent(content);
 
       // One repair pass: the same card, the failed checks spelled out.
@@ -1800,8 +2008,10 @@ function generateDailyTalkContent_(options) {
         var repaired = normalizeGeneratedContent(parseGeneratedContent(extractOpenAiText(repairAttempt.payload)), {
           track: track,
           level: level,
-          news: news
+          news: news,
+          questionEn: smallTalkQuestion
         });
+        if (smallTalkQuestion) repaired.questionEn = smallTalkQuestion;
         var repairedValidation = validateGeneratedContent(repaired);
         if (repairedValidation.ok) {
           content = repaired;
@@ -2073,6 +2283,8 @@ function checkDailyTalkGeneratorSetup() {
       return map;
     }, {}),
     newsFeeds: RM_DAILY_TALK_NEWS.FEEDS.map(function (feed) { return feed.publisher; }),
+    // SMALL_TALK cycles through the 32 영어입담비법서 questions of PART 2.
+    smallTalkQuestions: dailyTalkQuestionPool_().length,
     autoGenerate: isAutoGenerateEnabled_(settings),
     autoApprove: toBoolean(settings.AUTO_APPROVE),
     statusOnCreate: toBoolean(settings.AUTO_APPROVE) ? RM_DAILY_TALK_GEN.STATUS_APPROVED : RM_DAILY_TALK_GEN.STATUS_DRAFT,

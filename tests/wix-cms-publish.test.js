@@ -460,11 +460,12 @@ describe('Daily Talk CMS body — five steps', () => {
     assert.includes(texts, 'warm coffee\n따뜻한 커피');
     assert.includes(texts, 'on my way to work\n출근길에');
     assert.includes(texts, 'grab\n(음료를) 사서 들다');
-    assert.includes(texts, '오늘 대화에 바로 쓰는 단어 3개. 뜻과 함께 소리 내어 세 번씩 읽어 보세요.');
+    assert.includes(texts, '오늘 질문에 답하려면 꼭 필요한 단어 3개. 뜻과 함께 소리 내어 세 번씩 읽어 보세요.');
   });
 
   test('step 2 lists the same three sentences in Korean, numbered', () => {
     const texts = richTexts(ITEM);
+    assert.includes(texts, '오늘 질문에 대한 대답을 세 문장으로 나눈 것입니다. ① Answer(답변) → ② Add(이유·디테일) → ③ Ask(되묻기) 순서로 확인하세요.');
     assert.includes(texts, '① 나는 오늘 아침 출근길에 따뜻한 커피를 마셨다');
     assert.includes(texts, '② 나는 출근길에 커피를 사서 들었다');
     assert.includes(texts, '③ 나는 아침에 따뜻한 커피가 필요하다');
@@ -486,7 +487,7 @@ describe('Daily Talk CMS body — five steps', () => {
 
   test('step 5 names the picked sentence and writes Answer / Add / Ask', () => {
     const texts = richTexts(ITEM);
-    assert.includes(texts, '오늘 문장 ①을 골라, 실제 대화에서는 이렇게 세 문장으로 말합니다. Answer → Add → Ask.');
+    assert.includes(texts, '이제 오늘 질문에, 방금 연습한 ① 문장에서 시작해 Answer → Add → Ask 세 문장으로 답합니다.');
     assert.includes(texts, 'Answer — 한 문장으로 먼저 답하기\nYeah, I had a warm coffee on my way to work.\n네, 출근길에 따뜻한 커피를 마셨어요.');
     assert.includes(texts, 'Add — 이유나 디테일을 한 문장 더하기\nIt was freezing outside.\n밖이 정말 추웠거든요.');
     assert.includes(texts, 'Ask — 상대에게 되묻기\nHow about you?\n당신은요?');
@@ -501,7 +502,7 @@ describe('Daily Talk CMS body — five steps', () => {
       })
     });
     const texts = richTexts(second);
-    assert.includes(texts, '오늘 문장 ②을 골라, 실제 대화에서는 이렇게 세 문장으로 말합니다. Answer → Add → Ask.');
+    assert.includes(texts, '이제 오늘 질문에, 방금 연습한 ② 문장에서 시작해 Answer → Add → Ask 세 문장으로 답합니다.');
   });
 
   test('a business row generated before the Message House change keeps its AAA step 5', () => {

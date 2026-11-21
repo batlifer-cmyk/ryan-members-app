@@ -221,6 +221,58 @@ const SAMPLE = {
   }
 };
 
+/** A SMALL_TALK card in the 2026-11-21 shape: one 영어입담비법서 question, answered in AAA. */
+const LIVES_QUESTION = 'What do you like about where you live?';
+const QUESTION_BODY = {
+  topicEn: 'Why I Like My Town',
+  topicKo: '우리 동네가 좋은 이유',
+  snackEn: 'At a café, someone asks: "' + LIVES_QUESTION + '" Here is how to answer naturally with Answer, Add and Ask.',
+  snackKo: '카페에서 누군가 "사는 곳에서 어떤 점이 좋아요?"라고 묻습니다. Answer, Add, Ask로 자연스럽게 답하는 법을 배웁니다.',
+  words: [
+    { en: 'close to the beach', ko: '바닷가와 가까운' },
+    { en: 'quiet', ko: '조용한' },
+    { en: 'do you live', ko: '살다' }
+  ],
+  sentences: [
+    {
+      ko: '저는 바닷가와 가까운 곳에 살아요',
+      order: [
+        { role: '누가', text: '저는' },
+        { role: '한다', text: '살아요' },
+        { role: '어디서', text: '바닷가와 가까운 곳에' }
+      ],
+      en: 'I live close to the beach.'
+    },
+    {
+      ko: '그래서 아침마다 조용히 산책을 해요',
+      order: [
+        { role: '누가', text: '저는' },
+        { role: '한다', text: '해요' },
+        { role: '무엇을', text: '산책을' },
+        { role: '언제', text: '아침마다' },
+        { role: '어떻게', text: '조용히' }
+      ],
+      en: 'So I take a quiet walk every morning.'
+    },
+    {
+      ko: '당신도 이 근처에 사세요?',
+      order: [
+        { role: '누가', text: '당신도' },
+        { role: '한다', text: '사세요' },
+        { role: '어디서', text: '이 근처에' }
+      ],
+      en: 'Do you live near here too?'
+    }
+  ],
+  aaa: {
+    pick: 1,
+    answer: { en: 'I live close to the beach.', ko: '저는 바닷가와 가까운 곳에 살아요.' },
+    add: { en: 'So I take a quiet walk every morning.', ko: '그래서 아침마다 조용히 산책을 해요.' },
+    ask: { en: 'Do you live near here too?', ko: '당신도 이 근처에 사세요?' }
+  }
+};
+const QUESTION_SAMPLE = Object.assign({}, QUESTION_BODY, { questionEn: LIVES_QUESTION });
+
 describe('parseTrackList', () => {
   test('reads the 설정 sheet value in order', () => {
     assert.deepEqual(parseTrackList('SMALL_TALK,BUSINESS'), ['SMALL_TALK', 'BUSINESS']);
@@ -315,17 +367,30 @@ describe('buildContentPrompt', () => {
     assert.includes(business.user, 'Facts from the news list only');
   });
 
-  test('asks for the steps to point at the same three sentences', () => {
+  test('asks for the steps to point at the same question', () => {
     const prompt = buildContentPrompt('SMALL_TALK', {});
-    assert.includes(prompt.system, 'must all point at the same three sentences');
+    assert.includes(prompt.system, 'must all point at the same question');
     assert.includes(prompt.user, 'At least two of the three words must visibly appear');
-    assert.includes(prompt.user, 'The answer must be built on the picked sentence');
+    assert.includes(prompt.user, 'The answer must be built on the ① sentence');
   });
 
-  test('ties the Message House back to the picked sentence and the words', () => {
+  test('the question handed in is used word for word and quoted in the snack', () => {
+    const question = 'What do you like about where you live?';
+    const prompt = buildContentPrompt('SMALL_TALK', { questionEn: question });
+    assert.includes(prompt.user, 'use it word for word: "' + question + '"');
+    assert.includes(prompt.user, 'The question is fixed. Build the whole card as this reader\'s answer to it.');
+    assert.includes(prompt.user, 'snackEn carries today\'s question word for word inside double quotation marks.');
+    // With a fixed question the model is not asked to pick one from the book.
+    assert.excludes(prompt.user, 'choose ONE of the academy\'s 32');
+    assert.excludes(prompt.user, 'What food should I try in Busan?');
+  });
+
+  test('asks the sentence order to be Answer, Add and Ask', () => {
     const prompt = buildContentPrompt('SMALL_TALK', {});
-    assert.includes(prompt.user, 'The answer must be built on the picked sentence');
-    assert.includes(prompt.user, 'At least two of the three words must visibly appear');
+    assert.includes(prompt.system, '① Answer answers the question in one sentence');
+    assert.includes(prompt.user, '① Answer = a statement that answers the question');
+    assert.includes(prompt.user, '③ Ask = one question to the other person, ending with a question mark');
+    assert.includes(prompt.user, 'no talking to oneself');
   });
 
   test('frames small talk as a real first meeting, not a solo daily-life scene', () => {
@@ -340,41 +405,28 @@ describe('buildContentPrompt', () => {
     assert.includes(RM_DAILY_TALK_TRACK_BRIEFS.SMALL_TALK, 'first-meeting social English');
   });
 
-  test('lists the sixteen 영어입담비법서 first-meeting topics and asks for rotation', () => {
-    assert.equal(RM_DAILY_TALK_SOCIAL_TOPICS.length, 16);
+  test('lists all 32 영어입담비법서 PART 2 questions in their eight groups', () => {
+    assert.equal(RM_DAILY_TALK_SOCIAL_QUESTIONS.length, 8);
+    const pool = RM_DAILY_TALK_SOCIAL_QUESTIONS.reduce((all, group) => all.concat(group.questions), []);
+    assert.equal(pool.length, 32);
+    assert.equal(new Set(pool).size, 32);
+    ['Do you like cold weather?', 'How was your weekend?', 'Where are you from?',
+      'What food should I try in Busan?', 'Do you work out?', 'Where would you like to live for a year?',
+      'Tell me about one of your close friends.', 'If you could have any superpower, what would it be?']
+      .forEach((question) => assert.ok(pool.indexOf(question) !== -1, 'missing ' + question));
     const prompt = buildContentPrompt('SMALL_TALK', {});
-    RM_DAILY_TALK_SOCIAL_TOPICS.forEach((topic) => assert.includes(prompt.user, topic));
-    assert.includes(prompt.user, '01 날씨·계절');
-    assert.includes(prompt.user, '16 근황·주말 계획');
-    assert.includes(prompt.user, 'rotate through them from day to day');
-    assert.includes(prompt.user, 'do not stay on the same topic two days running');
-    // BUSINESS keeps its own prompt: no topic list leaking into the news card.
-    assert.excludes(buildContentPrompt('BUSINESS', {}).user, '16 근황·주말 계획');
+    pool.forEach((question) => assert.includes(prompt.user, question));
+    assert.includes(prompt.user, '01 날씨·계절 / weather and seasons');
+    assert.includes(prompt.user, '08 의견·비교·유머·상상 / opinions, comparisons, humour and imagination');
+    assert.includes(prompt.user, 'walk the list from day to day');
+    assert.includes(prompt.user, 'do not stay on the same question two days running');
+    // BUSINESS keeps its own prompt: no question list leaking into the news card.
+    assert.excludes(buildContentPrompt('BUSINESS', {}).user, 'Do you like cold weather?');
   });
 
-  test('asks every sentence to be spoken to the person, with one question to hand the turn over', () => {
-    const prompt = buildContentPrompt('SMALL_TALK', {});
-    assert.includes(prompt.system, 'At least one of the three is a question the learner asks the other person');
-    assert.includes(prompt.user, 'At least one of the three sentences is a question the learner asks the other person');
-    assert.includes(prompt.user, 'The three sentences follow one conversation in order');
-    assert.includes(prompt.user, 'no talking to oneself');
-  });
-
-  test('keeps the three sentences from repeating one another', () => {
-    const prompt = buildContentPrompt('SMALL_TALK', {});
-    assert.includes(prompt.user, 'The three sentences each do a different job and never repeat each other');
-    assert.includes(prompt.user, 'one answers about the learner, one adds a detail or a short story');
-  });
-
-  test('step 5 AAA answers, adds and asks back inside the same first meeting', () => {
-    const prompt = buildContentPrompt('SMALL_TALK', {});
-    assert.includes(prompt.system, 'Answer says the picked sentence as the learner');
-    assert.includes(prompt.system, 'gives the turn back to them');
-    assert.includes(prompt.user, '"answer" = Answer: the picked sentence said as the learner');
-    assert.includes(prompt.user, '"add" = Add: one more sentence with the reason');
-    assert.includes(prompt.user, '"ask" = Ask: one natural question back to the other person');
-    assert.includes(prompt.user, 'belong to that same scene');
-    assert.equal(prompt.structureType, 'AAA');
+  test('a recent question is listed as one not to ask again', () => {
+    const prompt = buildContentPrompt('SMALL_TALK', { recentQuestions: ['How was your weekend?'] });
+    assert.includes(prompt.user, 'Do NOT use these questions, they were asked recently: How was your weekend?');
   });
 
   test('keeps a first meeting from turning into an interview', () => {
@@ -585,6 +637,35 @@ describe('validateGeneratedContent', () => {
       }
     }), { track: 'BUSINESS' });
     assert.ok(validateGeneratedContent(detached).errors.some((error) => error.field === 'messageHouse.conclusion'));
+  });
+
+  test('accepts a question card that answers today\'s question in AAA', () => {
+    const content = normalizeGeneratedContent(QUESTION_BODY, { track: 'SMALL_TALK', questionEn: LIVES_QUESTION });
+    assert.equal(content.questionEn, LIVES_QUESTION);
+    assert.deepEqual(validateGeneratedContent(content), { ok: true, errors: [] });
+  });
+
+  test('a question card must show the question and ask back with a question', () => {
+    const noQuestion = normalizeGeneratedContent(Object.assign({}, QUESTION_BODY, {
+      snackEn: 'At a café you meet someone new. Today you learn to talk about your town.'
+    }), { track: 'SMALL_TALK', questionEn: LIVES_QUESTION });
+    assert.ok(validateGeneratedContent(noQuestion).errors.some((error) => error.field === 'snackEn'));
+
+    const statement = normalizeGeneratedContent(Object.assign({}, QUESTION_BODY, {
+      sentences: QUESTION_BODY.sentences.map((row, index) => (index === 2
+        ? Object.assign({}, row, { en: 'You live near here too.' })
+        : row)),
+      aaa: Object.assign({}, QUESTION_BODY.aaa, { ask: { en: 'You live near here too.', ko: '당신도 이 근처에 사세요?' } })
+    }), { track: 'SMALL_TALK', questionEn: LIVES_QUESTION });
+    const errors = validateGeneratedContent(statement).errors;
+    assert.ok(errors.some((error) => error.field === 'sentences[2].en'));
+    assert.ok(errors.some((error) => error.field === 'aaa.ask.en'));
+  });
+
+  test('a row written before the question pool still validates without a question', () => {
+    const content = normalizeGeneratedContent(SAMPLE, { track: 'SMALL_TALK' });
+    assert.equal(content.questionEn, '');
+    assert.deepEqual(validateGeneratedContent(content), { ok: true, errors: [] });
   });
 
   test('rejects Hangul inside an English field', () => {
@@ -808,6 +889,14 @@ describe('buildQueueRowValues', () => {
     assert.deepEqual(row, ['C1', 'SMALL_TALK', 'DRAFT']);
   });
 
+  test('a question card keeps its question on the row for the next day\'s pick', () => {
+    const questionCard = normalizeGeneratedContent(QUESTION_BODY, { track: 'SMALL_TALK', questionEn: LIVES_QUESTION });
+    const row = buildQueueRowValues(headerMap, questionCard, { contentId: 'C3' });
+    assert.deepEqual(JSON.parse(row[headerMap.SUBSTITUTIONS_JSON - 1]), { questionEn: LIVES_QUESTION });
+    // A row generated before the question pool leaves the column empty.
+    assert.equal(buildQueueRowValues(headerMap, content, { contentId: 'C4' })[headerMap.SUBSTITUTIONS_JSON - 1], '');
+  });
+
   test('a business card stores its Message House in STRUCTURE_JSON and MODEL_*', () => {
     const business = normalizeGeneratedContent(BUSINESS_SAMPLE, { track: 'BUSINESS', level: 'BASIC' });
     const row = buildQueueRowValues(headerMap, business, { contentId: 'BUSINESS-20261120-one-more-day' });
@@ -882,6 +971,51 @@ describe('recentTopicsForTrack', () => {
     const queue = [];
     for (let i = 0; i < 20; i += 1) queue.push({ track: 'SMALL_TALK', topicEn: 'Topic ' + i });
     assert.equal(recentTopicsForTrack(queue, 'SMALL_TALK', 3).length, 3);
+  });
+});
+
+describe('the 영어입담비법서 question of the day', () => {
+  test('the pool is the 32 questions in book order', () => {
+    const pool = dailyTalkQuestionPool_();
+    assert.equal(pool.length, 32);
+    assert.equal(pool[0], 'Do you like cold weather?');
+    assert.equal(pool[pool.length - 1], 'If you could have any superpower, what would it be?');
+    assert.equal(new Set(pool).size, 32);
+  });
+
+  test('with nothing used yet the card starts at the first question', () => {
+    assert.equal(pickDailyTalkQuestion_({}), 'Do you like cold weather?');
+  });
+
+  test('the next card takes the question after the last one, in book order', () => {
+    assert.equal(pickDailyTalkQuestion_({ lastQuestion: 'Do you like cold weather?' }), "Isn't it freezing today?");
+    assert.equal(pickDailyTalkQuestion_({ lastQuestion: "Isn't it freezing today?" }), 'Do you like rainy days?');
+  });
+
+  test('a recently asked question is skipped and the pool wraps around', () => {
+    const last = 'If you could have any superpower, what would it be?';
+    assert.equal(pickDailyTalkQuestion_({ lastQuestion: last }), 'Do you like cold weather?');
+    assert.equal(pickDailyTalkQuestion_({
+      lastQuestion: 'Do you like cold weather?',
+      recentQuestions: ["Isn't it freezing today?"]
+    }), 'Do you like rainy days?');
+  });
+
+  test('an owner seed that is one of the 32 wins, otherwise the rotation decides', () => {
+    assert.equal(pickDailyTalkQuestion_({ seed: 'how was your weekend', lastQuestion: 'Do you like rainy days?' }),
+      'How was your weekend?');
+    assert.equal(pickDailyTalkQuestion_({ seed: 'cold morning small talk with a neighbor' }), 'Do you like cold weather?');
+  });
+
+  test('recentQuestionsForTrack reads the question kept on each small-talk row', () => {
+    const queue = [
+      { track: 'SMALL_TALK', substitutionsJson: JSON.stringify({ questionEn: 'How was your weekend?' }) },
+      { track: 'SMALL_TALK', substitutionsJson: '' },
+      { track: 'BUSINESS', substitutionsJson: JSON.stringify({ questionEn: 'Where are you from?' }) },
+      { track: 'SMALL_TALK', substitutionsJson: JSON.stringify({ questionEn: 'Where are you from?' }) }
+    ];
+    assert.deepEqual(recentQuestionsForTrack(queue, 'SMALL_TALK'), ['How was your weekend?', 'Where are you from?']);
+    assert.deepEqual(recentQuestionsForTrack(queue, 'SMALL_TALK', 1), ['Where are you from?']);
   });
 });
 

@@ -21,9 +21,11 @@
  *
  * Card shapes by track (2026-11-21):
  *
- * SMALL_TALK — the academy's five steps:
+ * SMALL_TALK — the academy's five steps for one real first meeting
+ * (영어입담비법서 first-meeting social English; topics rotate through its 16):
  *   STEP 1  words     3 words / expressions with their Korean meaning
- *   STEP 2  sentences 3 Korean sentences built from those words
+ *   STEP 2  sentences 3 Korean sentences built from those words,
+ *          the things the learner says to the person they have just met
  *   STEP 3  sentences[].order  the same Korean sentences cut up and reordered
  *          into English word order (누가 / 한다 / 무엇을 / 어디서 / 언제)
  *   STEP 4  sentences[].en     the same sentences in natural English
@@ -200,9 +202,48 @@ function dailyTalkStructureSteps(type) {
   return (type === 'MESSAGE_HOUSE' ? RM_DAILY_TALK_MESSAGE_HOUSE : RM_DAILY_TALK_AAA).STEPS;
 }
 
+/**
+ * The academy's 영어입담비법서 first-meeting topics (1권~3권 14개 + 보강 2개 = 16개).
+ * Each SMALL_TALK card picks one of these and rotates, so the week does not
+ * come back to the same subject day after day.
+ */
+var RM_DAILY_TALK_SOCIAL_TOPICS = Object.freeze([
+  '01 날씨·계절 / weather and seasons',
+  '02 음식·요리·카페 / food, cooking and cafés',
+  '03 가족·일상 / family and everyday life',
+  '04 고향·거주지 / hometown and where you live',
+  '05 취미·자유시간 / hobbies and free time',
+  '06 직업·전공 / work and studies',
+  '07 여행·방문 경험 / travel and places you have visited',
+  '08 현장 상황·공유 경험 / this place and the event you are both at',
+  '09 가정·상상 질문 / what-if and imaginary questions',
+  '10 인간관계·친구 / relationships and friends',
+  '11 대학·학교 추억 / college and school memories',
+  '12 매력·좋은 인상 / attraction and a good first impression',
+  '13 자동차·이동 / cars and getting around',
+  '14 쇼핑·좋은 물건 / shopping and good finds',
+  '15 지금 이곳·방문 목적 / now and here: what brought you',
+  '16 근황·주말 계획 / recent life and weekend plans'
+]);
+
+/** The sixteen topics as the prompt lists them, four to a line. */
+function dailyTalkSocialTopicLines_() {
+  var lines = [];
+  for (var i = 0; i < RM_DAILY_TALK_SOCIAL_TOPICS.length; i += 4) {
+    lines.push('  ' + RM_DAILY_TALK_SOCIAL_TOPICS.slice(i, i + 4).join(' · '));
+  }
+  return lines;
+}
+
 var RM_DAILY_TALK_TRACK_BRIEFS = Object.freeze({
-  SMALL_TALK: 'Daily Small Talk: everyday conversation an adult learner can use the same day ' +
-    '(greetings, weekends, food and cafes, weather, hobbies, travel, neighbours, delivery, small talk with coworkers).',
+  // A small-talk card is not a diary page: it is one real first meeting, in
+  // the words the learner says to the person in front of them.
+  SMALL_TALK: 'Daily Small Talk — real first-meeting social English: what an adult learner actually says to someone they have just met ' +
+    'at a gathering, an event or conference, a café, a networking meeting, a class or on a trip — opening the conversation, answering about themselves ' +
+    'and handing the turn back. Topics come from the academy\'s 영어입담비법서: weather and seasons, food and cafés, family and everyday life, ' +
+    'hometown and where you live, hobbies, work and studies, travel, the event you are both at, what-if questions, friends and relationships, ' +
+    'school memories, first impressions, cars and getting around, shopping and good finds, what brought you here, recent life and weekend plans. ' +
+    'Never a solo description of daily life such as receiving a parcel or doing chores at home.',
   BUSINESS: 'Daily Business Talk: today\'s real economy and business news, its five English keywords and ten pattern drills.'
 });
 
@@ -645,7 +686,17 @@ function buildSmallTalkPrompt_(options) {
     'Step 4 English sentences: the same three sentences translated into natural spoken English.',
     'Step 5 AAA: pick ONE of the three sentences and show how the learner says it in a real conversation in three sentences —',
     'Answer (answer in one sentence), Add (one reason or detail), Ask (ask back and hand the turn over).',
-    'This card is SMALL TALK: friendly everyday conversation the learner can have today.',
+    'This card is SMALL TALK: real first-meeting social English, the words the learner says to someone they have just met.',
+    '',
+    'The scene of every SMALL TALK card is a first meeting. The reader is at a meetup, a conference or workshop, a class, a café, a building party,',
+    'a networking event or a trip, has just met one person there, and has to say something to them out loud within the first minute.',
+    'So the three sentences are the things the learner actually says to that person — a short opinion or answer to open up (It\'s pretty chilly today, isn\'t it?),',
+    'a question to start or keep the talk going (What brings you here? / Have you tried the food here?), or a piece of their own story (I\'m here for a workshop).',
+    'At least one of the three is a question the learner asks the other person.',
+    'Step 5 AAA is how one of those turns then really goes: Answer says the picked sentence as the learner\'s own answer or short story,',
+    'Add adds one reason or detail so the answer is not a dead end, and Ask asks the other person something that fits and gives the turn back to them.',
+    'A card is not a diary or a self-talk script: no narrating chores, no receiving a parcel or a delivery at home, no describing the rooms of the learner\'s own house,',
+    'no instructions or labels the learner would never say out loud.',
     '',
     'The five steps must all point at the same three sentences: the words of Step 1 are the words used in Steps 2-4,',
     'and Step 5 grows out of the sentence it picks.',
@@ -659,31 +710,43 @@ function buildSmallTalkPrompt_(options) {
     (seed ? 'Topic seed (use it or a close variation): ' + seed : ''),
     recent.length ? 'Do NOT reuse these recent topics: ' + recent.join(' | ') : '',
     '',
+    'Today\'s topic — choose ONE of the academy\'s sixteen first-meeting topics (영어입담비법서) and rotate through them from day to day;',
+    'do not stay on the same topic two days running, and never repeat a recent topic:',
+    dailyTalkSocialTopicLines_().join('\n'),
+    '',
+    'The scene: one real first meeting. The learner has just met one person — at a meetup, a conference or workshop, a class, a café,',
+    'a building party, a networking event, or on a trip — and everything on this card happens inside that one conversation.',
+    '',
     'One situation, one lesson. Fill every field of the JSON schema:',
     '- topicEn: a short catchy English title, 2-6 words, no ending period.',
     '- topicKo: the same title in natural Korean (no English parentheses).',
-    '- snackEn: 2 sentences (max 40 words) that set today\'s situation and name what today\'s lesson is about.',
+    '- snackEn: 2 sentences (max 40 words) that set today\'s first-meeting scene — where the learner is and who they have just met — and name what today\'s lesson is about.',
     '- snackKo: a faithful, natural Korean translation of snackEn.',
     '- words: exactly ' + RM_DAILY_TALK_GEN.WORD_COUNT + ' items. Each has "en" (the word or expression as it is said, max 5 words)',
     '  and "ko" (its meaning in Korean, dictionary style: 나는 마신다 / 따뜻한 커피 / 출근길에).',
     '  Pick words the three sentences below really use, and that the learner can reuse in other sentences today.',
     '- sentences: exactly ' + RM_DAILY_TALK_GEN.SENTENCE_COUNT + ' items, one per learning sentence, in the order the learner meets them:',
-    '  "ko" = one natural Korean sentence that uses at least one of the words (max 20 words).',
+    '  "ko" = one natural Korean sentence that uses at least one of the words (max 20 words) — something the learner says TO the other person in that first meeting.',
     '  "order" = the SAME Korean sentence cut into meaning pieces and rearranged into English word order.',
     '  Each piece is {role / text}: role is one of 누가 (who), 한다 (does), 무엇을 (what), 어디서 (where),',
     '  언제 (when), 어떻게 (how); text is that piece in Korean, exactly as it appears in "ko".',
     '  Use ' + RM_DAILY_TALK_GEN.MIN_ORDER_PIECES + '-' + RM_DAILY_TALK_GEN.MAX_ORDER_PIECES + ' pieces, always include 누가 and 한다, and place them 누가 → 한다 → 무엇을 → 어디서 → 언제 order.',
-    '  Example for 나는 오늘 아침 출근길에 따뜻한 커피를 마셨다: 누가/나는, 한다/마셨다, 무엇을/따뜻한 커피를, 어디서/출근길에, 언제/오늘 아침.',
+    '  Example for 나는 지난 주말에 바닷가를 걸었다: 누가/나는, 한다/걸었다, 무엇을/바닷가를, 언제/지난 주말.',
     '  Never use the "/" character inside a piece.',
     '  "en" = that same sentence in natural spoken English (max 16 words, contractions).',
-    '- aaa: pick ONE of the three sentences ("pick": 1, 2 or 3 — the one that best opens a real conversation today)',
-    '  and expand it into the three sentences the learner actually says:',
-    '  "answer" = Answer: one short sentence that answers or states the picked sentence conversationally;',
-    '  "add" = Add: one sentence adding a reason or a concrete detail;',
-    '  "ask" = Ask: one sentence asking the other person and handing the turn back.',
+    '- aaa: pick ONE of the three sentences ("pick": 1, 2 or 3 — the one that best opens the real first meeting today)',
+    '  and write the three sentences the learner says in that same conversation, in this order:',
+    '  "answer" = Answer: the picked sentence said as the learner\'s own answer or short story — it opens the talk or answers the other person;',
+    '  "add" = Add: one more sentence with the reason, the detail or the example, so the answer is not a dead end;',
+    '  "ask" = Ask: one natural question back to the other person that fits what was just said and hands the turn over to them.',
     '  Each of answer / add / ask has "en" and "ko".',
     '',
     'Hard rules:',
+    '- Every sentence is something the learner says TO the other person in a first meeting: no talking to oneself, no narrating chores,',
+    '  no receiving a parcel or a delivery at home, no describing the rooms of the learner\'s own house.',
+    '- At least one of the three sentences is a question the learner asks the other person.',
+    '- The three sentences follow one conversation in order (the first opens it, the second answers or adds, the third keeps it going),',
+    '  and the Step 5 answer, add and ask belong to that same scene.',
     '- At least two of the three words must visibly appear in the three English sentences (sentences[].en).',
     '- The answer must be built on the picked sentence: keep its key words so the learner hears the same expression again.',
     '- The pieces of "order" must be the Korean words of "ko" itself — the meaning does not change, only the order.',
@@ -692,6 +755,7 @@ function buildSmallTalkPrompt_(options) {
     '- English fields contain English only (no Hangul). Korean fields contain Korean (Hangul) only.',
     '- Keep every expression polite and safe for a workplace and a family chat.',
     '- No brand names, no prices, no politics, no religion, no medical or legal advice.',
+    '- Nothing too personal for a first meeting: no questions about age, salary, religion, politics, health or relationship status.',
     '- The topic must be different from the recent topics above and useful this week.'
   ].filter(function (line, index, all) { return line !== '' || all[index - 1] !== ''; });
 

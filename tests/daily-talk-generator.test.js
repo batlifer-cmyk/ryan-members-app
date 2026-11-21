@@ -327,6 +327,55 @@ describe('buildContentPrompt', () => {
     assert.includes(prompt.user, 'The answer must be built on the picked sentence');
     assert.includes(prompt.user, 'At least two of the three words must visibly appear');
   });
+
+  test('frames small talk as a real first meeting, not a solo daily-life scene', () => {
+    const prompt = buildContentPrompt('SMALL_TALK', {});
+    assert.includes(prompt.system, 'first-meeting social English');
+    assert.includes(prompt.system, 'The scene of every SMALL TALK card is a first meeting');
+    assert.includes(prompt.user, 'The scene: one real first meeting');
+    assert.includes(prompt.user, 'no receiving a parcel or a delivery at home');
+    // The vague old brief (greetings / neighbours / delivery) is gone.
+    assert.excludes(RM_DAILY_TALK_TRACK_BRIEFS.SMALL_TALK, 'neighbours');
+    assert.excludes(RM_DAILY_TALK_TRACK_BRIEFS.SMALL_TALK, 'greetings');
+    assert.includes(RM_DAILY_TALK_TRACK_BRIEFS.SMALL_TALK, 'first-meeting social English');
+  });
+
+  test('lists the sixteen 영어입담비법서 first-meeting topics and asks for rotation', () => {
+    assert.equal(RM_DAILY_TALK_SOCIAL_TOPICS.length, 16);
+    const prompt = buildContentPrompt('SMALL_TALK', {});
+    RM_DAILY_TALK_SOCIAL_TOPICS.forEach((topic) => assert.includes(prompt.user, topic));
+    assert.includes(prompt.user, '01 날씨·계절');
+    assert.includes(prompt.user, '16 근황·주말 계획');
+    assert.includes(prompt.user, 'rotate through them from day to day');
+    assert.includes(prompt.user, 'do not stay on the same topic two days running');
+    // BUSINESS keeps its own prompt: no topic list leaking into the news card.
+    assert.excludes(buildContentPrompt('BUSINESS', {}).user, '16 근황·주말 계획');
+  });
+
+  test('asks every sentence to be spoken to the person, with one question to hand the turn over', () => {
+    const prompt = buildContentPrompt('SMALL_TALK', {});
+    assert.includes(prompt.system, 'At least one of the three is a question the learner asks the other person');
+    assert.includes(prompt.user, 'At least one of the three sentences is a question the learner asks the other person');
+    assert.includes(prompt.user, 'The three sentences follow one conversation in order');
+    assert.includes(prompt.user, 'no talking to oneself');
+  });
+
+  test('step 5 AAA answers, adds and asks back inside the same first meeting', () => {
+    const prompt = buildContentPrompt('SMALL_TALK', {});
+    assert.includes(prompt.system, 'Answer says the picked sentence as the learner');
+    assert.includes(prompt.system, 'gives the turn back to them');
+    assert.includes(prompt.user, '"answer" = Answer: the picked sentence said as the learner');
+    assert.includes(prompt.user, '"add" = Add: one more sentence with the reason');
+    assert.includes(prompt.user, '"ask" = Ask: one natural question back to the other person');
+    assert.includes(prompt.user, 'belong to that same scene');
+    assert.equal(prompt.structureType, 'AAA');
+  });
+
+  test('keeps a first meeting from turning into an interview', () => {
+    const prompt = buildContentPrompt('SMALL_TALK', {});
+    assert.includes(prompt.user, 'Nothing too personal for a first meeting');
+    assert.includes(prompt.user, 'no questions about age, salary, religion, politics, health or relationship status');
+  });
 });
 
 describe('buildDailyTalkContentSchema', () => {

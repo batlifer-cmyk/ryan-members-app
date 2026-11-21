@@ -360,6 +360,12 @@ describe('buildContentPrompt', () => {
     assert.includes(prompt.user, 'no talking to oneself');
   });
 
+  test('keeps the three sentences from repeating one another', () => {
+    const prompt = buildContentPrompt('SMALL_TALK', {});
+    assert.includes(prompt.user, 'The three sentences each do a different job and never repeat each other');
+    assert.includes(prompt.user, 'one answers about the learner, one adds a detail or a short story');
+  });
+
   test('step 5 AAA answers, adds and asks back inside the same first meeting', () => {
     const prompt = buildContentPrompt('SMALL_TALK', {});
     assert.includes(prompt.system, 'Answer says the picked sentence as the learner');

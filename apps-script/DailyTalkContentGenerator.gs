@@ -745,6 +745,8 @@ function buildSmallTalkPrompt_(options) {
     '- Every sentence is something the learner says TO the other person in a first meeting: no talking to oneself, no narrating chores,',
     '  no receiving a parcel or a delivery at home, no describing the rooms of the learner\'s own house.',
     '- At least one of the three sentences is a question the learner asks the other person.',
+    '- The three sentences each do a different job and never repeat each other: one answers about the learner, one adds a detail or a short story,',
+    '  one asks the other person — not two sentences that say the same thing in other words.',
     '- The three sentences follow one conversation in order (the first opens it, the second answers or adds, the third keeps it going),',
     '  and the Step 5 answer, add and ask belong to that same scene.',
     '- At least two of the three words must visibly appear in the three English sentences (sentences[].en).',

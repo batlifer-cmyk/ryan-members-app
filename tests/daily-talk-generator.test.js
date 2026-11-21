@@ -393,6 +393,15 @@ describe('buildContentPrompt', () => {
     assert.includes(prompt.user, 'no talking to oneself');
   });
 
+  test('the Ask asks today\'s topic again in other words, not the question itself', () => {
+    const prompt = buildContentPrompt('SMALL_TALK', { questionEn: 'Do you like cold weather?' });
+    assert.includes(prompt.system, 'never repeats today\'s question back word for word');
+    assert.includes(prompt.system, 'a natural ③ is "Do you enjoy winter?"');
+    assert.includes(prompt.user, 'never today\'s question repeated');
+    assert.includes(prompt.user, 'and is not today\'s question again in other punctuation');
+    assert.includes(prompt.user, 'and not the same words with "so" or "too" added');
+  });
+
   test('frames small talk as a real first meeting, not a solo daily-life scene', () => {
     const prompt = buildContentPrompt('SMALL_TALK', {});
     assert.includes(prompt.system, 'first-meeting social English');
@@ -665,6 +674,62 @@ describe('validateGeneratedContent', () => {
   test('a row written before the question pool still validates without a question', () => {
     const content = normalizeGeneratedContent(SAMPLE, { track: 'SMALL_TALK' });
     assert.equal(content.questionEn, '');
+    assert.deepEqual(validateGeneratedContent(content), { ok: true, errors: [] });
+  });
+
+  test('the Ask must not hand today\'s question straight back', () => {
+    const echoed = normalizeGeneratedContent(Object.assign({}, QUESTION_BODY, {
+      sentences: QUESTION_BODY.sentences.map((row, index) => (index === 2
+        ? Object.assign({}, row, { en: LIVES_QUESTION })
+        : row)),
+      aaa: Object.assign({}, QUESTION_BODY.aaa, { ask: { en: LIVES_QUESTION, ko: '사는 곳에서 어떤 점이 좋으세요?' } })
+    }), { track: 'SMALL_TALK', questionEn: LIVES_QUESTION });
+    const errors = validateGeneratedContent(echoed).errors;
+    assert.ok(errors.some((error) => error.field === 'sentences[2].en'), 'Ask must not repeat the question');
+    assert.ok(errors.some((error) => error.field === 'aaa.ask.en'), 'the AAA Ask must not repeat the question');
+  });
+
+  test('the Ask compares loosely: case, punctuation and a filler word do not hide a repeat', () => {
+    const variants = [
+      'what do you like about where you live',
+      'What do you like about where you live??',
+      'So, what do you like about where you live?'
+    ];
+    variants.forEach((ask) => {
+      const content = normalizeGeneratedContent(Object.assign({}, QUESTION_BODY, {
+        sentences: QUESTION_BODY.sentences.map((row, index) => (index === 2
+          ? Object.assign({}, row, { en: ask })
+          : row)),
+        aaa: Object.assign({}, QUESTION_BODY.aaa, { ask: { en: ask, ko: '사는 곳에서 어떤 점이 좋으세요?' } })
+      }), { track: 'SMALL_TALK', questionEn: LIVES_QUESTION });
+      assert.ok(validateGeneratedContent(content).errors.some((error) => error.field === 'sentences[2].en'), ask);
+    });
+  });
+
+  test('the Ask may ask about the same topic in other words', () => {
+    const other = 'Do you take long walks around here?';
+    const content = normalizeGeneratedContent(Object.assign({}, QUESTION_BODY, {
+      sentences: QUESTION_BODY.sentences.map((row, index) => (index === 2
+        ? Object.assign({}, row, { en: other })
+        : row)),
+      aaa: Object.assign({}, QUESTION_BODY.aaa, { ask: { en: other, ko: '이 근처에서 오래 산책하세요?' } })
+    }), { track: 'SMALL_TALK', questionEn: LIVES_QUESTION });
+    assert.deepEqual(validateGeneratedContent(content), { ok: true, errors: [] });
+    // The helper itself, one call at a time.
+    assert.equal(dailyTalkAskRepeatsQuestion_('Do you like cold weather?', 'Do you like cold weather?'), true);
+    assert.equal(dailyTalkAskRepeatsQuestion_('Do you like cold weather too?', 'Do you like cold weather?'), true);
+    assert.equal(dailyTalkAskRepeatsQuestion_('Do you enjoy winter?', 'Do you like cold weather?'), false);
+    assert.equal(dailyTalkAskRepeatsQuestion_('Do you like cold weather food?', 'Do you like cold weather?'), false);
+    assert.equal(dailyTalkAskRepeatsQuestion_('', 'Do you like cold weather?'), false);
+  });
+
+  test('an old row without a question keeps whatever Ask it had', () => {
+    const content = normalizeGeneratedContent(Object.assign({}, QUESTION_BODY, {
+      sentences: QUESTION_BODY.sentences.map((row, index) => (index === 2
+        ? Object.assign({}, row, { en: LIVES_QUESTION })
+        : row)),
+      aaa: Object.assign({}, QUESTION_BODY.aaa, { ask: { en: LIVES_QUESTION, ko: '사는 곳에서 어떤 점이 좋으세요?' } })
+    }), { track: 'SMALL_TALK' });
     assert.deepEqual(validateGeneratedContent(content), { ok: true, errors: [] });
   });
 

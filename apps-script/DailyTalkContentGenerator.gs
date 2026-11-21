@@ -808,14 +808,14 @@ function buildSmallTalkPrompt_(options) {
     '',
     'Every SMALL TALK card teaches ONE answer to ONE question from the academy\'s own textbook, 영어입담비법서',
     '(개정 통합교재 PART 2): the 32 small-talk questions an adult learner is really asked in a first conversation.',
-    'Today\'s question is handed to you below. Use it word for word; never swap it for a question of your own,',
+    'The card\'s question is handed to you below. Use it word for word in snackEn; never swap it for a question of your own,',
     'and never turn the card into a made-up scene of the day.',
     '',
     'Every card teaches that answer in five steps, in this exact order:',
     'Step 1 Key words: three words or expressions the learner needs to answer today\'s question, each with its Korean meaning.',
     'Step 2 Korean sentences: three Korean sentences that answer today\'s question in the order the learner says them —',
     '① Answer answers the question in one sentence, ② Add adds the reason, the detail or the example,',
-    '③ Ask asks the other person a fitting question and hands the turn over.',
+    '③ Ask asks the other person a fitting question on the same topic and hands the turn over — never today\'s question said again.',
     'Step 3 English word order: the same three Korean sentences, cut into meaning pieces and rearranged into English word order',
     '(누가 / 한다 / 무엇을 / 어디서 / 언제), so the learner stops translating word for word from Korean.',
     'Step 4 English sentences: the same three sentences translated into natural spoken English.',
@@ -827,6 +827,10 @@ function buildSmallTalkPrompt_(options) {
     'a networking event or a trip, has just met one person there, and that person asks today\'s question, or the learner answers it while they talk.',
     'So ① is the answer the learner gives, ② is the reason or detail that keeps it alive, and ③ is the question they ask back',
     '(What about you? / Do you live near here? / Have you tried the food here?) — the one line that gives the turn back.',
+    '③ never repeats today\'s question back word for word: the other person has just said it, and answering it with the same sentence',
+    'makes the learner sound like they were not listening. Take the same topic from a new angle instead — another verb, another detail,',
+    'or the other person\'s answer turned back on them. After "Do you like cold weather?" a natural ③ is "Do you enjoy winter?"',
+    'or "What do you do to stay warm in winter?", not "Do you like cold weather?".',
     'Step 5 AAA is how that same answer really comes out: Answer says ① as the learner\'s own answer,',
     'Add says ② so the answer is not a dead end, and Ask says ③ to give the turn back to the other person.',
     'A card is not a diary or a self-talk script: no narrating chores, no receiving a parcel or a delivery at home, no describing the rooms of the learner\'s own house,',
@@ -866,7 +870,8 @@ function buildSmallTalkPrompt_(options) {
     '  Pick the words today\'s answer really needs, ones the learner can reuse in other sentences today.',
     '- sentences: exactly ' + RM_DAILY_TALK_GEN.SENTENCE_COUNT + ' items, the answer to today\'s question in the order the learner says it:',
     '  ① Answer = a statement that answers the question, ② Add = one more statement with the reason, the detail or the example,',
-    '  ③ Ask = one question to the other person, ending with a question mark.',
+    '  ③ Ask = one question to the other person, ending with a question mark, about the same topic from a new angle —',
+    '  never today\'s question repeated.',
     '  "ko" = that sentence in natural Korean (max 20 words) that uses at least one of the words — something the learner says TO the other person.',
     '  "order" = the SAME Korean sentence cut into meaning pieces and rearranged into English word order.',
     '  Each piece is {role / text}: role is one of 누가 (who), 한다 (does), 무엇을 (what), 어디서 (where),',
@@ -878,13 +883,16 @@ function buildSmallTalkPrompt_(options) {
     '- aaa: "pick": 1 — the ① Answer sentence opens the answer. Then write those same three sentences as one spoken answer:',
     '  "answer" = Answer: ① said as the learner\'s own answer to today\'s question;',
     '  "add" = Add: ② with the reason, the detail or the example, so the answer is not a dead end;',
-    '  "ask" = Ask: ③, one natural question back to the other person that fits what was just said and ends with a question mark.',
+    '  "ask" = Ask: ③, one natural question back to the other person that fits what was just said, ends with a question mark,',
+    '  and is not today\'s question again in other punctuation.',
     '  Each of answer / add / ask has "en" and "ko".',
     '',
     'Hard rules:',
     '- Every sentence answers today\'s question the way a real person would: no talking to oneself, no narrating chores,',
     '  no receiving a parcel or a delivery at home, no describing the rooms of the learner\'s own house.',
     '- Sentence ③ is the only question and ends with "?", while ① and ② are statements.',
+    '- ③ Ask is never today\'s question handed back as it was asked (not "Do you like cold weather?" after "Do you like cold weather?",',
+    '  and not the same words with "so" or "too" added): ask about the same topic in wording the learner has not just heard.',
     '- The three sentences each do a different job and never repeat each other: ① answers, ② adds a detail or a short story,',
     '  ③ asks the other person — not two sentences that say the same thing in other words.',
     '- The three sentences follow one answer in order (① answers, ② adds, ③ hands the turn over),',
@@ -1608,6 +1616,25 @@ function validateDailyTalkStepLinks_(value, fail) {
  * starts from the ① sentence. Only checked when the card carries its question —
  * rows written before 2026-11-21 have none and keep validating the old way.
  */
+/**
+ * Does the card's Ask simply hand today's question straight back? Same words,
+ * same punctuation dropped, ignoring a filler word or two (so / too / really):
+ * "Do you like cold weather?", "So, do you like cold weather too?" and
+ * "Do you like cold weather" all count as the same question.
+ */
+function dailyTalkAskRepeatsQuestion_(ask, question) {
+  var FILLERS = ['so', 'and', 'but', 'oh', 'well', 'ok', 'okay', 'then', 'too', 'also', 'really'];
+  function core(text) {
+    return normalizeDailyTalkQuestion_(text).split(' ').filter(function (word) {
+      return word && FILLERS.indexOf(word) === -1;
+    }).join(' ');
+  }
+  var askCore = core(ask);
+  var questionCore = core(question);
+  if (!askCore || !questionCore) return false;
+  return askCore === questionCore;
+}
+
 function validateDailyTalkQuestionLink_(value, fail) {
   var content = value || {};
   var question = String(content.questionEn || '').trim();
@@ -1625,6 +1652,14 @@ function validateDailyTalkQuestionLink_(value, fail) {
   var aaaAsk = String((content.aaa && content.aaa.ask && content.aaa.ask.en) || '').trim();
   if (aaaAsk && aaaAsk.indexOf('?') === -1) {
     fail('aaa.ask.en', 'Ask는 물음표로 끝나는 질문이어야 합니다.');
+  }
+
+  // ③ Ask는 상대가 먼저 한 질문을 그대로 되묻지 않는다: 같은 주제를 다른 표현으로.
+  if (dailyTalkAskRepeatsQuestion_(askSentence, question)) {
+    fail('sentences[2].en', '③ Ask가 오늘의 질문을 그대로 되묻습니다. 같은 주제를 조금 다른 표현으로 물어보세요: ' + askSentence);
+  }
+  if (dailyTalkAskRepeatsQuestion_(aaaAsk, question)) {
+    fail('aaa.ask.en', 'Ask가 오늘의 질문을 그대로 되묻습니다. 같은 주제를 조금 다른 표현으로 물어보세요: ' + aaaAsk);
   }
 }
 

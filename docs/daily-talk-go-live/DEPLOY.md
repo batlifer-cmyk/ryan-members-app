@@ -187,6 +187,11 @@ listOpenAiModels()                                   // 이 키로 쓸 수 있�
 * 검증은 단계 간 연결까지 본다: 단어 3개 중 2개 이상이 영어 문장 안에 실제로 나와야 하고,
   `aaa.answer`는 고른 문장과 내용 단어를 공유해야 한다. 어순 조각은 `누가`가 `한다`보다
   앞서야 하고 조각 안에 `/`가 들어가면 안 된다.
+* (2026-11-21) 카드의 질문은 영어입담비법서 PART 2의 32개 중 하나로 서버가 확정한다(`questionEn`,
+  `SUBSTITUTIONS_JSON={"questionEn":…}`에 저장). ③ Ask는 상대가 먼저 한 그 질문을 그대로 되묻지 않고
+  같은 주제를 다른 표현으로 묻는다(예: 질문 `"Do you like cold weather?"` → Ask `"Do you enjoy winter?"`).
+  `validateDailyTalkQuestionLink_`는 소문자·문장부호·여백과 so/too 같은 군더더기를 걷어낸 뒤 Ask가 질문과
+  같으면 실패로 보고 재생성한다(`dailyTalkAskRepeatsQuestion_`). `questionEn`이 없는 옛 행은 예전 방식대로 통과한다.
 * `WORD_ORDER_JSON`·`STRUCTURE_JSON`은 기존 컬럼을 그대로 쓴다(시트 마이그레이션 없음).
   `SUBSTITUTIONS_JSON`은 새 콘텐츠에서 비운다.
 * 2026-11-20 이전에 생성된 행(옛 4단계 JSON)은 게시할 때 예전 4단계 본문으로 나간다

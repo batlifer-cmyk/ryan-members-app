@@ -957,6 +957,8 @@ function buildSmallTalkPrompt_(options) {
     '- The smile stays in A2-B1 words: 16 words or fewer per English sentence, contractions, and the same smile in the Korean —',
     '  a funny English line with a flat Korean translation is a flat card.',
     '- ① takes a side and ② makes the twist concrete; ③ stays a genuine question, lightly funny at most.',
+    '- One picture per card: ① and ② must not both turn on the same image (melt in ① and iced coffee sweating in ②), and',
+    '  everyday things keep the name people really say (iced coffee, air conditioning, sunscreen).',
     '- Funny never means rude: no sarcasm aimed at the other person, no jokes about age, looks, body, money, job title or nationality,',
     '  and nothing that a stranger could take the wrong way.',
     '- Every sentence answers today\'s question the way a real person would: no talking to oneself, no narrating chores,',

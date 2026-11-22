@@ -449,13 +449,16 @@ describe('buildContentPrompt', () => {
     const prompt = buildContentPrompt('SMALL_TALK', {});
     assert.includes(prompt.system, 'Voice: the funny, easy-going friend at the meetup, never a textbook');
     assert.includes(prompt.system, 'The humour comes from an honest, specific everyday');
-    assert.includes(prompt.system, 'say the plain thing first, then turn it');
+    assert.includes(prompt.system, 'it never opens with a neutral verdict');
+    assert.includes(prompt.system, 'The second sentence makes the twist concrete with ONE thing');
     assert.includes(prompt.system, 'The wit lives in the idea, not in fancy words');
     assert.includes(prompt.system, 'textbook clichés and empty adjectives');
     assert.includes(prompt.system, 'sarcasm aimed at the person in front of you');
     assert.includes(prompt.system, 'The Korean keeps the same smile');
     assert.includes(prompt.user, 'Witty, not silly');
+    assert.includes(prompt.user, 'never a neutral verdict');
     assert.includes(prompt.user, '16 words or fewer per English sentence');
+    assert.includes(prompt.user, 'A linking word the English puts first');
     assert.includes(prompt.user, 'A light wink is');
     // Wit is still safe to say to a stranger at a first meeting.
     assert.includes(prompt.user, 'Funny never means rude');

@@ -444,6 +444,26 @@ describe('buildContentPrompt', () => {
     assert.includes(RM_DAILY_TALK_TRACK_BRIEFS.SMALL_TALK, 'first-meeting social English');
   });
 
+  test('asks for a witty, everyday-humour answer instead of a textbook one', () => {
+    // The user's 2026-11-22 ask: witty and fun answers the students will like.
+    const prompt = buildContentPrompt('SMALL_TALK', {});
+    assert.includes(prompt.system, 'Voice: the funny, easy-going friend at the meetup, never a textbook');
+    assert.includes(prompt.system, 'The humour comes from an honest, specific everyday');
+    assert.includes(prompt.system, 'say the plain thing first, then turn it');
+    assert.includes(prompt.system, 'The wit lives in the idea, not in fancy words');
+    assert.includes(prompt.system, 'textbook clichés and empty adjectives');
+    assert.includes(prompt.system, 'sarcasm aimed at the person in front of you');
+    assert.includes(prompt.system, 'The Korean keeps the same smile');
+    assert.includes(prompt.user, 'Witty, not silly');
+    assert.includes(prompt.user, '16 words or fewer per English sentence');
+    assert.includes(prompt.user, 'A light wink is');
+    // Wit is still safe to say to a stranger at a first meeting.
+    assert.includes(prompt.user, 'Funny never means rude');
+    assert.includes(prompt.user, 'nothing that a stranger could take the wrong way');
+    // The news card stays factual: the humour voice belongs to small talk only.
+    assert.excludes(buildContentPrompt('BUSINESS', {}).system, 'Voice: the funny, easy-going friend');
+  });
+
   test('lists all 32 영어입담비법서 PART 2 questions in their eight groups', () => {
     assert.equal(RM_DAILY_TALK_SOCIAL_QUESTIONS.length, 8);
     const pool = RM_DAILY_TALK_SOCIAL_QUESTIONS.reduce((all, group) => all.concat(group.questions), []);

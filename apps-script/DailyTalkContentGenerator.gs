@@ -30,7 +30,10 @@
  *   STEP 2  sentences 3 Korean sentences that answer the question in order:
  *          ① Answer, ② Add (a reason or detail), ③ Ask (a question back)
  *   STEP 3  sentences[].order  the same Korean sentences cut up and reordered
- *          into English word order (누가 / 한다 / 무엇을 / 어디서 / 언제)
+ *          into English word order (누가 / 한다 / 무엇을 / 어디서 / 언제 / 어떻게).
+ *          A clause or phrase is ONE piece, never half in 어디서 and half in
+ *          언제, and inside a clause piece the Korean words read in the
+ *          clause's own English order (언제 / 내가 있다 실내).
  *   STEP 4  sentences[].en     the same sentences in natural English
  *   STEP 5  aaa       the same three sentences said as one answer in a real
  *          first meeting: Answer -> Add -> Ask
@@ -133,6 +136,14 @@ var RM_DAILY_TALK_NEWS = Object.freeze({
  * STEP 3 splits a Korean sentence into meaning pieces and lays them out in
  * English word order: 누가 (who) / 한다 (does) / 무엇을 (what) / 어디서 (where) /
  * 언제 (when) / 어떻게 (how).
+ *
+ * The cut runs between meaning blocks, never through one: a whole clause or
+ * phrase (when I'm indoors, because it was cold, on a rainy day) is a single
+ * piece, and inside that piece the Korean words follow the clause's own English
+ * order — subject, then verb, then object / place / complement — not the Korean
+ * order. So "저는 실내에 있을 때 비 오는 날을 좋아해요." becomes
+ * 누가/저는, 한다/좋아해요, 무엇을/비 오는 날을, 언제/내가 있다 실내 — not
+ * 어디서/실내에 + 언제/있을 때.
  */
 var RM_DAILY_TALK_ROLES = Object.freeze(['누가', '한다', '무엇을', '어디서', '언제', '어떻게']);
 
@@ -817,7 +828,9 @@ function buildSmallTalkPrompt_(options) {
     '① Answer answers the question in one sentence, ② Add adds the reason, the detail or the example,',
     '③ Ask asks the other person a fitting question on the same topic and hands the turn over — never today\'s question said again.',
     'Step 3 English word order: the same three Korean sentences, cut into meaning pieces and rearranged into English word order',
-    '(누가 / 한다 / 무엇을 / 어디서 / 언제), so the learner stops translating word for word from Korean.',
+    '(누가 / 한다 / 무엇을 / 어디서 / 언제 / 어떻게), so the learner stops translating word for word from Korean.',
+    'The cut always falls between meaning blocks: a whole clause or phrase (when I\'m indoors, because it was cold, on a rainy day) stays ONE piece,',
+    'never split in half across two roles, and inside that piece the Korean words are read the way English says the clause.',
     'Step 4 English sentences: the same three sentences translated into natural spoken English.',
     'Step 5 AAA: the same three sentences said as one answer to today\'s question in a real conversation —',
     'Answer (answer in one sentence), Add (one reason or detail), Ask (ask back and hand the turn over).',
@@ -875,9 +888,18 @@ function buildSmallTalkPrompt_(options) {
     '  "ko" = that sentence in natural Korean (max 20 words) that uses at least one of the words — something the learner says TO the other person.',
     '  "order" = the SAME Korean sentence cut into meaning pieces and rearranged into English word order.',
     '  Each piece is {role / text}: role is one of 누가 (who), 한다 (does), 무엇을 (what), 어디서 (where),',
-    '  언제 (when), 어떻게 (how); text is that piece in Korean, exactly as it appears in "ko".',
-    '  Use ' + RM_DAILY_TALK_GEN.MIN_ORDER_PIECES + '-' + RM_DAILY_TALK_GEN.MAX_ORDER_PIECES + ' pieces, always include 누가 and 한다, and place them 누가 → 한다 → 무엇을 → 어디서 → 언제 order.',
+    '  언제 (when), 어떻게 (how); text is that piece in the Korean words of "ko".',
+    '  Cut between meaning blocks, never through one. A whole clause or phrase is ONE piece:',
+    '  a time clause or time phrase (when / while / before / after / until, 지난 주말, 아침에) → 언제;',
+    '  a place or prepositional phrase (바닷가에서, 이 근처에) → 어디서;',
+    '  a reason, condition or manner clause (because / since / if / so that, ~기 때문에, ~면, ~하도록) → 어떻게.',
+    '  Never split one clause into an 어디서 piece and an 언제 piece: 실내에 있을 때 is not 실내에 + 있을 때.',
+    '  Inside a clause piece, write the Korean words in the order ENGLISH says that clause — subject → verb → object / place / complement —',
+    '  not in Korean order, because the chip is there to show the learner the English order of that whole block.',
+    '  Example: 저는 실내에 있을 때 비 오는 날을 좋아해요. (I like rainy days when I\'m indoors.)',
+    '  → 누가/저는, 한다/좋아해요, 무엇을/비 오는 날을, 언제/내가 있다 실내.',
     '  Example for 나는 지난 주말에 바닷가를 걸었다: 누가/나는, 한다/걸었다, 무엇을/바닷가를, 언제/지난 주말.',
+    '  Use ' + RM_DAILY_TALK_GEN.MIN_ORDER_PIECES + '-' + RM_DAILY_TALK_GEN.MAX_ORDER_PIECES + ' pieces, always include 누가 and 한다, and place them 누가 → 한다 → 무엇을 → 어디서 → 언제 → 어떻게 order.',
     '  Never use the "/" character inside a piece.',
     '  "en" = that same sentence in natural spoken English (max 16 words, contractions).',
     '- aaa: "pick": 1 — the ① Answer sentence opens the answer. Then write those same three sentences as one spoken answer:',
@@ -899,7 +921,9 @@ function buildSmallTalkPrompt_(options) {
     '  and the Step 5 answer, add and ask are that same answer.',
     '- At least two of the three words must visibly appear in the three English sentences (sentences[].en).',
     '- The answer must be built on the ① sentence: keep its key words so the learner hears the same expression again.',
-    '- The pieces of "order" must be the Korean words of "ko" itself — the meaning does not change, only the order.',
+    '- The pieces of "order" use the words of "ko" and say nothing new — no idea added, none dropped, the meaning does not change.',
+    '  What changes is the layout: between pieces the English word order, and inside a clause piece the order of that clause itself',
+    '  (when I\'m indoors → 언제 / 내가 있다 실내).',
     '- Each "en" is the translation of its own "ko": same meaning, same length, no extra ideas.',
     '- Write spoken English: use contractions (I\'m, it\'s, we\'ll, don\'t) and avoid textbook stiffness.',
     '- English fields contain English only (no Hangul). Korean fields contain Korean (Hangul) only.',

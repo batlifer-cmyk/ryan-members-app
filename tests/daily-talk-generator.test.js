@@ -367,6 +367,22 @@ describe('buildContentPrompt', () => {
     assert.includes(business.user, 'Facts from the news list only');
   });
 
+  test('keeps a whole clause in one chip and reads it in the clause\'s English order', () => {
+    const prompt = buildContentPrompt('SMALL_TALK', {});
+    // One clause / phrase is one chip: never 실내에 + 있을 때 split across 어디서 and 언제.
+    assert.includes(prompt.system, 'a whole clause or phrase (when I\'m indoors, because it was cold, on a rainy day) stays ONE piece');
+    assert.includes(prompt.system, 'inside that piece the Korean words are read the way English says the clause');
+    assert.includes(prompt.user, 'A whole clause or phrase is ONE piece');
+    assert.includes(prompt.user, 'Never split one clause into an 어디서 piece and an 언제 piece: 실내에 있을 때 is not 실내에 + 있을 때.');
+    // Inside the chip the words follow the clause, not the Korean order (the user's 2026-11-22 correction).
+    assert.includes(prompt.user, 'subject → verb → object / place / complement');
+    assert.includes(prompt.user, '→ 누가/저는, 한다/좋아해요, 무엇을/비 오는 날을, 언제/내가 있다 실내.');
+    assert.includes(prompt.user, 'What changes is the layout');
+    // The old wording that forced the Korean order inside a piece is gone.
+    assert.excludes(prompt.user, 'exactly as it appears in "ko"');
+    assert.excludes(prompt.user, 'the meaning does not change, only the order');
+  });
+
   test('asks for the steps to point at the same question', () => {
     const prompt = buildContentPrompt('SMALL_TALK', {});
     assert.includes(prompt.system, 'must all point at the same question');
@@ -782,6 +798,28 @@ describe('validateGeneratedContent', () => {
       sentences: [Object.assign({}, SAMPLE.sentences[0], { en: '나는 커피를 마셨다' })].concat(SAMPLE.sentences.slice(1))
     }), {});
     assert.ok(validateGeneratedContent(koreanEnglish).errors.some((error) => error.field === 'sentences[0].en'));
+  });
+
+  test('accepts a time clause as one chip whose text is in English clause order', () => {
+    const content = normalizeGeneratedContent(Object.assign({}, SAMPLE, {
+      sentences: [{
+        ko: '저는 실내에 있을 때 비 오는 날을 좋아해요.',
+        order: [
+          { role: '누가', text: '저는' },
+          { role: '한다', text: '좋아해요' },
+          { role: '무엇을', text: '비 오는 날을' },
+          { role: '언제', text: '내가 있다 실내' }
+        ],
+        en: 'I like rainy days when I\'m indoors.'
+      }].concat(SAMPLE.sentences.slice(1)),
+      aaa: Object.assign({}, SAMPLE.aaa, {
+        answer: { en: 'Yeah, I like rainy days when I\'m indoors.', ko: '네, 저는 실내에 있을 때 비 오는 날을 좋아해요.' }
+      })
+    }), { track: 'SMALL_TALK' });
+
+    assert.equal(content.sentences[0].order.length, 4);
+    assert.deepEqual(content.sentences[0].order[3], { role: '언제', text: '내가 있다 실내' });
+    assert.deepEqual(validateGeneratedContent(content).errors, []);
   });
 
   test('rejects word-order pieces that are not role-labelled Korean', () => {

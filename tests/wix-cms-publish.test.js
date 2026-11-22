@@ -478,6 +478,26 @@ describe('Daily Talk CMS body — five steps', () => {
     assert.includes(texts, '통역하기 전에, 한국어를 영어 어순(누가 → 한다 → 무엇을 → 어디서 → 언제)으로 먼저 놓아 봅니다.');
   });
 
+  test('a clause chip stays one piece on the page, in the clause\'s English order', () => {
+    const clauseItem = Object.assign({}, ITEM, {
+      wordOrderJson: JSON.stringify([
+        {
+          ko: '저는 실내에 있을 때 비 오는 날을 좋아해요.',
+          order: [
+            { role: '누가', text: '저는' },
+            { role: '한다', text: '좋아해요' },
+            { role: '무엇을', text: '비 오는 날을' },
+            { role: '언제', text: '내가 있다 실내' }
+          ],
+          en: 'I like rainy days when I\'m indoors.'
+        }
+      ].concat(JSON.parse(ITEM.wordOrderJson).slice(1)))
+    });
+    const texts = richTexts(clauseItem);
+    assert.includes(texts, '① 누가: 저는 / 한다: 좋아해요 / 무엇을: 비 오는 날을 / 언제: 내가 있다 실내');
+    assert.excludes(texts.join('|'), '어디서: 실내에 / 언제: 있을 때');
+  });
+
   test('step 4 lists the English translations under the same marks', () => {
     const texts = richTexts(ITEM);
     assert.includes(texts, '① I had a warm coffee on my way to work this morning.');

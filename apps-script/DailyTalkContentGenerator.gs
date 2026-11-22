@@ -29,11 +29,15 @@
  *   STEP 1  words     3 words / expressions the answer needs, with their Korean meaning
  *   STEP 2  sentences 3 Korean sentences that answer the question in order:
  *          ① Answer, ② Add (a reason or detail), ③ Ask (a question back)
- *   STEP 3  sentences[].order  the same Korean sentences cut up and reordered
- *          into English word order (누가 / 한다 / 무엇을 / 어디서 / 언제 / 어떻게).
- *          A clause or phrase is ONE piece, never half in 어디서 and half in
- *          언제, and inside a clause piece the Korean words read in the
- *          clause's own English order (언제 / 내가 있다 실내).
+ *   STEP 3  sentences[].order  the same Korean sentences cut up and laid out
+ *          in the order English says them (누가 / 한다 / 무엇을 / 어디서 /
+ *          언제 / 어떻게). ① and ② are statements, so they read 누가 → 한다;
+ *          ③ is the question back to the other person, so it reads in English
+ *          question order — 한다 before 누가 (무엇을 → 한다 → 누가 → 나머지
+ *          for a question with a question word, 한다 → 누가 → 나머지 for a
+ *          Yes/No question). A clause or phrase is ONE piece, never half in
+ *          어디서 and half in 언제, and inside a clause piece the Korean words
+ *          read in the clause's own English order (언제 / 내가 있다 실내).
  *   STEP 4  sentences[].en     the same sentences in natural English
  *   STEP 5  aaa       the same three sentences said as one answer in a real
  *          first meeting: Answer -> Add -> Ask
@@ -136,6 +140,11 @@ var RM_DAILY_TALK_NEWS = Object.freeze({
  * STEP 3 splits a Korean sentence into meaning pieces and lays them out in
  * English word order: 누가 (who) / 한다 (does) / 무엇을 (what) / 어디서 (where) /
  * 언제 (when) / 어떻게 (how).
+ *
+ * A statement (① and ②) reads 누가 → 한다; the question back (③) reads in
+ * English question order, 한다 before 누가 — "What do you usually do on a rainy
+ * day?" is 무엇을/무엇을, 한다/하나요, 누가/당신, 언제/보통 비 오는 날에, and
+ * "Do you enjoy winter?" is 한다/즐기나요, 누가/당신은, 무엇을/겨울을.
  *
  * The cut runs between meaning blocks, never through one: a whole clause or
  * phrase (when I'm indoors, because it was cold, on a rainy day) is a single
@@ -829,6 +838,7 @@ function buildSmallTalkPrompt_(options) {
     '③ Ask asks the other person a fitting question on the same topic and hands the turn over — never today\'s question said again.',
     'Step 3 English word order: the same three Korean sentences, cut into meaning pieces and rearranged into English word order',
     '(누가 / 한다 / 무엇을 / 어디서 / 언제 / 어떻게), so the learner stops translating word for word from Korean.',
+    'A statement (① and ②) reads 누가 → 한다; the question (③) reads in English question order, 한다 before 누가.',
     'The cut always falls between meaning blocks: a whole clause or phrase (when I\'m indoors, because it was cold, on a rainy day) stays ONE piece,',
     'never split in half across two roles, and inside that piece the Korean words are read the way English says the clause.',
     'Step 4 English sentences: the same three sentences translated into natural spoken English.',
@@ -899,7 +909,15 @@ function buildSmallTalkPrompt_(options) {
     '  Example: 저는 실내에 있을 때 비 오는 날을 좋아해요. (I like rainy days when I\'m indoors.)',
     '  → 누가/저는, 한다/좋아해요, 무엇을/비 오는 날을, 언제/내가 있다 실내.',
     '  Example for 나는 지난 주말에 바닷가를 걸었다: 누가/나는, 한다/걸었다, 무엇을/바닷가를, 언제/지난 주말.',
-    '  Use ' + RM_DAILY_TALK_GEN.MIN_ORDER_PIECES + '-' + RM_DAILY_TALK_GEN.MAX_ORDER_PIECES + ' pieces, always include 누가 and 한다, and place them 누가 → 한다 → 무엇을 → 어디서 → 언제 → 어떻게 order.',
+    '  Use ' + RM_DAILY_TALK_GEN.MIN_ORDER_PIECES + '-' + RM_DAILY_TALK_GEN.MAX_ORDER_PIECES + ' pieces and always include 누가 and 한다.',
+    '  The piece order follows the kind of sentence:',
+    '  - ① and ② are statements: 누가 → 한다 → 무엇을 → 어디서 → 언제 → 어떻게.',
+    '  - ③ is the question back to the other person, and English asks a question 한다 before 누가: never lay ③ out like a statement.',
+    '    A question with a question word (what / where / when / how / why) puts the question word first:',
+    '    무엇을 · 어디서 · 언제 · 어떻게 → 한다 → 누가 → 나머지.',
+    '    Example: "What do you usually do on a rainy day?" → 무엇을/무엇을, 한다/하나요, 누가/당신, 언제/보통 비 오는 날에.',
+    '    A Yes/No question (Do you / Are you / Have you / Can you) starts with 한다: 한다 → 누가 → 무엇을 · 어디서 · 언제 · 어떻게.',
+    '    Example: "Do you enjoy winter?" → 한다/즐기나요, 누가/당신은, 무엇을/겨울을.',
     '  Never use the "/" character inside a piece.',
     '  "en" = that same sentence in natural spoken English (max 16 words, contractions).',
     '- aaa: "pick": 1 — the ① Answer sentence opens the answer. Then write those same three sentences as one spoken answer:',
@@ -1530,7 +1548,18 @@ function validateDailyTalkSentences_(rows, fail) {
       if (!roleSeen['한다']) fail(prefix + '.order', '한다 조각이 없습니다.');
       var who = roleIndex.indexOf(0);
       var does = roleIndex.indexOf(1);
-      if (who !== -1 && does !== -1 && who > does) fail(prefix + '.order', '누가가 한다보다 먼저 와야 합니다.');
+      // ① and ② are statements and read 누가 -> 한다. ③ is the question back to
+      // the other person, and English asks it 한다 -> 누가 ("What do you usually
+      // do on a rainy day?", "Do you enjoy winter?"), so a question is required
+      // to use that order instead — it must not come out like a statement.
+      var isQuestion = index === 2 && (/[?？]\s*$/.test(ko) || /\?\s*$/.test(en));
+      if (who !== -1 && does !== -1) {
+        if (isQuestion) {
+          if (does > who) fail(prefix + '.order', '③번 의문문은 한다가 누가보다 먼저 와야 합니다(의문문 어순).');
+        } else if (who > does) {
+          fail(prefix + '.order', '누가가 한다보다 먼저 와야 합니다.');
+        }
+      }
     }
   });
 }

@@ -257,8 +257,8 @@ const QUESTION_BODY = {
     {
       ko: '당신도 이 근처에 사세요?',
       order: [
-        { role: '누가', text: '당신도' },
         { role: '한다', text: '사세요' },
+        { role: '누가', text: '당신도' },
         { role: '어디서', text: '이 근처에' }
       ],
       en: 'Do you live near here too?'
@@ -381,6 +381,20 @@ describe('buildContentPrompt', () => {
     // The old wording that forced the Korean order inside a piece is gone.
     assert.excludes(prompt.user, 'exactly as it appears in "ko"');
     assert.excludes(prompt.user, 'the meaning does not change, only the order');
+  });
+
+  test('asks the ③ question in question order while ①② keep statement order', () => {
+    const prompt = buildContentPrompt('SMALL_TALK', {});
+    // The user's 2026-11-22 correction: a question does not read 누가 → 한다.
+    assert.includes(prompt.user, '③ is the question back to the other person, and English asks a question 한다 before 누가');
+    assert.includes(prompt.user, '무엇을 · 어디서 · 언제 · 어떻게 → 한다 → 누가 → 나머지.');
+    assert.includes(prompt.user, '"What do you usually do on a rainy day?" → 무엇을/무엇을, 한다/하나요, 누가/당신, 언제/보통 비 오는 날에.');
+    assert.includes(prompt.user, '한다 → 누가 → 무엇을 · 어디서 · 언제 · 어떻게.');
+    assert.includes(prompt.user, '"Do you enjoy winter?" → 한다/즐기나요, 누가/당신은, 무엇을/겨울을.');
+    assert.includes(prompt.user, '① and ② are statements: 누가 → 한다 → 무엇을 → 어디서 → 언제 → 어떻게.');
+    assert.includes(prompt.system, 'the question (③) reads in English question order, 한다 before 누가');
+    // The old one-order-for-every-sentence wording is gone.
+    assert.excludes(prompt.user, 'place them 누가 → 한다 → 무엇을 → 어디서 → 언제 → 어떻게 order');
   });
 
   test('asks for the steps to point at the same question', () => {
@@ -845,6 +859,58 @@ describe('validateGeneratedContent', () => {
       })].concat(SAMPLE.sentences.slice(1))
     }), {});
     assert.ok(validateGeneratedContent(swapped).errors.some((error) => error.field === 'sentences[0].order'));
+  });
+
+  test('accepts the ③ question in question order (wh- and Yes/No)', () => {
+    // The user's 2026-11-22 correction: a question reads 한다 before 누가.
+    const wh = normalizeGeneratedContent(Object.assign({}, QUESTION_BODY, {
+      sentences: QUESTION_BODY.sentences.slice(0, 2).concat([{
+        ko: '당신은 보통 비 오는 날에 무엇을 하나요?',
+        order: [
+          { role: '무엇을', text: '무엇을' },
+          { role: '한다', text: '하나요' },
+          { role: '누가', text: '당신' },
+          { role: '언제', text: '보통 비 오는 날에' }
+        ],
+        en: 'What do you usually do on a rainy day?'
+      }]),
+      aaa: Object.assign({}, QUESTION_BODY.aaa, {
+        ask: { en: 'What do you usually do on a rainy day?', ko: '당신은 보통 비 오는 날에 무엇을 하나요?' }
+      })
+    }), { track: 'SMALL_TALK', questionEn: LIVES_QUESTION });
+    assert.deepEqual(validateGeneratedContent(wh).errors, []);
+
+    const yesNo = normalizeGeneratedContent(Object.assign({}, QUESTION_BODY, {
+      sentences: QUESTION_BODY.sentences.slice(0, 2).concat([{
+        ko: '당신은 겨울을 즐기세요?',
+        order: [
+          { role: '한다', text: '즐기세요' },
+          { role: '누가', text: '당신은' },
+          { role: '무엇을', text: '겨울을' }
+        ],
+        en: 'Do you enjoy winter?'
+      }]),
+      aaa: Object.assign({}, QUESTION_BODY.aaa, {
+        ask: { en: 'Do you enjoy winter?', ko: '당신은 겨울을 즐기세요?' }
+      })
+    }), { track: 'SMALL_TALK', questionEn: LIVES_QUESTION });
+    assert.deepEqual(validateGeneratedContent(yesNo).errors, []);
+  });
+
+  test('rejects the ③ question laid out in statement order', () => {
+    const statementOrder = normalizeGeneratedContent(Object.assign({}, QUESTION_BODY, {
+      sentences: QUESTION_BODY.sentences.slice(0, 2).concat([{
+        ko: '당신은 보통 비 오는 날에 무엇을 하나요?',
+        order: [
+          { role: '누가', text: '당신은' },
+          { role: '한다', text: '하나요' },
+          { role: '무엇을', text: '무엇을' },
+          { role: '언제', text: '보통 비 오는 날에' }
+        ],
+        en: 'What do you usually do on a rainy day?'
+      }])
+    }), { track: 'SMALL_TALK', questionEn: LIVES_QUESTION });
+    assert.ok(validateGeneratedContent(statementOrder).errors.some((error) => error.field === 'sentences[2].order'));
   });
 
   test('requires the AAA script to be exactly Answer / Add / Ask', () => {

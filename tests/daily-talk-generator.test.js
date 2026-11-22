@@ -467,6 +467,17 @@ describe('buildContentPrompt', () => {
     assert.excludes(buildContentPrompt('BUSINESS', {}).system, 'Voice: the funny, easy-going friend');
   });
 
+  test('keeps the funny line sayable in Korean, not a literal personification', () => {
+    // The user's 2026-11-22 ask: "My iced coffee gives up before I do" is not
+    // something a Korean learner can say, so the voice block bans that shape.
+    const prompt = buildContentPrompt('SMALL_TALK', {});
+    assert.includes(prompt.system, 'Avoid awkward literal personification that Korean cannot say plainly');
+    assert.includes(prompt.system, 'my iced coffee gives up before I do');
+    assert.includes(prompt.system, 'describe what it actually does');
+    assert.includes(prompt.system, 'an English speaker and a Korean learner both picture');
+    assert.excludes(buildContentPrompt('BUSINESS', {}).system, 'Avoid awkward literal personification');
+  });
+
   test('lists all 32 영어입담비법서 PART 2 questions in their eight groups', () => {
     assert.equal(RM_DAILY_TALK_SOCIAL_QUESTIONS.length, 8);
     const pool = RM_DAILY_TALK_SOCIAL_QUESTIONS.reduce((all, group) => all.concat(group.questions), []);

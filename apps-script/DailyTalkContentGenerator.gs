@@ -836,6 +836,8 @@ function buildSmallTalkPrompt_(options) {
     'the textbook answer this card exists to replace.',
     'The second sentence makes the twist concrete with ONE thing from the reader\'s own day (the fan that runs all night,',
     'the office air-conditioning war, sandals that survive exactly one summer, three iced coffees before noon).',
+    'A picture beats a label: something the reader can see happening (my iced coffee sweating before I do) is funnier than a verdict',
+    'or a compliment (iced coffee is my best friend, summer is the best season).',
     'One gentle exaggeration about the reader\'s own life is welcome; the joke is never about the person they are talking to.',
     'The wit lives in the idea, not in fancy words: keep the vocabulary A2-B1 and every English sentence at 16 words or fewer, with contractions,',
     'because a learner has to be able to say the funny line out loud in the same breath.',

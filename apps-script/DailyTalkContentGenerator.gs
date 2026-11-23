@@ -22,10 +22,11 @@
  * Card shapes by track (2026-11-21):
  *
  * SMALL_TALK — one 영어입담비법서 question and the learner's AAA answer to it.
- * The card picks ONE of the 32 questions of the textbook's 개정 통합교재 PART 2
- * (RM_DAILY_TALK_SOCIAL_QUESTIONS), walks the list in book order and skips any
- * question asked recently; the question is stored with the row (in
- * SUBSTITUTIONS_JSON) so the next day's pick can avoid it.
+ * The card picks ONE question of the textbook (RM_DAILY_TALK_SOCIAL_QUESTIONS),
+ * walks the pool in the book's own volume·unit order (1권 → 2권 → 3권) and skips
+ * any question asked recently; the question is stored with the row (in
+ * SUBSTITUTIONS_JSON) so the next day's pick can avoid it. Today's unit and its
+ * textbook words travel with the prompt (see buildSmallTalkPrompt_).
  *   STEP 1  words     3 words / expressions the answer needs, with their Korean meaning
  *   STEP 2  sentences 3 Korean sentences that answer the question in order:
  *          ① Answer, ② Add (a reason or detail), ③ Ask (a question back)
@@ -227,8 +228,24 @@ function dailyTalkStructureSteps(type) {
 }
 
 /**
- * 영어입담비법서 개정 통합교재 PART 2 — the academy's own 32 small-talk
- * questions, in the book's order (eight groups of four).
+ * 《영어입담비법서》의 권·단원 순서대로 놓은 스몰톡 질문 풀.
+ *
+ * 순서: 1권(왕초보판) 4단원 → 2권 5단원 → 3권 5단원. 단원마다 교재에서
+ * 확인된 질문만 넣었고, 교재에 없는 질문은 만들지 않았다. 어느 쪽이든
+ * `book`(권·단원)과 `pages`(원본 PDF 쪽)를 함께 적어 두어 나중에 원본과
+ * 대조할 수 있게 했다.
+ *
+ * - 1·2권 단원은 원본 PDF/재조판본에서 질문 문장을 그대로 옮겼다. 2·3권은
+ *   부분복원본이라 "원본 질문"으로 적힌 문장만 썼다. 2권 취미·직업·여행·상상
+ *   단원처럼 교재가 질문 대신 표현 틀("My hobby is ~")만 남긴 곳은 그 틀을
+ *   질문으로 바꾼 문장을 쓰고 주석에 근거를 남겼다.
+ * - 1단원 날씨는 이미 11/20~11/23에 네 장이 나갔다("Do you like cold weather?",
+ *   "Isn't it freezing today?", "Do you like rainy days?", "How do you feel about
+ *   summer?"). 그 네 문장을 이 단원의 마지막 네 자리에 그대로 두어, 발송
+ *   기록을 보고 다음 차례를 고를 때 2단원 음식 첫 질문으로 넘어가게 한다.
+ * - vocabHints는 그 단원 교재의 핵심 어휘·표현(뜻 포함)이다. 카드가 그 단어를
+ *   반드시 쓰게 하는 규칙은 아니고, 오늘 답에 어울리면 하나둘 골라 쓰라고
+ *   프롬프트에 실어 보내는 힌트다.
  *
  * A SMALL_TALK card is ONE of these questions and the learner's Answer → Add →
  * Ask answer to it. The pool is walked in book order so the week covers the
@@ -237,8 +254,22 @@ function dailyTalkStructureSteps(type) {
  */
 var RM_DAILY_TALK_SOCIAL_QUESTIONS = Object.freeze([
   {
+    book: '1권 1단원',
     ko: '날씨·계절', en: 'weather and seasons',
+    pages: '왕초보판 PDF 48–59쪽 · 1권 PDF 46–55쪽',
+    vocabHints: [
+      'freezing (꽁꽁 얼 정도로 추운)',
+      'chilly (쌀쌀한)',
+      'overcast (구름이 뒤덮인)',
+      'breeze (산들바람)',
+      'wind chill (칼바람)',
+      'save it for a rainy day (미래를 위해 미리 대비하다)'
+    ],
     questions: [
+      // 교재 빈출 대화(왕초보판 p54 · 1권 p51)
+      'On rainy or sunny days, what do you like to do?',
+      "It looks like it's going to snow. What do you think?",
+      // 이미 11/20~11/23에 발송된 1단원 카드. 단원의 마지막에 두어 다음 차례가 2단원이 되게 한다.
       'Do you like cold weather?',
       "Isn't it freezing today?",
       'Do you like rainy days?',
@@ -246,71 +277,237 @@ var RM_DAILY_TALK_SOCIAL_QUESTIONS = Object.freeze([
     ]
   },
   {
-    ko: '근황·주말', en: 'how things are and weekend plans',
+    book: '1권 2단원',
+    ko: '음식·요리', en: 'food and cooking',
+    pages: '왕초보판 PDF 66–79쪽 · 1권 PDF 62–73쪽',
+    vocabHints: [
+      'savory (짭짤한)',
+      'crispy (바삭바삭한)',
+      'bland (밋밋한)',
+      'ingredient (재료)',
+      'eat out (외식하다)',
+      "It's on the house (서비스예요)"
+    ],
     questions: [
-      'How was your weekend?',
-      "What's new with you?",
-      "How's work going?",
-      'Any plans for the weekend?'
+      // 교재 AAA 예시 질문(왕초보판 p67) → 빈출 대화(p73 · 1권 p68)
+      'What kind of food do you like?',
+      'Do you cook often at home?',
+      'What kind of Korean food do you like?',
+      'What kind of food do you want me to try?'
     ]
   },
   {
-    ko: '출신지·거주지·방문 목적', en: 'hometown, where you live and why you are here',
+    book: '1권 3단원',
+    ko: '가족', en: 'family',
+    pages: '왕초보판 PDF 81–95쪽 · 1권 PDF 74–85쪽',
+    vocabHints: [
+      'sibling (형제자매)',
+      'only child (외동)',
+      'nuclear family (핵가족)',
+      'easygoing (태평한)',
+      'affectionate (다정한)',
+      'stubborn (고집이 센)'
+    ],
     questions: [
-      'Where are you from?',
-      'What do you like about where you live?',
-      'What brings you here?',
-      'Is this your first time here?'
+      // 1권 p74 · 왕초보판 p89 빈출 대화
+      'How many family members do you have?',
+      'What does your family like to do?',
+      'What is your favorite childhood memory with your family?',
+      'Does your family have any pets?',
+      'If you could have another sibling, what kind of person would you want? Why?'
     ]
   },
   {
-    ko: '지역 정보·맛집·음식', en: 'the area, good restaurants and food',
+    book: '1권 4단원',
+    ko: '지리·출신지·지역 정보', en: 'hometown, geography and the area',
+    pages: '왕초보판 PDF 111–125쪽 · 1권 PDF 94–105쪽',
+    vocabHints: [
+      'sightseeing (관광)',
+      'tourist attractions (관광명소)',
+      'cost of living (물가)',
+      'suburbs (교외)',
+      'lively (활기찬)',
+      'be held (개최되다)'
+    ],
     questions: [
-      'What food should I try in Busan?',
-      'Where should I go in Busan?',
-      'What kind of restaurants do you like?',
-      'Do you like cooking?'
+      // 1권 p94 빈출 대화 → p100(왕초보판 p119)
+      'Where is your hometown?',
+      'What do you like about Korea?',
+      'Why did you decide to live here?',
+      'What are some of your favorite places in the world?',
+      'What is your dream vacation?'
     ]
   },
   {
-    ko: '취미·여가·직업', en: 'hobbies, free time and work',
+    book: '2권 1단원',
+    ko: '취미·자유시간', en: 'hobbies and free time',
+    pages: '2권 원본 PDF 28·30쪽',
+    vocabHints: [
+      'hang out (어울려 놀다)',
+      'work out (운동하다)',
+      'hiking (등산·하이킹)',
+      'arts and crafts (예술과 공예)',
+      'low-key night (조용히 보내는 밤)'
+    ],
     questions: [
-      'Do you work out?',
-      'What do you like reading about?',
+      // 교재 표현 틀: "In my spare time, I like to do ~" / "My hobby is ~"
+      'What do you like to do in your spare time?',
+      'What is your hobby?',
+      // 교재 연습 순서의 첫 칸: 취미를 시작한 계기
+      'How did you get into it?'
+    ]
+  },
+  {
+    book: '2권 2단원',
+    ko: '직업·전공', en: 'job and major',
+    pages: '2권 원본 PDF 50·52쪽',
+    vocabHints: [
+      'colleague (직장 동료)',
+      'self-employed (자영업자)',
+      'commute (통근하다)',
+      'salary (월급)',
+      'promotion (승진)',
+      'learn the ropes (일을 익히다)',
+      'have a lot on my plate (현재 일이 많다)'
+    ],
+    questions: [
+      // 교재 표현 틀: "My job is ~" / "I major in ~" / "I'm interested in ~"
       'What do you do for a living?',
-      'What do you do in your free time?'
+      'What did you major in?',
+      'What are you interested in these days?'
     ]
   },
   {
-    ko: '여행·특별한 경험', en: 'travel and memorable experiences',
+    book: '2권 3단원',
+    ko: '해외여행·한국 안내', en: 'travel and recommending Korea',
+    pages: '2권 원본 PDF 70·72쪽',
+    vocabHints: [
+      'sightseeing (관광)',
+      'destination (목적지)',
+      'direct flight (직항)',
+      'connecting flight (경유 항공편)',
+      'make a reservation (예약하다)',
+      'hit the road (출발하자)'
+    ],
     questions: [
-      "What's a memorable travel experience?",
-      'Did you have good weather on your trip?',
-      'What do you love most about traveling?',
-      'Where would you like to live for a year?'
+      // 교재 원본 질문
+      'Where was the last place you traveled to?',
+      'What city or country would you recommend I travel to, and why?',
+      // 교재 표현 틀: "My best travel ever is ~"
+      'What was your best trip ever?'
     ]
   },
   {
-    ko: '가족·친구·인간관계', en: 'family, friends and people',
+    book: '2권 4단원',
+    ko: '공유경험·주변 상황', en: 'shared moments and what is happening around you',
+    pages: '2권 원본 PDF 84·86쪽',
+    vocabHints: [
+      'current event (최근 사건)',
+      'headline (기사 제목)',
+      'credible (신뢰할 수 있는)',
+      'it went viral (온라인에서 빠르게 확산됐다)',
+      'get your wires crossed (의사소통이 어긋나다)'
+    ],
     questions: [
-      'What does your family usually do on holidays?',
-      'Tell me about one of your close friends.',
-      'What do you enjoy about spending time with kids?',
-      'Are you a social person?'
+      // 교재 원본 질문(파티·행사에서 만난 사람에게)
+      'Do you know the host?',
+      'How do you know the host?'
     ]
   },
   {
-    ko: '의견·비교·유머·상상', en: 'opinions, comparisons, humour and imagination',
+    book: '2권 5단원',
+    ko: '상상 질문·가치관', en: 'imaginative questions and values',
+    pages: '2권 원본 PDF 98·100쪽',
+    vocabHints: [
+      'what if (만약 ~라면)',
+      'imaginative (상상력이 풍부한)',
+      'thought-provoking (생각을 자극하는)',
+      'introspection (자기성찰)',
+      'pursue (추구하다)'
+    ],
     questions: [
-      "What's important in a good conversation?",
-      'Do you always try to be productive?',
-      'Do funny things happen to you often?',
-      'If you could have any superpower, what would it be?'
+      // 교재 원본 질문 넷
+      'If you could choose a place anywhere in the world to live for a year, where would it be?',
+      'If you could try any kind of activity, what activity would you try?',
+      'What superpower would you most like to have, and why?',
+      'If you could become a teenager again, what would you do?'
+    ]
+  },
+  {
+    book: '3권 1단원',
+    ko: '관계·친밀감', en: 'relationships and closeness',
+    pages: '3권 원본 PDF 33쪽',
+    questions: [
+      // 교재 원본 질문
+      'Who was your first love?',
+      'What is your ideal type in a relationship?',
+      'Tell me about the traditional wedding ceremonies in Korea.',
+      'Do you have a pickup line? If not, make one up for fun!'
+    ]
+  },
+  {
+    book: '3권 2단원',
+    ko: '대학 경험·회상', en: 'college memories',
+    pages: '3권 원본 PDF 59쪽',
+    vocabHints: [
+      'How did that happen? (어떻게 그런 일이 있었어요?)',
+      'No way! (말도 안 돼!)'
+    ],
+    questions: [
+      // 교재 원본 질문
+      'How did you decide which college to attend?',
+      'What is your worst or fondest memory of your college experience?',
+      'Did you have any college romances?'
+    ]
+  },
+  {
+    book: '3권 3단원',
+    ko: '외모·매력·사회적 기준', en: 'looks, attractiveness and social standards',
+    pages: '3권 원본 PDF 70쪽',
+    vocabHints: [
+      'What did you say? (뭐라고요?)',
+      'Uh-huh. (그렇구나.)'
+    ],
+    questions: [
+      // 교재 원본 질문
+      'Are plastic surgeries common in your country?',
+      'How do people perceive plastic surgery generally?',
+      'Who is the most beautiful person alive? Male or female?',
+      'Is beauty related to success?'
+    ]
+  },
+  {
+    book: '3권 4단원',
+    ko: '자동차·운전', en: 'cars and driving',
+    pages: '3권 원본 PDF 95쪽',
+    vocabHints: [
+      'How did you react? (어떻게 반응했어요?)',
+      'That must have been fun! (재밌었겠네요!)'
+    ],
+    questions: [
+      // 교재 원본 질문
+      'Tell me about your first road test.',
+      'In your country, when do people start driving?',
+      'What do you think are the advantages or disadvantages of owning a car?',
+      'What are the penalties for drunk driving in your country?'
+    ]
+  },
+  {
+    book: '3권 5단원',
+    ko: '쇼핑·소비·가치관', en: 'shopping, spending and values',
+    pages: '3권 원본 PDF 118·128쪽',
+    questions: [
+      // 교재 원본 질문 가운데 대화로 이어가기 좋은 다섯
+      'What is your favorite shopping mall?',
+      'When is the biggest sale season in your country?',
+      'Do you know Boxing Day and Black Friday?',
+      'What are your shopping strategies?',
+      'Have you been ripped off?'
     ]
   }
 ]);
 
-/** The 32 questions of the book, in order, as plain strings. */
+/** The book's questions, in unit order, as plain strings. */
 function dailyTalkQuestionPool_() {
   var pool = [];
   RM_DAILY_TALK_SOCIAL_QUESTIONS.forEach(function (group) {
@@ -320,6 +517,37 @@ function dailyTalkQuestionPool_() {
     });
   });
   return pool;
+}
+
+/** The unit a question belongs to (null when it is not in the pool). */
+function dailyTalkQuestionUnit_(question) {
+  var wanted = normalizeDailyTalkQuestion_(question);
+  if (!wanted) return null;
+  for (var i = 0; i < RM_DAILY_TALK_SOCIAL_QUESTIONS.length; i += 1) {
+    var group = RM_DAILY_TALK_SOCIAL_QUESTIONS[i];
+    var questions = group.questions || [];
+    for (var q = 0; q < questions.length; q += 1) {
+      if (normalizeDailyTalkQuestion_(questions[q]) === wanted) return group;
+    }
+  }
+  return null;
+}
+
+/** '1권 2단원' + '음식·요리' + 'food and cooking' -> '1권 2단원 음식·요리 / food and cooking'. */
+function dailyTalkUnitLabel_(group) {
+  if (!group) return '';
+  var book = String(group.book || '').trim();
+  var ko = String(group.ko || '').trim();
+  var en = String(group.en || '').trim();
+  return [book, ko].join(' ').trim() + (en ? ' / ' + en : '');
+}
+
+/** The book's words for one unit as the prompt prints them, or ''. */
+function dailyTalkUnitHintLine_(group) {
+  if (!group) return '';
+  var hints = (group.vocabHints || []).filter(Boolean);
+  if (!hints.length) return '';
+  return hints.join(' · ');
 }
 
 /** One form to compare questions with: case, quotes and punctuation dropped. */
@@ -332,13 +560,11 @@ function normalizeDailyTalkQuestion_(text) {
     .trim();
 }
 
-/** The 32 questions as the prompt prints them, one textbook group a line. */
+/** The book's questions as the prompt prints them, one textbook unit a line. */
 function dailyTalkSocialQuestionLines_() {
   return RM_DAILY_TALK_SOCIAL_QUESTIONS.map(function (group, index) {
     var number = (index < 9 ? '0' : '') + (index + 1);
-    var name = String(group.ko || '').trim();
-    var en = String(group.en || '').trim();
-    return '  ' + number + ' ' + name + (en ? ' / ' + en : '') + ': ' + (group.questions || []).join(' | ');
+    return '  ' + number + ' ' + dailyTalkUnitLabel_(group) + ': ' + (group.questions || []).join(' | ');
   });
 }
 
@@ -346,10 +572,10 @@ function dailyTalkSocialQuestionLines_() {
  * Today's question.
  * options: { seed, recentQuestions: [oldest...newest], lastQuestion }
  *
- * A seed that is one of the 32 wins (the owner's manual pick). Otherwise the
- * pool is walked from the question after the last card's one and the first
- * question nobody asked recently is taken, so the book is covered in order and
- * no question comes back the next day.
+ * A seed that is one of the book's questions wins (the owner's manual pick).
+ * Otherwise the pool is walked from the question after the last card's one and
+ * the first question nobody asked recently is taken, so the textbook is covered
+ * unit by unit in order and no question comes back the next day.
  */
 function pickDailyTalkQuestion_(options) {
   var opts = options || {};
@@ -385,10 +611,10 @@ function pickDailyTalkQuestion_(options) {
 var RM_DAILY_TALK_TRACK_BRIEFS = Object.freeze({
   // A small-talk card is one textbook question and the learner's answer to it,
   // in the words they say to the person in front of them.
-  SMALL_TALK: 'Daily Small Talk — real first-meeting social English: one question from the academy\'s 영어입담비법서 (개정 통합교재 PART 2, 32 questions) ' +
+  SMALL_TALK: 'Daily Small Talk — real first-meeting social English: one question from the academy\'s 영어입담비법서 ' +
     'answered the way an adult learner answers it to someone they have just met at a gathering, an event or conference, a café, a networking meeting, a class or on a trip — ' +
-    'Answer, Add and Ask. The question groups: weather and seasons, how things are and weekend plans, hometown and where you live, the area and food, ' +
-    'hobbies and work, travel, family and friends, opinions and imagination. ' +
+    'Answer, Add and Ask. The questions run in the textbook\'s own order: 1권 weather, food, family, hometown and the area, ' +
+    '2권 hobbies, job and major, travel, shared moments and imagination, 3권 relationships, college, looks, cars and shopping. ' +
     'Never a solo description of daily life such as receiving a parcel or doing chores at home.',
   BUSINESS: 'Daily Business Talk: today\'s real economy and business news, its five English keywords and ten pattern drills.'
 });
@@ -850,8 +1076,8 @@ function buildSmallTalkPrompt_(options) {
     'the learner actually wants answered. The Korean keeps the same smile — translate the joke, not only the words.',
     'Funny still has to be safe to say out loud to a stranger at a first meeting: warm, light, and impossible to take the wrong way.',
     '',
-    'Every SMALL TALK card teaches ONE answer to ONE question from the academy\'s own textbook, 영어입담비법서',
-    '(개정 통합교재 PART 2): the 32 small-talk questions an adult learner is really asked in a first conversation.',
+    'Every SMALL TALK card teaches ONE answer to ONE question from the academy\'s own textbook, 영어입담비법서,',
+    'walked in its volume and unit order: the small-talk questions an adult learner is really asked in a first conversation.',
     'The card\'s question is handed to you below. Use it word for word in snackEn; never swap it for a question of your own,',
     'and never turn the card into a made-up scene of the day.',
     '',
@@ -888,18 +1114,28 @@ function buildSmallTalkPrompt_(options) {
     'Never use markdown, emoji, hashtags or quotation marks around whole fields. Return JSON only.'
   ].join('\n');
 
+  // Today's question belongs to one textbook unit; carry that unit's name and
+  // its book words into the prompt so the card can use them when they fit.
+  var unit = question ? dailyTalkQuestionUnit_(question) : null;
+  var unitHintLine = dailyTalkUnitHintLine_(unit);
+
   var lines = [
     'Track: ' + RM_DAILY_TALK_TRACK_BRIEFS.SMALL_TALK,
     'Learner level: ' + level,
     (opts.date ? 'Send date: ' + opts.date : ''),
-    (question ? 'Today\'s question (from 영어입담비법서, PART 2) — use it word for word: "' + question + '"' : ''),
+    (question ? 'Today\'s question (from 영어입담비법서) — use it word for word: "' + question + '"' : ''),
+    (unit ? 'Today\'s textbook unit: ' + dailyTalkUnitLabel_(unit) +
+      (unit.pages ? ' (' + unit.pages + ')' : '') : ''),
+    (unitHintLine ? 'Textbook words of this unit: ' + unitHintLine : ''),
+    (unitHintLine ? 'These are the academy\'s own words for this unit. Use one or two of them only where they make today\'s answer better\n' +
+      'or more natural, so Step 1 can teach a word the learner actually says; never force a word in or swap today\'s question for a word list.' : ''),
     (recentQuestions.length ? 'Do NOT use these questions, they were asked recently: ' + recentQuestions.join(' | ') : ''),
     (seed ? 'Topic seed (use it or a close variation): ' + seed : ''),
     recent.length ? 'Do NOT reuse these recent topics: ' + recent.join(' | ') : '',
     '',
     (question
       ? 'The question is fixed. Build the whole card as this reader\'s answer to it.'
-      : 'Today\'s question — choose ONE of the academy\'s 32 영어입담비법서 small-talk questions below and walk the list from day to day;\n' +
+      : 'Today\'s question — choose ONE of the academy\'s 영어입담비법서 small-talk questions below, given in the book\'s volume · unit order, and walk the list from day to day;\n' +
         'do not stay on the same question two days running, and never repeat a recent question:\n' +
         dailyTalkSocialQuestionLines_().join('\n')),
     '',
@@ -2407,7 +2643,7 @@ function checkDailyTalkGeneratorSetup() {
       return map;
     }, {}),
     newsFeeds: RM_DAILY_TALK_NEWS.FEEDS.map(function (feed) { return feed.publisher; }),
-    // SMALL_TALK cycles through the 32 영어입담비법서 questions of PART 2.
+    // SMALL_TALK cycles through the 영어입담비법서 questions in volume · unit order.
     smallTalkQuestions: dailyTalkQuestionPool_().length,
     autoGenerate: isAutoGenerateEnabled_(settings),
     autoApprove: toBoolean(settings.AUTO_APPROVE),

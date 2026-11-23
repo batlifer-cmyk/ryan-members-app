@@ -478,23 +478,40 @@ describe('buildContentPrompt', () => {
     assert.excludes(buildContentPrompt('BUSINESS', {}).system, 'Avoid awkward literal personification');
   });
 
-  test('lists all 32 영어입담비법서 PART 2 questions in their eight groups', () => {
-    assert.equal(RM_DAILY_TALK_SOCIAL_QUESTIONS.length, 8);
+  test('lists the 영어입담비법서 questions in their volume · unit order', () => {
+    assert.equal(RM_DAILY_TALK_SOCIAL_QUESTIONS.length, 14);
     const pool = RM_DAILY_TALK_SOCIAL_QUESTIONS.reduce((all, group) => all.concat(group.questions), []);
-    assert.equal(pool.length, 32);
-    assert.equal(new Set(pool).size, 32);
-    ['Do you like cold weather?', 'How was your weekend?', 'Where are you from?',
-      'What food should I try in Busan?', 'Do you work out?', 'Where would you like to live for a year?',
-      'Tell me about one of your close friends.', 'If you could have any superpower, what would it be?']
+    assert.equal(pool.length, 55);
+    assert.equal(new Set(pool).size, 55);
+    assert.deepEqual(RM_DAILY_TALK_SOCIAL_QUESTIONS.map((group) => group.book), [
+      '1권 1단원', '1권 2단원', '1권 3단원', '1권 4단원',
+      '2권 1단원', '2권 2단원', '2권 3단원', '2권 4단원', '2권 5단원',
+      '3권 1단원', '3권 2단원', '3권 3단원', '3권 4단원', '3권 5단원'
+    ]);
+    ['Do you like cold weather?', 'What kind of food do you like?', 'Who was your first love?',
+      'If you could choose a place anywhere in the world to live for a year, where would it be?']
       .forEach((question) => assert.ok(pool.indexOf(question) !== -1, 'missing ' + question));
     const prompt = buildContentPrompt('SMALL_TALK', {});
     pool.forEach((question) => assert.includes(prompt.user, question));
-    assert.includes(prompt.user, '01 날씨·계절 / weather and seasons');
-    assert.includes(prompt.user, '08 의견·비교·유머·상상 / opinions, comparisons, humour and imagination');
+    assert.includes(prompt.user, '01 1권 1단원 날씨·계절 / weather and seasons');
+    assert.includes(prompt.user, '14 3권 5단원 쇼핑·소비·가치관 / shopping, spending and values');
     assert.includes(prompt.user, 'walk the list from day to day');
     assert.includes(prompt.user, 'do not stay on the same question two days running');
     // BUSINESS keeps its own prompt: no question list leaking into the news card.
     assert.excludes(buildContentPrompt('BUSINESS', {}).user, 'Do you like cold weather?');
+  });
+
+  test('today\'s unit and its textbook words travel with the question', () => {
+    const prompt = buildContentPrompt('SMALL_TALK', { questionEn: 'What kind of food do you like?' });
+    assert.includes(prompt.user, 'Today\'s textbook unit: 1권 2단원 음식·요리 / food and cooking');
+    assert.includes(prompt.user, '왕초보판 PDF 66–79쪽 · 1권 PDF 62–73쪽');
+    assert.includes(prompt.user, 'Textbook words of this unit: savory (짭짤한)');
+    assert.includes(prompt.user, 'Use one or two of them only where they make today\'s answer better');
+    // A unit whose book gives no word list simply leaves the line out.
+    assert.excludes(buildContentPrompt('SMALL_TALK', { questionEn: 'Who was your first love?' }).user,
+      'Textbook words of this unit:');
+    // No fixed question, no unit line: the list itself is printed instead.
+    assert.excludes(buildContentPrompt('SMALL_TALK', {}).user, 'Today\'s textbook unit:');
   });
 
   test('a recent question is listed as one not to ask again', () => {
@@ -1178,36 +1195,62 @@ describe('recentTopicsForTrack', () => {
 });
 
 describe('the 영어입담비법서 question of the day', () => {
-  test('the pool is the 32 questions in book order', () => {
+  test('the pool is the book\'s questions in volume · unit order', () => {
     const pool = dailyTalkQuestionPool_();
-    assert.equal(pool.length, 32);
-    assert.equal(pool[0], 'Do you like cold weather?');
-    assert.equal(pool[pool.length - 1], 'If you could have any superpower, what would it be?');
-    assert.equal(new Set(pool).size, 32);
+    assert.equal(pool.length, 55);
+    assert.equal(pool[0], 'On rainy or sunny days, what do you like to do?');
+    assert.equal(pool[pool.length - 1], 'Have you been ripped off?');
+    assert.equal(new Set(pool).size, 55);
   });
 
-  test('with nothing used yet the card starts at the first question', () => {
-    assert.equal(pickDailyTalkQuestion_({}), 'Do you like cold weather?');
+  test('with nothing used yet the card starts at the book\'s first question', () => {
+    assert.equal(pickDailyTalkQuestion_({}), 'On rainy or sunny days, what do you like to do?');
+  });
+
+  test('the four weather cards already sent end unit 1, so the next card opens unit 2 (food)', () => {
+    // 11/20~11/23에 나간 네 문항은 1단원 날씨의 마지막 네 자리다.
+    const sent = [
+      'Do you like cold weather?',
+      "Isn't it freezing today?",
+      'Do you like rainy days?',
+      'How do you feel about summer?'
+    ];
+    const pool = dailyTalkQuestionPool_();
+    assert.equal(pool[0], 'On rainy or sunny days, what do you like to do?');
+    const weather = RM_DAILY_TALK_SOCIAL_QUESTIONS[0];
+    assert.deepEqual(weather.questions.slice(-4), sent);
+    // 11/24 카드: 마지막으로 나간 "How do you feel about summer?" 다음은 2단원 음식 첫 질문.
+    assert.equal(pickDailyTalkQuestion_({ lastQuestion: sent[3], recentQuestions: sent }),
+      'What kind of food do you like?');
+    assert.equal(pickDailyTalkQuestion_({ lastQuestion: sent[2], recentQuestions: sent.slice(0, 3) }),
+      'How do you feel about summer?');
+    // 음식 단원도 순서대로: 첫 질문 다음은 두 번째 질문.
+    assert.equal(pickDailyTalkQuestion_({ lastQuestion: 'What kind of food do you like?' }),
+      'Do you cook often at home?');
   });
 
   test('the next card takes the question after the last one, in book order', () => {
     assert.equal(pickDailyTalkQuestion_({ lastQuestion: 'Do you like cold weather?' }), "Isn't it freezing today?");
     assert.equal(pickDailyTalkQuestion_({ lastQuestion: "Isn't it freezing today?" }), 'Do you like rainy days?');
+    // 1권 마지막 단원의 마지막 질문 다음은 2권 1단원 취미.
+    assert.equal(pickDailyTalkQuestion_({ lastQuestion: 'What is your dream vacation?' }),
+      'What do you like to do in your spare time?');
   });
 
   test('a recently asked question is skipped and the pool wraps around', () => {
-    const last = 'If you could have any superpower, what would it be?';
-    assert.equal(pickDailyTalkQuestion_({ lastQuestion: last }), 'Do you like cold weather?');
+    const last = 'Have you been ripped off?';
+    assert.equal(pickDailyTalkQuestion_({ lastQuestion: last }), 'On rainy or sunny days, what do you like to do?');
     assert.equal(pickDailyTalkQuestion_({
-      lastQuestion: 'Do you like cold weather?',
-      recentQuestions: ["Isn't it freezing today?"]
-    }), 'Do you like rainy days?');
+      lastQuestion: 'On rainy or sunny days, what do you like to do?',
+      recentQuestions: ["It looks like it's going to snow. What do you think?"]
+    }), 'Do you like cold weather?');
   });
 
-  test('an owner seed that is one of the 32 wins, otherwise the rotation decides', () => {
-    assert.equal(pickDailyTalkQuestion_({ seed: 'how was your weekend', lastQuestion: 'Do you like rainy days?' }),
-      'How was your weekend?');
-    assert.equal(pickDailyTalkQuestion_({ seed: 'cold morning small talk with a neighbor' }), 'Do you like cold weather?');
+  test('an owner seed that is one of the book\'s questions wins, otherwise the rotation decides', () => {
+    assert.equal(pickDailyTalkQuestion_({ seed: 'do you like rainy days', lastQuestion: 'Do you like cold weather?' }),
+      'Do you like rainy days?');
+    assert.equal(pickDailyTalkQuestion_({ seed: 'cold morning small talk with a neighbor' }),
+      'On rainy or sunny days, what do you like to do?');
   });
 
   test('recentQuestionsForTrack reads the question kept on each small-talk row', () => {

@@ -1,0 +1,13 @@
+{
+  "name": "ryan-members-app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Ryan Members apps: English Passport + Ryan Daily Talk (Apps Script) and static tools",
+  "scripts": {
+    "test": "node tests/run-tests.js",
+    "test:passport": "node tests/run-tests.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -1,0 +1,934 @@
+/* Ryan Daily Talk — /rm-magazine/{slug} article design (mobile first) */
+
+#rmdt-root {
+  --rmdt-ink: #16241f;
+  --rmdt-muted: #5f6b64;
+  --rmdt-line: #e8e3d7;
+  --rmdt-paper: #ffffff;
+  --rmdt-cream: #faf8f2;
+  --rmdt-green: #10453a;
+  display: block;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 4px 0 132px;
+  color: var(--rmdt-ink);
+  /* inherit the site's own type instead of guessing a family name */
+  font-family: inherit;
+  font-size: 16px;
+  line-height: 1.7;
+  -webkit-text-size-adjust: 100%;
+  word-break: keep-all;
+}
+
+#rmdt-root *,
+#rmdt-root *::before,
+#rmdt-root *::after { box-sizing: border-box; }
+
+/* The site styles p / span directly, so inherited type must be re-asserted here. */
+#rmdt-root p,
+#rmdt-root span,
+#rmdt-root h2,
+#rmdt-root h3,
+#rmdt-root summary,
+#rmdt-root div {
+  /* inherit the site's own type instead of guessing a family name */
+  font-family: inherit;
+  letter-spacing: normal;
+  text-transform: none;
+  text-align: left;
+}
+
+/* --- hero ---------------------------------------------------------------- */
+#rmdt-root .rmdt-hero { padding: 2px 2px 0; }
+#rmdt-root .rmdt-kicker {
+  display: inline-block;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #8b948d;
+  margin-bottom: 8px;
+}
+#rmdt-root .rmdt-title-en {
+  font-family: inherit;
+  font-size: 27px;
+  line-height: 1.25;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  font-variant-ligatures: none;
+  font-feature-settings: "liga" 0, "clig" 0, "dlig" 0, "calt" 0;
+  margin: 0 0 4px;
+  color: var(--rmdt-ink);
+}
+#rmdt-root .rmdt-title-ko {
+  margin: 0;
+  font-size: 14.5px;
+  color: var(--rmdt-muted);
+}
+#rmdt-root .rmdt-snack {
+  margin: 14px 0 22px;
+  padding: 15px 16px;
+  background: var(--rmdt-cream);
+  border-radius: 14px;
+  border: 1px solid #f0ebdf;
+}
+#rmdt-root .rmdt-snack-en {
+  margin: 0;
+  font-size: 15.5px;
+  line-height: 1.65;
+  color: #23392f;
+}
+#rmdt-root .rmdt-snack-ko {
+  margin: 7px 0 0;
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--rmdt-muted);
+}
+
+/* --- step cards ---------------------------------------------------------- */
+#rmdt-root .rmdt-card {
+  position: relative;
+  background: var(--rmdt-paper);
+  border: 1px solid var(--rmdt-line);
+  border-radius: 18px;
+  padding: 18px 16px 20px;
+  margin: 0 0 18px;
+  box-shadow: 0 2px 10px rgba(22, 36, 31, 0.045);
+}
+#rmdt-root .rmdt-card[data-step="1"] { --rmdt-tone: #10453a; --rmdt-tint: #e6efe9; }
+#rmdt-root .rmdt-card[data-step="2"] { --rmdt-tone: #1c5a78; --rmdt-tint: #e5eef3; }
+#rmdt-root .rmdt-card[data-step="3"] { --rmdt-tone: #8a5a13; --rmdt-tint: #f6eddd; }
+#rmdt-root .rmdt-card[data-step="4"] { --rmdt-tone: #4a3f7a; --rmdt-tint: #edebf6; }
+#rmdt-root .rmdt-card[data-step="5"] { --rmdt-tone: #7a2f4a; --rmdt-tint: #f7e9ee; }
+
+#rmdt-root .rmdt-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-bottom: 4px;
+}
+#rmdt-root .rmdt-names {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+#rmdt-root .rmdt-sub {
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: #8b948d;
+}
+#rmdt-root .rmdt-step {
+  flex: 0 0 auto;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  padding: 5px 9px 4px;
+  border-radius: 999px;
+  background: var(--rmdt-tint);
+  color: var(--rmdt-tone);
+  line-height: 1.1;
+}
+#rmdt-root .rmdt-name {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  color: var(--rmdt-ink);
+  text-transform: uppercase;
+}
+#rmdt-root .rmdt-lead {
+  margin: 6px 0 14px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: #8b948d;
+}
+
+/* --- step 1: the three words --------------------------------------------- */
+#rmdt-root .rmdt-words { list-style: none; margin: 0; padding: 0; }
+#rmdt-root .rmdt-word {
+  display: flex;
+  gap: 10px;
+  padding: 11px 0;
+  border-top: 1px solid #f1ece1;
+}
+#rmdt-root .rmdt-word:first-child { border-top: 0; padding-top: 2px; }
+#rmdt-root .rmdt-word-num {
+  flex: 0 0 auto;
+  width: 21px;
+  height: 21px;
+  margin-top: 3px;
+  border-radius: 50%;
+  background: var(--rmdt-tint);
+  color: var(--rmdt-tone);
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#rmdt-root .rmdt-word-body { min-width: 0; }
+#rmdt-root .rmdt-word-en {
+  display: block;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+  color: var(--rmdt-ink);
+}
+#rmdt-root .rmdt-word-ko {
+  display: block;
+  margin-top: 2px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--rmdt-muted);
+}
+
+/* --- steps 2 and 4: the same three sentences, Korean then English -------- */
+#rmdt-root .rmdt-sentences,
+#rmdt-root .rmdt-english { list-style: none; margin: 0; padding: 0; }
+#rmdt-root .rmdt-sentences-row,
+#rmdt-root .rmdt-english-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 0;
+  border-top: 1px solid #f1ece1;
+}
+#rmdt-root .rmdt-sentences-row:first-child,
+#rmdt-root .rmdt-english-row:first-child { border-top: 0; padding-top: 2px; }
+#rmdt-root .rmdt-mark {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  border-radius: 50%;
+  background: var(--rmdt-tint);
+  color: var(--rmdt-tone);
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#rmdt-root .rmdt-sentence-text {
+  font-size: 15.5px;
+  line-height: 1.6;
+  color: #2b3d35;
+}
+#rmdt-root .rmdt-english-text {
+  font-size: 16.5px;
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+  color: var(--rmdt-ink);
+}
+
+/* --- step 3: the same sentence in English word order --------------------- */
+#rmdt-root .rmdt-orders { display: flex; flex-direction: column; gap: 11px; }
+#rmdt-root .rmdt-order {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 12px 12px 11px;
+  background: #f9f7f1;
+  border: 1px solid #f0ead9;
+  border-radius: 14px;
+}
+#rmdt-root .rmdt-order .rmdt-mark { margin-top: 2px; }
+#rmdt-root .rmdt-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 5px;
+  min-width: 0;
+}
+#rmdt-root .rmdt-chip-unit {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+#rmdt-root .rmdt-chip {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  padding: 5px 9px 6px;
+  background: #ffffff;
+  border: 1px solid #e7e0cd;
+  border-radius: 10px;
+}
+#rmdt-root .rmdt-chip-role {
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  color: var(--rmdt-tone);
+}
+#rmdt-root .rmdt-chip-text {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: #2b3d35;
+  white-space: nowrap;
+}
+#rmdt-root .rmdt-chip-sep {
+  font-size: 12px;
+  font-weight: 600;
+  color: #c9bfa6;
+}
+
+/* --- step 5: Answer / Add / Ask ------------------------------------------ */
+#rmdt-root .rmdt-pick {
+  margin: 0 0 14px;
+  padding: 12px 13px;
+  border-radius: 13px;
+  background: var(--rmdt-tint);
+}
+#rmdt-root .rmdt-pick-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--rmdt-tone);
+}
+#rmdt-root .rmdt-pick-ko {
+  display: block;
+  margin-top: 5px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #5f6b64;
+}
+#rmdt-root .rmdt-pick-en {
+  display: block;
+  margin-top: 2px;
+  font-size: 15.5px;
+  font-weight: 700;
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+  color: var(--rmdt-ink);
+}
+#rmdt-root .rmdt-aaa { display: flex; flex-direction: column; gap: 9px; }
+#rmdt-root .rmdt-aaa-block {
+  padding: 12px 13px 13px;
+  border-radius: 13px;
+  background: #fbfaf6;
+  border: 1px solid #efeade;
+}
+#rmdt-root .rmdt-aaa-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+#rmdt-root .rmdt-aaa-num {
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  background: var(--rmdt-tint);
+  color: var(--rmdt-tone);
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#rmdt-root .rmdt-aaa-badge {
+  padding: 4px 9px 3px;
+  border-radius: 999px;
+  background: var(--rmdt-tone);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  line-height: 1.2;
+}
+#rmdt-root .rmdt-aaa-hint {
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: #8b948d;
+}
+#rmdt-root .rmdt-aaa-en {
+  margin: 9px 0 0;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+  color: var(--rmdt-ink);
+}
+#rmdt-root .rmdt-aaa-ko {
+  margin: 3px 0 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--rmdt-muted);
+}
+
+/* STEP 5 for business talk — Message House.
+   Conclusion is the point and carries the tint; the optional Suggestion reads
+   as a proposal, so it keeps a dashed edge. The flow itself is named in the
+   card's Korean sub-label (결론 → 근거 → 디테일). */
+#rmdt-root .rmdt-card.is-message-house .rmdt-aaa-block[data-role="conclusion"] {
+  background: var(--rmdt-tint);
+  border-color: #e6ddd2;
+}
+#rmdt-root .rmdt-card.is-message-house .rmdt-aaa-block[data-role="conclusion"] .rmdt-aaa-en {
+  font-size: 16.5px;
+  font-weight: 700;
+}
+#rmdt-root .rmdt-card.is-message-house .rmdt-aaa-block[data-role="suggestion"] {
+  border-style: dashed;
+  border-color: #e2d6da;
+}
+
+/* --- business news card (2026-11-21 onward) ------------------------------ */
+/* ONE news briefing, then five keyword cards. Each card is short on purpose:
+   the phone screen shows the headline and two drills without scrolling a wall
+   of text. */
+#rmdt-root .rmdt-card.is-news { --rmdt-tone: #1f4a63; --rmdt-tint: #e7eef4; }
+#rmdt-root .rmdt-card.is-keyword { --rmdt-tone: #6b4a12; --rmdt-tint: #f7efdf; }
+/* the news kicker shares its line with the NEWS pill on a 390px screen */
+#rmdt-root .rmdt-card.is-news .rmdt-name { font-size: 11.5px; letter-spacing: 0.1em; }
+
+#rmdt-root .rmdt-news-headline {
+  margin: 8px 0 0;
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+  color: var(--rmdt-ink);
+}
+#rmdt-root .rmdt-news-lines {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+}
+#rmdt-root .rmdt-news-line {
+  position: relative;
+  margin: 0 0 7px;
+  padding-left: 10px;
+  font-size: 14.5px;
+  line-height: 1.62;
+  color: #33443c;
+}
+#rmdt-root .rmdt-news-line::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 10px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #b9c6cf;
+}
+#rmdt-root .rmdt-news-line:last-child { margin-bottom: 0; }
+#rmdt-root .rmdt-news-source {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  margin: 12px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid #f1ece1;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: #8b948d;
+}
+#rmdt-root .rmdt-news-source-label {
+  flex: 0 0 auto;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #6f7a73;
+}
+#rmdt-root .rmdt-news-source-text { min-width: 0; }
+
+/* the five keywords, as a tap-to-jump index under the briefing */
+#rmdt-root .rmdt-kw-index {
+  margin: 14px 0 0;
+  padding: 12px 12px 10px;
+  border-radius: 13px;
+  background: #faf8f2;
+  border: 1px solid #f0ebdf;
+}
+#rmdt-root .rmdt-kw-index-label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #8b948d;
+}
+#rmdt-root .rmdt-kw-index-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+#rmdt-root .rmdt-kw-index-item { margin: 0; }
+#rmdt-root .rmdt-kw-index-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px 6px 6px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1px solid #e7e0cd;
+  color: var(--rmdt-ink) !important;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-decoration: none !important;
+}
+#rmdt-root .rmdt-kw-index-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: var(--rmdt-tint);
+  color: var(--rmdt-tone);
+  font-size: 10px;
+  font-weight: 700;
+}
+#rmdt-root .rmdt-kw-index-text { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* one keyword card */
+#rmdt-root .rmdt-card.is-keyword { scroll-margin-top: 84px; }
+#rmdt-root .rmdt-kw-title {
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.35;
+  text-transform: none;
+  color: var(--rmdt-ink);
+}
+#rmdt-root .rmdt-kw-ko {
+  margin: 8px 0 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--rmdt-muted);
+}
+#rmdt-root .rmdt-kw-usage {
+  margin: 10px 0 14px;
+  padding: 9px 11px;
+  border-radius: 11px;
+  background: var(--rmdt-tint);
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: #3f4f47;
+}
+#rmdt-root .rmdt-kw-usage-label {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--rmdt-tone);
+}
+#rmdt-root .rmdt-drills { display: flex; flex-direction: column; gap: 9px; }
+#rmdt-root .rmdt-drill {
+  padding: 12px 12px 11px;
+  border-radius: 13px;
+  background: #fbfaf6;
+  border: 1px solid #efeade;
+}
+#rmdt-root .rmdt-drill-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+#rmdt-root .rmdt-drill-badge {
+  padding: 4px 9px 3px;
+  border-radius: 999px;
+  background: var(--rmdt-tone);
+  color: #ffffff;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  line-height: 1.2;
+}
+#rmdt-root .rmdt-drill-pattern {
+  font-size: 11px;
+  font-weight: 600;
+  color: #8b948d;
+}
+#rmdt-root .rmdt-drill-en {
+  margin: 9px 0 0;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.55;
+  letter-spacing: -0.01em;
+  color: var(--rmdt-ink);
+}
+#rmdt-root .rmdt-hl {
+  background: linear-gradient(180deg, transparent 58%, #f5dfa8 58%);
+  padding: 0 1px;
+  color: var(--rmdt-ink);
+  font-weight: 700;
+}
+#rmdt-root .rmdt-drill-ko {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--rmdt-muted);
+}
+
+/* --- steps 1-4 of the articles published before 2026-11-20 ---------------- */
+/* --- step 1: chunks ------------------------------------------------------ */
+#rmdt-root .rmdt-chunks { list-style: none; margin: 0; padding: 0; }
+#rmdt-root .rmdt-chunk {
+  display: flex;
+  gap: 10px;
+  padding: 12px 0;
+  border-top: 1px solid #f1ece1;
+}
+#rmdt-root .rmdt-chunk:first-child { border-top: 0; padding-top: 2px; }
+#rmdt-root .rmdt-num {
+  flex: 0 0 auto;
+  width: 21px;
+  height: 21px;
+  margin-top: 2px;
+  border-radius: 50%;
+  background: var(--rmdt-tint);
+  color: var(--rmdt-tone);
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#rmdt-root .rmdt-chunk-body { min-width: 0; }
+#rmdt-root .rmdt-en {
+  display: block;
+  font-size: 16.5px;
+  font-weight: 600;
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+  color: var(--rmdt-ink);
+}
+#rmdt-root .rmdt-ko {
+  display: block;
+  margin-top: 3px;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--rmdt-muted);
+}
+
+/* --- step 2: word order -------------------------------------------------- */
+#rmdt-root .rmdt-wo {
+  margin: 0 0 12px;
+  padding: 13px 13px 11px;
+  background: #f8faf9;
+  border: 1px solid #eef2ef;
+  border-radius: 13px;
+}
+#rmdt-root .rmdt-wo:last-child { margin-bottom: 0; }
+#rmdt-root .rmdt-wo-line {
+  display: grid;
+  grid-template-columns: 63px 1fr;
+  gap: 8px;
+  align-items: start;
+  padding: 5px 0;
+}
+#rmdt-root .rmdt-wo-tag {
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1.5;
+  color: #7c8781;
+  letter-spacing: 0.01em;
+}
+#rmdt-root .rmdt-wo-text {
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: #2b3d35;
+}
+#rmdt-root .rmdt-wo-line.is-final .rmdt-wo-text {
+  font-size: 15.5px;
+  font-weight: 700;
+  color: var(--rmdt-tone);
+}
+#rmdt-root .rmdt-wo-line.is-final .rmdt-wo-tag { color: var(--rmdt-tone); }
+
+/* --- step 3: AAA / message house ---------------------------------------- */
+#rmdt-root .rmdt-stage {
+  position: relative;
+  margin: 0 0 14px;
+  padding: 2px 0 0 14px;
+  border-left: 3px solid var(--rmdt-tint);
+}
+#rmdt-root .rmdt-stage:last-child { margin-bottom: 0; }
+#rmdt-root .rmdt-stage-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--rmdt-tone);
+}
+#rmdt-root .rmdt-stage-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  background: var(--rmdt-tint);
+  font-size: 10px;
+  letter-spacing: 0;
+}
+#rmdt-root .rmdt-stage-hint {
+  display: block;
+  margin-top: 5px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: #8b948d;
+}
+#rmdt-root .rmdt-stage-en {
+  margin: 7px 0 0;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--rmdt-ink);
+}
+#rmdt-root .rmdt-stage-ko {
+  margin: 3px 0 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--rmdt-muted);
+}
+
+/* --- step 4: model & your turn ------------------------------------------ */
+#rmdt-root .rmdt-dialogue { margin: 0 0 10px; }
+#rmdt-root .rmdt-bubble {
+  max-width: 88%;
+  margin: 6px 0;
+  padding: 9px 12px;
+  border-radius: 14px;
+  font-size: 14.5px;
+  line-height: 1.5;
+}
+#rmdt-root .rmdt-bubble.is-a {
+  background: #f2f0e9;
+  border-bottom-left-radius: 5px;
+  color: #2b3d35;
+}
+#rmdt-root .rmdt-bubble.is-b {
+  margin-left: auto;
+  background: var(--rmdt-tint);
+  border-bottom-right-radius: 5px;
+  color: #22352c;
+}
+#rmdt-root .rmdt-ko-toggle {
+  margin: 8px 0 2px;
+  border-top: 1px dashed #ece7db;
+  padding-top: 8px;
+}
+#rmdt-root .rmdt-ko-toggle summary {
+  cursor: pointer;
+  list-style: none;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--rmdt-tone);
+}
+#rmdt-root .rmdt-ko-toggle summary::-webkit-details-marker { display: none; }
+#rmdt-root .rmdt-ko-toggle summary::after { content: "  +"; font-weight: 700; }
+#rmdt-root .rmdt-ko-toggle[open] summary::after { content: "  –"; }
+#rmdt-root .rmdt-ko-toggle .rmdt-bubble {
+  font-size: 13.5px;
+  color: #4c5a53;
+}
+#rmdt-root .rmdt-subhead {
+  margin: 16px 0 2px;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--rmdt-tone);
+  text-transform: uppercase;
+}
+#rmdt-root .rmdt-swap {
+  display: flex;
+  gap: 10px;
+  padding: 9px 0;
+  border-top: 1px solid #f1ece1;
+}
+#rmdt-root .rmdt-swap:first-of-type { border-top: 0; }
+#rmdt-root .rmdt-swap-body { min-width: 0; }
+#rmdt-root .rmdt-swap .rmdt-en { font-size: 15px; }
+#rmdt-root .rmdt-mission {
+  margin: 18px 0 0;
+  padding: 15px 16px;
+  border-radius: 15px;
+  background: linear-gradient(150deg, #124b3f 0%, #0d3a30 100%);
+  color: #fff;
+}
+#rmdt-root .rmdt-mission-label {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #9fc4b5;
+  margin-bottom: 6px;
+}
+#rmdt-root .rmdt-mission-en {
+  display: block;
+  font-size: 15.5px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+#rmdt-root .rmdt-mission-ko {
+  display: block;
+  margin-top: 5px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+/* --- closing CTA --------------------------------------------------------- */
+#rmdt-root .rmdt-cta {
+  margin: 26px 0 0;
+  padding: 22px 18px 20px;
+  border: 1px solid #ece6d8;
+  border-radius: 18px;
+  background: linear-gradient(158deg, #fbf9f3 0%, #f3efe3 100%);
+  text-align: center;
+}
+#rmdt-root .rmdt-cta-kicker {
+  display: block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #6f7a73;
+  text-align: center;
+}
+#rmdt-root .rmdt-cta-title {
+  margin: 9px 0 0;
+  font-size: 20px;
+  line-height: 1.35;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--rmdt-ink);
+  text-align: center;
+}
+#rmdt-root .rmdt-cta-copy {
+  margin: 8px auto 0;
+  max-width: 420px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: #5f6b64;
+  text-align: center;
+}
+#rmdt-root .rmdt-cta-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  max-width: 360px;
+  margin: 17px auto 0;
+  padding: 14px 18px;
+  border-radius: 14px;
+  background: var(--rmdt-green);
+  color: #ffffff !important;
+  font-size: 15.5px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  text-align: center;
+  text-decoration: none !important;
+  box-shadow: 0 7px 18px rgba(16, 69, 58, 0.2);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+#rmdt-root .rmdt-cta-btn:active {
+  transform: translateY(1px);
+  box-shadow: 0 4px 12px rgba(16, 69, 58, 0.18);
+}
+#rmdt-root .rmdt-cta-btn-label {
+  font-size: inherit;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #ffffff;
+}
+#rmdt-root .rmdt-cta-btn-arrow {
+  font-size: 15px;
+  line-height: 1;
+  color: #ffffff;
+}
+#rmdt-root .rmdt-cta-note {
+  margin: 10px 0 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: #6f7a73;
+  text-align: center;
+}
+#rmdt-root .rmdt-cta-sub {
+  margin: 13px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid #e9e2d2;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: #6b7670;
+  text-align: center;
+}
+#rmdt-root .rmdt-cta-sub-label { color: #6f7a73; }
+#rmdt-root .rmdt-cta-sub a {
+  color: var(--rmdt-green);
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+#rmdt-root .rmdt-cta-sep { color: #b8b2a3; }
+
+/* --- page level (mobile) ------------------------------------------------- */
+@media (max-width: 749px) {
+  #rmdt-root { padding-bottom: 148px; }
+  #rmdt-root .rmdt-card { border-radius: 16px; padding: 16px 14px 18px; }
+  #rmdt-root .rmdt-title-en { font-size: 24px; }
+  #rmdt-root .rmdt-wo-line { grid-template-columns: 56px 1fr; gap: 7px; }
+  #rmdt-root .rmdt-wo-tag { font-size: 10px; }
+  /* the word-order chips are the busiest row on a phone */
+  #rmdt-root .rmdt-order { padding: 11px 10px 10px; gap: 8px; }
+  #rmdt-root .rmdt-chip { padding: 4px 8px 5px; }
+  #rmdt-root .rmdt-chip-text { font-size: 13.5px; }
+  #rmdt-root .rmdt-chip-role { font-size: 9px; }
+  #rmdt-root .rmdt-english-text { font-size: 16px; }
+  /* the keyword cards must stay readable at arm's length */
+  #rmdt-root .rmdt-news-headline { font-size: 18px; }
+  #rmdt-root .rmdt-news-line { font-size: 14px; }
+  #rmdt-root .rmdt-kw-title { font-size: 18px; }
+  #rmdt-root .rmdt-drill-en { font-size: 15.5px; }
+  #rmdt-root .rmdt-kw-index-text { max-width: 180px; }
+  /* closing CTA: keep the primary button easy to hit with a thumb */
+  #rmdt-root .rmdt-cta { padding: 20px 15px 18px; border-radius: 16px; }
+  #rmdt-root .rmdt-cta-title { font-size: 18.5px; }
+  #rmdt-root .rmdt-cta-copy { font-size: 13px; }
+  #rmdt-root .rmdt-cta-btn {
+    padding: 15px 16px;
+    font-size: 15px;
+    min-height: 48px;
+  }
+  #rmdt-root .rmdt-cta-sub { font-size: 12px; }
+  /* the price-calculator launcher must not sit on the last lines */
+  #rmc-launch {
+    font-size: 12.5px !important;
+    padding: 8px 13px !important;
+    min-height: 0 !important;
+    box-shadow: 0 6px 18px rgba(12, 40, 33, 0.22) !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #rmdt-root * { transition: none !important; animation: none !important; }
+}

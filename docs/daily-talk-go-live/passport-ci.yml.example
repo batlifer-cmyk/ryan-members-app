@@ -1,0 +1,36 @@
+name: English Passport CI
+
+on:
+  pull_request:
+    paths:
+      - 'apps-script/**'
+      - 'tests/**'
+      - 'package.json'
+      - '.github/workflows/passport-ci.yml'
+  push:
+    branches:
+      - 'claude/daily-talk-go-live'
+    paths:
+      - 'apps-script/**'
+      - 'tests/**'
+      - 'package.json'
+      - '.github/workflows/passport-ci.yml'
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Unit tests (pure functions, fixtures only)
+        run: node tests/run-tests.js
+      - name: Secret scan (repo files must not contain credentials)
+        run: |
+          if grep -rInE '(SOLAPI_API_(KEY|SECRET)|WIX_API_KEY|OPENAI_API_KEY)[[:space:]]*[:=][[:space:]]*[A-Za-z0-9_\-]{12,}' \
+              --include='*.gs' --include='*.html' --include='*.js' --include='*.json' --include='*.md' . ; then
+            echo "Potential secret literal found"; exit 1
+          fi
+          echo "No secret literals found"

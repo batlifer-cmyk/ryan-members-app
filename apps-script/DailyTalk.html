@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Ryan Daily Talk 신청</title>
+  <style>
+    :root{
+      --navy:#132d3d; --green:#10453a; --green-soft:#e8f2ec; --gold:#c9a84e;
+      --cream:#f7f1df; --paper:#fffdf6; --ink:#20303a; --muted:#6a604b; --line:#d9cba4;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%}
+    body{
+      font-family:Pretendard,"Apple SD Gothic Neo","Malgun Gothic",system-ui,-apple-system,sans-serif;
+      color:var(--ink);
+      background:
+        radial-gradient(circle at 12% 8%,rgba(201,168,78,.20),transparent 34%),
+        linear-gradient(160deg,#0b1e2a 0%,#14394b 46%,#0b1e2a 100%);
+      -webkit-text-size-adjust:100%;
+    }
+    .wrap{
+      width:min(560px,100%);
+      margin:0 auto;
+      padding:clamp(18px,4vw,32px) clamp(16px,4vw,26px) calc(30px + env(safe-area-inset-bottom));
+    }
+    .brand{
+      display:flex;align-items:center;justify-content:center;gap:9px;
+      color:#f1d98c;letter-spacing:.26em;font-size:11px;font-weight:800;
+      text-transform:uppercase;margin:4px 0 clamp(14px,3vw,22px);
+    }
+    .brand span{display:block;width:24px;height:1px;background:rgba(241,217,140,.55)}
+    .card{
+      background:linear-gradient(180deg,var(--paper),var(--cream));
+      border:1px solid rgba(201,168,78,.45);
+      border-radius:22px;
+      padding:clamp(20px,5vw,34px);
+      box-shadow:0 26px 70px rgba(0,0,0,.42);
+    }
+    h1{
+      font-family:Georgia,"Apple SD Gothic Neo",serif;
+      font-size:clamp(25px,6.4vw,34px);
+      line-height:1.3;margin:0 0 10px;color:var(--navy);
+      letter-spacing:-0.01em;
+    }
+    h1 .ko{
+      display:block;font-family:Pretendard,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+      font-weight:900;letter-spacing:-0.02em;
+    }
+    .lead{margin:0 0 22px;color:#4c4637;line-height:1.7;font-size:15px}
+    .lead strong{color:var(--green)}
+    .field{margin:0 0 18px}
+    label.top{display:block;font-weight:800;font-size:14px;margin-bottom:8px;color:var(--navy)}
+    input[type=text],input[type=tel]{
+      width:100%;border:1px solid var(--line);border-radius:13px;background:#fff;
+      padding:15px 14px;font-size:16px;color:var(--ink);outline:none;
+      -webkit-appearance:none;appearance:none;
+    }
+    input[type=text]:focus,input[type=tel]:focus{
+      border-color:var(--green);box-shadow:0 0 0 4px rgba(16,69,58,.14);
+    }
+    fieldset{border:0;padding:0;margin:0 0 8px}
+    legend{font-weight:800;font-size:14px;color:var(--navy);padding:0 0 8px}
+    .tracks{display:grid;gap:9px}
+    .track{position:relative;display:block;cursor:pointer}
+    .track input{position:absolute;opacity:0;pointer-events:none}
+    .track-body{
+      display:flex;align-items:flex-start;gap:12px;
+      border:1px solid var(--line);border-radius:14px;background:#fff;padding:13px 14px;
+      transition:border-color .15s ease,background .15s ease,box-shadow .15s ease;
+    }
+    .track-dot{
+      flex:0 0 auto;width:18px;height:18px;margin-top:1px;border-radius:50%;
+      border:2px solid #b8ab86;background:#fff;position:relative;
+    }
+    .track input:checked + .track-body{border-color:var(--green);background:var(--green-soft);box-shadow:inset 0 0 0 1.5px var(--green)}
+    .track input:checked + .track-body .track-dot{border-color:var(--green)}
+    .track input:checked + .track-body .track-dot:after{
+      content:"";position:absolute;inset:3px;border-radius:50%;background:var(--green);
+    }
+    .track input:focus-visible + .track-body{outline:3px solid rgba(16,69,58,.32);outline-offset:2px}
+    .track-name{display:block;font-weight:900;color:var(--navy);font-size:15px;line-height:1.35}
+    .track-desc{display:block;margin-top:3px;font-size:12.5px;color:var(--muted);line-height:1.55}
+    .note{margin:10px 0 20px;font-size:12.5px;color:var(--muted);line-height:1.6}
+    .note strong{color:#8a4a2f}
+    .consent{
+      display:flex;gap:11px;align-items:flex-start;cursor:pointer;
+      border:1px solid rgba(201,168,78,.65);border-radius:14px;
+      background:rgba(255,250,235,.85);padding:14px;margin:0 0 12px;
+      font-size:13px;line-height:1.62;color:#4b4331;font-weight:600;
+    }
+    .consent input{
+      width:20px;height:20px;min-width:20px;margin:2px 0 0;accent-color:var(--green);
+    }
+    .privacy{margin:0 0 18px;font-size:11.5px;line-height:1.6;color:#7a715c}
+    .error{
+      display:none;margin:0 0 14px;padding:12px 14px;border-radius:12px;
+      background:#fdecee;border:1px solid #e8b9c0;color:#9f2432;font-weight:800;font-size:13.5px;line-height:1.5;
+    }
+    .error.visible{display:block}
+    .submit{
+      width:100%;border:0;border-radius:999px;padding:17px 20px;
+      background:var(--green);color:#fff;font-size:16.5px;font-weight:900;cursor:pointer;
+      box-shadow:0 14px 30px rgba(16,69,58,.28);
+      transition:transform .12s ease,opacity .2s ease;
+    }
+    .submit:active{transform:translateY(1px)}
+    .submit[disabled]{opacity:.6;cursor:progress}
+    .fine{margin:14px 0 0;text-align:center;font-size:11.5px;color:#857b64;line-height:1.6}
+
+    /* completion */
+    #doneView{display:none}
+    #doneView.visible{display:block;animation:rise .45s ease both}
+    @keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+    .done-badge{
+      display:inline-block;border:1.5px solid var(--green);color:var(--green);
+      border-radius:999px;padding:6px 12px;font-size:11px;font-weight:900;letter-spacing:.14em;
+      text-transform:uppercase;margin-bottom:14px;
+    }
+    .done-track{
+      display:flex;align-items:center;gap:10px;margin:0 0 18px;padding:14px 15px;
+      border-radius:14px;background:#fff;border:1px solid var(--line);font-size:14px;
+    }
+    .done-track b{color:var(--green)}
+    .kakao{
+      display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;
+      border-radius:999px;padding:16px 20px;background:#FEE500;color:#191919;
+      font-size:16px;font-weight:900;text-decoration:none;
+      box-shadow:0 14px 30px rgba(0,0,0,.16);
+    }
+    .kakao span.arrow{font-weight:900}
+    .kakao-note{margin:12px 0 22px;font-size:12.5px;color:var(--muted);line-height:1.65;text-align:center}
+    .ghost{
+      width:100%;border:1px solid #b9aa80;background:transparent;color:var(--navy);
+      border-radius:999px;padding:14px 18px;font-size:14px;font-weight:800;cursor:pointer;
+    }
+    .done-meta{margin:16px 0 0;font-size:11.5px;color:#857b64;line-height:1.6;text-align:center}
+    .runner-warning{display:none;margin:0 0 14px;padding:12px 14px;border-radius:12px;background:#fff6e5;border:1px solid #e8cd93;color:#7a5a19;font-size:13px;line-height:1.55}
+    .runner-warning.visible{display:block}
+    @media (max-width:389px){
+      .brand{letter-spacing:.2em}
+      .card{border-radius:18px}
+    }
+    @media (prefers-reduced-motion:reduce){
+      *{animation:none !important;transition:none !important}
+    }
+  </style>
+</head>
+<body>
+<main class="wrap">
+  <p class="brand"><span></span>Ryan Daily Talk<span></span></p>
+
+  <section class="card" id="formView">
+    <h1><span class="ko">매일 아침, 영어 한 조각.</span></h1>
+    <p class="lead">평일 아침 카카오톡으로 <strong>오늘의 영어 레슨</strong>을 보내드립니다. 이름과 휴대폰 번호만 있으면 신청할 수 있어요. 수업 등록과는 별개입니다.</p>
+
+    <form id="dtForm" data-consent-version="<?= pageConfig.consentVersion ?>" novalidate>
+      <div class="field">
+        <label class="top" for="studentName">이름</label>
+        <input id="studentName" name="studentName" type="text" autocomplete="name" enterkeyhint="next" placeholder="홍길동" maxlength="40" required>
+      </div>
+
+      <div class="field">
+        <label class="top" for="phone">휴대폰 번호</label>
+        <input id="phone" name="phone" type="tel" inputmode="numeric" autocomplete="tel" enterkeyhint="next" placeholder="010-1234-5678" required>
+      </div>
+
+      <fieldset>
+        <legend>받고 싶은 Daily Talk</legend>
+        <div class="tracks" role="radiogroup" aria-label="Daily Talk 트랙 선택">
+          <label class="track">
+            <input type="radio" name="track" value="SMALL_TALK">
+            <span class="track-body">
+              <span class="track-dot"></span>
+              <span>
+                <span class="track-name">Daily Small Talk</span>
+                <span class="track-desc">일상 대화·여행·취미에서 바로 쓰는 표현</span>
+              </span>
+            </span>
+          </label>
+          <label class="track">
+            <input type="radio" name="track" value="BUSINESS">
+            <span class="track-body">
+              <span class="track-dot"></span>
+              <span>
+                <span class="track-name">Daily Business Talk</span>
+                <span class="track-desc">회의·이메일·발표에서 쓰는 표현</span>
+              </span>
+            </span>
+          </label>
+          <label class="track">
+            <input type="radio" name="track" value="BOTH">
+            <span class="track-body">
+              <span class="track-dot"></span>
+              <span>
+                <span class="track-name">두 콘텐츠 모두</span>
+                <span class="track-desc">Small Talk와 Business Talk를 함께 받기</span>
+              </span>
+            </span>
+          </label>
+        </div>
+      </fieldset>
+      <p class="note"><strong>이미 신청한 번호</strong>로 다시 제출하면 트랙만 바뀌고, 수업 등록 정보는 그대로 유지됩니다.</p>
+
+      <label class="consent" for="consent">
+        <input id="consent" name="consent" type="checkbox" value="true">
+        <span><?= pageConfig.consentText ?></span>
+      </label>
+      <p class="privacy">입력한 이름과 휴대폰 번호는 Ryan Daily Talk 발송 목적으로만 사용합니다.</p>
+
+      <p class="error" id="error" role="alert"></p>
+      <p class="runner-warning" id="runnerWarning">신청 서버에 연결되지 않았습니다. 잠시 후 다시 시도해 주세요.</p>
+
+      <button class="submit" id="submitBtn" type="submit">Daily Talk 신청하기</button>
+      <p class="fine">신청 후 카카오톡 채널을 추가하면 아침마다 레슨을 받아볼 수 있습니다.</p>
+    </form>
+  </section>
+
+  <section class="card" id="doneView" aria-live="polite">
+    <span class="done-badge" id="doneBadge">신청 완료</span>
+    <h1><span class="ko" id="doneTitle">신청이 완료되었습니다.</span></h1>
+    <p class="lead" id="doneLead"></p>
+    <div class="done-track"><span>받을 콘텐츠</span> <b id="doneTrack">Daily Small Talk</b></div>
+    <p class="lead" style="margin-bottom:14px">마지막으로 <strong>카카오톡 채널을 추가</strong>해 주세요. 채널 친구에게만 레슨이 발송됩니다.</p>
+    <a class="kakao" id="kakaoBtn" href="<?= pageConfig.kakaoFriendUrl ?>" target="_blank" rel="noopener noreferrer">
+      <span>카카오톡 채널 추가</span><span class="arrow">→</span>
+    </a>
+    <p class="kakao-note" id="kakaoNote">버튼을 누르면 카카오톡에서 라이언멤버스 채널이 열립니다.</p>
+    <button class="ghost" id="againBtn" type="button">트랙 변경 · 다른 번호로 신청</button>
+    <p class="done-meta" id="doneMeta">카카오톡 채널을 차단하면 언제든 수신을 중단할 수 있습니다.</p>
+  </section>
+
+  <noscript><p style="color:#f7f1df;text-align:center">신청은 자바스크립트가 켜진 브라우저에서 할 수 있습니다.</p></noscript>
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  var TRACK_LABELS = {
+    SMALL_TALK: 'Daily Small Talk',
+    BUSINESS: 'Daily Business Talk',
+    BOTH: '두 콘텐츠 모두'
+  };
+
+  var form = document.getElementById('dtForm');
+  var formView = document.getElementById('formView');
+  var doneView = document.getElementById('doneView');
+  var nameInput = document.getElementById('studentName');
+  var phoneInput = document.getElementById('phone');
+  var consentInput = document.getElementById('consent');
+  var submitBtn = document.getElementById('submitBtn');
+  var errorBox = document.getElementById('error');
+  var runnerWarning = document.getElementById('runnerWarning');
+  var state = { submitting: false, phone: '', submissionId: '', kakaoClicked: false };
+
+  function getRunner() {
+    return (window.google && window.google.script && window.google.script.run) || null;
+  }
+
+  function hasRunner() {
+    var runner = getRunner();
+    return !!(runner && typeof runner.withSuccessHandler === 'function' && typeof runner.submitDailyTalkOnly === 'function');
+  }
+
+  function setError(message) {
+    errorBox.textContent = message || '';
+    errorBox.classList.toggle('visible', !!message);
+    if (message) {
+      try { errorBox.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (ignored) {}
+    }
+  }
+
+  // ---- phone: keep 010-XXXX-XXXX while typing -------------------------------
+  phoneInput.addEventListener('input', function () {
+    var digits = phoneInput.value.replace(/[^0-9]/g, '').slice(0, 11);
+    var formatted = digits;
+    if (digits.length > 7) formatted = digits.slice(0, 3) + '-' + digits.slice(3, 7) + '-' + digits.slice(7);
+    else if (digits.length > 3) formatted = digits.slice(0, 3) + '-' + digits.slice(3);
+    phoneInput.value = formatted;
+  });
+
+  function selectedTrack() {
+    var checked = document.querySelector('input[name="track"]:checked');
+    return checked ? checked.value : '';
+  }
+
+  function collect() {
+    return {
+      studentName: nameInput.value.trim(),
+      phone: phoneInput.value.trim(),
+      dailyTalkTrack: selectedTrack(),
+      dailyTalkConsent: !!consentInput.checked,
+      consentVersion: form.getAttribute('data-consent-version') || '',
+      userAgent: navigator.userAgent
+    };
+  }
+
+  function validate(payload) {
+    setError('');
+    if (!payload.studentName) { setError('이름을 입력해 주세요.'); nameInput.focus(); return false; }
+    if (!/^010-\d{4}-\d{4}$/.test(payload.phone)) { setError('010으로 시작하는 휴대폰 번호 11자리를 입력해 주세요.'); phoneInput.focus(); return false; }
+    if (!payload.dailyTalkTrack) { setError('받고 싶은 Daily Talk를 선택해 주세요.'); return false; }
+    if (!payload.dailyTalkConsent) { setError('카카오톡 수신에 동의해 주세요.'); consentInput.focus(); return false; }
+    return true;
+  }
+
+  form.addEventListener('submit', function (event) {
+    event.preventDefault();
+    if (state.submitting) return;
+
+    var payload = collect();
+    if (!validate(payload)) return;
+    if (!hasRunner()) {
+      runnerWarning.classList.add('visible');
+      setError('신청 서버에 연결되지 않았습니다. 잠시 후 다시 시도해 주세요.');
+      return;
+    }
+
+    state.submitting = true;
+    submitBtn.disabled = true;
+    submitBtn.textContent = '신청 중입니다…';
+    setError('');
+
+    getRunner()
+      .withSuccessHandler(function (result) {
+        state.submitting = false;
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Daily Talk 신청하기';
+        if (!result || result.ok !== true) {
+          setError((result && result.message) || '신청에 실패했습니다. 다시 시도해 주세요.');
+          return;
+        }
+        succeeded(payload, result);
+      })
+      .withFailureHandler(function (error) {
+        state.submitting = false;
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Daily Talk 신청하기';
+        setError((error && error.message) || '신청에 실패했습니다. 다시 시도해 주세요.');
+      })
+      .submitDailyTalkOnly(payload);
+  });
+
+  function succeeded(payload, result) {
+    var updated = result.action === 'UPDATED';
+    state.phone = payload.phone;
+
+    document.getElementById('doneBadge').textContent = updated ? '변경 완료' : '신청 완료';
+    document.getElementById('doneTitle').textContent = updated ? '트랙이 변경되었습니다.' : '신청이 완료되었습니다.';
+
+    var lead = updated
+      ? '이미 신청하신 번호라서 Daily Talk 설정만 바뀌었습니다. 수업 등록 정보는 그대로예요.'
+      : (result.studentName || payload.studentName) + '님, 평일 아침에 영어 레슨을 보내드릴 준비가 되었습니다.';
+    if (result.nameKept) {
+      lead += ' 이름은 기존에 등록된 ' + result.studentName + '님으로 저장했습니다.';
+    }
+    document.getElementById('doneLead').textContent = lead;
+    document.getElementById('doneTrack').textContent = result.dailyTalkTrackLabel || TRACK_LABELS[payload.dailyTalkTrack] || payload.dailyTalkTrack;
+
+    formView.style.display = 'none';
+    doneView.classList.add('visible');
+    try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (ignored) {}
+    if (navigator.vibrate) navigator.vibrate([30, 20, 60]);
+  }
+
+  // Best effort only: a click is not a confirmed Kakao friend add.
+  document.getElementById('kakaoBtn').addEventListener('click', function () {
+    if (state.kakaoClicked || !state.phone) return;
+    state.kakaoClicked = true;
+    var runner = getRunner();
+    if (!runner || typeof runner.markKakaoChannelClick !== 'function') return;
+    try {
+      runner.withSuccessHandler(function () {}).withFailureHandler(function () {})
+        .markKakaoChannelClick('', state.phone);
+    } catch (ignored) {}
+  });
+
+  document.getElementById('againBtn').addEventListener('click', function () {
+    doneView.classList.remove('visible');
+    formView.style.display = '';
+    document.getElementById('doneLead').textContent = '';
+    state.kakaoClicked = false;
+    try { nameInput.focus(); } catch (ignored) {}
+  });
+
+  // A page opened outside Apps Script cannot submit; say so before the tap.
+  if (!hasRunner()) {
+    window.setTimeout(function () {
+      if (!hasRunner()) runnerWarning.classList.add('visible');
+    }, 800);
+  }
+})();
+</script>
+</body>
+</html>

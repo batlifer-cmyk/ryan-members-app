@@ -1,0 +1,14 @@
+<!--
+  Wix custom code: "Ryan Members English Passport Preview"
+  Placement: 모든 페이지 / Body 끝 / 기능적(필수 아님)
+  Source of truth for the snippet saved in the Wix dashboard.
+
+  • https://www.ryanmembers.com/?passport=1  → English Passport (/exec)
+  • https://www.ryanmembers.com/?dailytalk=1 → standalone Ryan Daily Talk form
+                                               (/exec?mode=dailytalk)
+
+  Both open as a full-screen iframe over the site; the X button removes the
+  iframe and restores page scrolling. Only these two query params are touched,
+  so every other Wix page behaves exactly as before.
+-->
+<script>(()=>{try{const q=new URLSearchParams(location.search);const daily=q.get('dailytalk')==='1';const passport=q.get('passport')==='1';if(!daily&&!passport)return;if(document.getElementById('rm-passport-frame'))return;const EXEC='https://script.google.com/macros/s/AKfycbxnZNL83GP5vO0t1bbzOKZrMOoI5MJjukQ_lE2EwGHfTYsSbLaLjOgXYZEqvbaSk4E-pA/exec';const f=document.createElement('iframe');f.id='rm-passport-frame';f.title=daily?'Ryan Daily Talk 신청':'Ryan Members English Passport';f.src=daily?EXEC+'?mode=dailytalk':EXEC;Object.assign(f.style,{position:'fixed',inset:'0',width:'100vw',height:'100dvh',border:'0',zIndex:'2147483646',background:daily?'#0b1e2a':'#07131d'});document.documentElement.style.overflow='hidden';document.body.style.overflow='hidden';document.body.appendChild(f);const b=document.createElement('button');b.id='rm-passport-close';b.type='button';b.setAttribute('aria-label','닫기');b.innerHTML='&times;';Object.assign(b.style,{position:'fixed',top:'12px',right:'12px',width:'40px',height:'40px',padding:'0',margin:'0',border:'1px solid rgba(255,255,255,.35)',borderRadius:'50%',background:'rgba(7,19,29,.72)',color:'#fff',font:'400 24px/40px system-ui,-apple-system,sans-serif',textAlign:'center',cursor:'pointer',zIndex:'2147483647',touchAction:'manipulation',boxShadow:'0 2px 10px rgba(0,0,0,.35)'});const close=()=>{f.remove();b.remove();document.documentElement.style.overflow='';document.body.style.overflow='';};b.addEventListener('click',close);document.body.appendChild(b)}catch(e){console.error('RM Overlay',e)}})();</script>

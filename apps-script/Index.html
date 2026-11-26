@@ -1,0 +1,824 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Ryan Members English Passport</title>
+  <style>
+    :root{
+      --navy:#132d3d; --navy2:#0b1e2a; --gold:#c9a84e; --paper:#f7f1df;
+      --ink:#20303a; --burgundy:#7b2c36; --green:#1f5a45;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; min-height:100vh; font-family:Inter, Pretendard, system-ui, -apple-system, "Apple SD Gothic Neo", sans-serif;
+      color:#fff; background:
+      radial-gradient(circle at 20% 20%,rgba(201,168,78,.16),transparent 28%),
+      linear-gradient(145deg,#07131d,#153547 60%,#07131d);
+      overflow-x:hidden;
+    }
+    button,input,select,textarea{font:inherit}
+    .app{min-height:100vh;display:grid;place-items:center;padding:24px}
+    .stage{width:min(960px,100%);position:relative}
+    .passport-shell{perspective:1800px}
+    .cover{
+      width:min(390px,92vw); aspect-ratio:0.72; margin:auto;
+      border:2px solid var(--gold); border-radius:18px;
+      background:linear-gradient(145deg,#18394b,#0e2634);
+      box-shadow:0 30px 80px rgba(0,0,0,.5),inset 0 0 0 7px rgba(201,168,78,.12);
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      text-align:center; padding:34px; transform-origin:left center;
+      transition:transform 1s cubic-bezier(.2,.7,.2,1),opacity .45s;
+    }
+    .cover.open{transform:rotateY(-105deg) translateX(-2%);opacity:.18;pointer-events:none}
+    .cover-mark{font-family:Georgia,serif;font-size:34px;color:#f1d98c;font-weight:700;font-style:italic;margin-bottom:3px}
+    .cover-mark span{font-family:Arial,sans-serif;font-style:normal;font-size:23px;letter-spacing:.03em}
+    .cover-sub{font-size:12px;letter-spacing:.32em;color:#f1d98c;margin-bottom:36px}
+    .cover h1{font-family:Georgia,serif;letter-spacing:.15em;font-size:24px;margin:0;color:#f1d98c}
+    .cover p{color:#e5dcbf;line-height:1.7}
+    .gold-btn,.next-btn{
+      border:1px solid var(--gold);background:var(--gold);color:#172733;
+      border-radius:999px;padding:15px 24px;font-weight:800;cursor:pointer;
+      box-shadow:0 12px 28px rgba(201,168,78,.22)
+    }
+    .gold-btn:disabled,.next-btn:disabled{opacity:.55;cursor:not-allowed;box-shadow:none}
+    .book{
+      display:none;background:var(--paper);color:var(--ink);
+      border-radius:22px;padding:clamp(22px,5vw,50px);min-height:620px;
+      box-shadow:0 28px 90px rgba(0,0,0,.48);
+      border:1px solid #dacb9f; position:relative; overflow:hidden;
+    }
+    .book.visible{display:block;animation:bookIn .7s ease both}
+    @keyframes bookIn{from{opacity:0;transform:scale(.92) rotateX(8deg)}to{opacity:1;transform:none}}
+    .book:after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.13;
+      background-image:repeating-linear-gradient(0deg,transparent 0 3px,rgba(70,50,20,.08) 4px)}
+    .topline{display:flex;justify-content:space-between;gap:12px;color:#6e6244;font-size:13px;letter-spacing:.1em;text-transform:uppercase}
+    .page{display:none;position:relative;z-index:2}
+    .page.active{display:block;animation:pageIn .42s ease}
+    @keyframes pageIn{from{opacity:0;transform:translateX(18px)}to{opacity:1;transform:none}}
+    h2{font-family:Georgia,serif;font-size:clamp(30px,5vw,54px);margin:36px 0 10px;color:var(--navy)}
+    .prompt-en{font-family:Georgia,serif;font-style:italic;color:var(--burgundy);font-size:18px}
+    .field{margin:22px 0}
+    label{display:block;font-weight:800;margin-bottom:9px}
+    input,select,textarea{
+      width:100%;border:1px solid #cdbf93;border-radius:13px;background:rgba(255,255,255,.68);
+      padding:15px;color:var(--ink);outline:none
+    }
+    input:focus,select:focus,textarea:focus{border-color:var(--gold);box-shadow:0 0 0 4px rgba(201,168,78,.15)}
+    .choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .choice{border:1px solid #cdbf93;background:#fffaf0;border-radius:14px;padding:14px;cursor:pointer;text-align:left;color:var(--ink)}
+    .choice.selected{border-color:var(--green);background:#eaf5ef;box-shadow:inset 0 0 0 2px var(--green)}
+    .choice:focus-visible,.conditional-field input:focus-visible{outline:3px solid rgba(31,90,69,.35);outline-offset:2px}
+    .nav{display:flex;justify-content:space-between;gap:12px;margin-top:32px}
+    .ghost{border:1px solid #b9aa80;background:transparent;border-radius:999px;padding:14px 20px;color:var(--ink);cursor:pointer}
+    .summary{border:1px dashed #9e8d5d;padding:22px;border-radius:18px;background:rgba(255,255,255,.45)}
+    .summary div{padding:9px 0;border-bottom:1px solid rgba(100,80,30,.12)}
+    .consent{display:flex;gap:10px;align-items:flex-start}
+    .consent input{width:auto;margin-top:4px}
+    .error{color:#9f2432;font-weight:700;min-height:24px;margin-top:14px}
+    .loading{opacity:.6;pointer-events:none}
+    .small{font-size:13px;color:#6a604b;line-height:1.6}
+    .conditional-field{display:none;margin-top:12px;padding:14px;border:1px dashed #b9aa80;border-radius:14px;background:rgba(255,255,255,.38)}
+    .conditional-field.visible{display:block;animation:pageIn .3s ease}
+    .stamp{
+      width:210px;height:210px;border:8px double var(--burgundy);border-radius:50%;
+      display:grid;place-items:center;text-align:center;margin:22px auto;color:var(--burgundy);
+      font-weight:900;letter-spacing:.08em;transform:rotate(-12deg) scale(3);opacity:0;
+    }
+    .stamp.hit{animation:stampHit .8s cubic-bezier(.1,.8,.2,1) forwards}
+    @keyframes stampHit{
+      0%{transform:rotate(-12deg) scale(3);opacity:0}
+      55%{transform:rotate(-12deg) scale(.88);opacity:1}
+      70%{transform:rotate(-12deg) scale(1.08)}
+      100%{transform:rotate(-12deg) scale(1);opacity:1}
+    }
+    .approved{text-align:center}
+    .approved h2{margin:12px 0 16px;font-size:clamp(30px,5vw,48px)}
+    .approval-copy{font-size:20px;line-height:1.85;margin:0 auto 14px;max-width:640px}
+    .approval-copy p{margin:0}
+    .approval-copy strong{display:inline-block;margin-top:4px;color:var(--burgundy);font-size:1.08em}
+    .approval-copy em{display:inline-block;margin-top:10px;color:#8b7040;font-family:Georgia,serif}
+    .approval-meta{margin:16px auto 12px;padding:12px 16px;border-top:1px solid rgba(158,141,93,.35);border-bottom:1px solid rgba(158,141,93,.35);max-width:540px;color:#5d543f}
+
+    /* Ryan Daily Talk (optional consent) */
+    .daily-talk-consent{margin:18px 0 4px;padding:17px;border:1px solid #c9a84e;border-radius:15px;background:rgba(255,250,235,.72)}
+    .daily-talk-consent .daily-title{font-family:Georgia,serif;font-size:18px;font-weight:800;color:#132d3d;margin-bottom:9px}
+    .daily-talk-check{display:flex;align-items:flex-start;gap:11px;cursor:pointer;font-weight:600;line-height:1.65}
+    .daily-talk-check input{width:20px;height:20px;min-width:20px;margin-top:3px;accent-color:#1f5a45}
+    .daily-talk-note{margin:8px 0 0 31px;color:#6a604b;font-size:12px;line-height:1.55}
+    .daily-track-section{display:none;margin:15px 0 0 31px;padding-top:14px;border-top:1px solid rgba(158,141,93,.3)}
+    .daily-track-section.visible{display:block;animation:pageIn .3s ease}
+    .daily-track-heading{font-weight:900;color:#132d3d;margin-bottom:4px}
+    .daily-track-recommendation{font-size:12px;color:#1f5a45;font-weight:800;margin-bottom:10px}
+    .daily-track-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+    .daily-track-option{position:relative;display:block;cursor:pointer}
+    .daily-track-option input{position:absolute;opacity:0;pointer-events:none}
+    .daily-track-card{display:flex;align-items:center;justify-content:center;min-height:62px;padding:10px 8px;border:1px solid #cdbf93;border-radius:12px;background:#fffaf0;text-align:center;font-size:13px;font-weight:800;line-height:1.35;transition:.18s ease}
+    .daily-track-option input:checked + .daily-track-card{border-color:#1f5a45;background:#eaf5ef;box-shadow:inset 0 0 0 2px #1f5a45;color:#174735}
+    .daily-track-option input:focus-visible + .daily-track-card{outline:3px solid rgba(31,90,69,.35);outline-offset:2px}
+    .daily-track-option.recommended .daily-track-card:after{content:'추천';position:absolute;right:6px;top:-7px;padding:2px 6px;border-radius:999px;background:#c9a84e;color:#172733;font-size:9px;font-weight:900}
+
+    /* Kakao channel CTA + desktop QR modal */
+    .kakao-channel-wrap{margin-top:10px}
+    .kakao-channel-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;margin:18px auto 8px;padding:15px 24px;border-radius:999px;background:#fee500;color:#191919!important;text-decoration:none!important;font-weight:900;box-shadow:0 10px 24px rgba(0,0,0,.16);border:0;cursor:pointer}
+    .kakao-channel-btn:hover{transform:translateY(-1px)}
+    .kakao-channel-note{max-width:520px;margin:5px auto 12px;color:#6a604b;font-size:12px;line-height:1.55}
+    .rm-kakao-modal-backdrop{position:fixed;inset:0;z-index:2147483647;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(3,14,22,.84)}
+    .rm-kakao-modal-backdrop.visible{display:flex}
+    .rm-kakao-modal{position:relative;width:min(520px,94vw);max-height:92vh;overflow:auto;border-radius:24px;background:#fffaf0;color:#20303a;padding:30px 26px;text-align:center;box-shadow:0 28px 90px rgba(0,0,0,.48);border:2px solid #c9a84e}
+    .rm-kakao-modal h3{margin:0 0 8px;font-family:Georgia,serif;font-size:28px;color:#132d3d}
+    .rm-kakao-modal .lead{margin:0 auto 18px;max-width:410px;font-size:16px;line-height:1.65;font-weight:750}
+    .rm-kakao-qr-wrap{display:inline-block;padding:13px;border-radius:18px;background:#fff;border:1px solid #dfd2aa;box-shadow:0 10px 28px rgba(0,0,0,.12)}
+    .rm-kakao-qr-wrap canvas{display:block;width:220px;height:220px;image-rendering:pixelated}
+    .rm-kakao-steps{margin:18px auto 14px;max-width:390px;padding:16px 18px;border-radius:15px;background:#fff2a8;text-align:left;line-height:1.65;font-weight:800}
+    .rm-kakao-steps b{color:#7b2c36}
+    .rm-kakao-modal-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:16px}
+    .rm-kakao-primary,.rm-kakao-secondary{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:12px 18px;border-radius:999px;font-weight:900;text-decoration:none!important;cursor:pointer}
+    .rm-kakao-primary{background:#fee500;color:#191919!important;border:0}
+    .rm-kakao-secondary{background:transparent;color:#20303a!important;border:1px solid #b9aa80}
+    .rm-kakao-close{position:absolute;right:18px;top:14px;width:38px;height:38px;border-radius:50%;border:0;background:#ece5d1;color:#20303a;font-size:22px;font-weight:900;cursor:pointer}
+    .rm-kakao-note{margin:14px auto 0;max-width:420px;color:#6a604b;font-size:12px;line-height:1.55}
+
+    .runner-warning{display:none;margin:18px 0 0;padding:14px 16px;border-radius:14px;background:#fdecef;border:1px solid #d98a97;color:#7b2c36;font-weight:700;line-height:1.55}
+    .runner-warning.visible{display:block}
+
+    @media(max-width:600px){
+      .choices{grid-template-columns:1fr}
+      .book{min-height:720px}
+      h2{margin-top:24px}
+      .daily-track-options{grid-template-columns:1fr}
+      .daily-track-card{min-height:48px}
+      .rm-kakao-modal{padding:26px 18px}
+      .rm-kakao-qr-wrap canvas{width:190px;height:190px}
+    }
+    @media(prefers-reduced-motion:reduce){
+      *,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <main class="stage">
+    <section id="cover" class="cover" aria-label="영어 학습 여권 표지">
+      <div class="cover-mark">Ryan<span>MEMBERS</span></div>
+      <div class="cover-sub">HAEUNDAE</div>
+      <h1>ENGLISH LEARNING<br>PASSPORT</h1>
+      <p>Passport to a Bigger World<br>용감한 영어 학습 여행을 시작합니다.</p>
+      <button class="gold-btn" id="openBtn" type="button">여권 열기</button>
+    </section>
+
+    <section id="book" class="book" aria-live="polite">
+      <div style="display:flex;justify-content:center;margin:-8px 0 22px">
+        <div style="font-family:Georgia,serif;font-size:28px;color:#101820;font-weight:700;font-style:italic">Ryan<span style="font-family:Arial,sans-serif;font-style:normal;font-size:19px;letter-spacing:.03em">MEMBERS</span><div style="text-align:center;font-size:9px;letter-spacing:.28em;font-family:Arial,sans-serif;font-style:normal;margin-top:2px">HAEUNDAE</div></div>
+      </div>
+      <div class="topline"><span>English Learning Immigration Office</span><span id="progress">1 / 4</span></div>
+
+      <form id="passportForm" novalidate>
+        <div class="page active" data-page="1">
+          <h2>State your name, traveler.</h2>
+          <div class="prompt-en">여행자의 신원을 확인합니다.</div>
+          <div class="field">
+            <label for="studentName">학생명</label>
+            <input id="studentName" name="studentName" autocomplete="name" required placeholder="홍길동">
+          </div>
+          <div class="field">
+            <label for="phone">휴대전화번호</label>
+            <input id="phone" name="phone" inputmode="numeric" autocomplete="tel" required placeholder="010-1234-5678">
+          </div>
+          <div class="nav"><span></span><button type="button" class="next-btn" data-next>다음 심사</button></div>
+        </div>
+
+        <div class="page" data-page="2">
+          <h2>Declare your journey.</h2>
+          <div class="prompt-en">어떤 영어 여정을 시작합니까?</div>
+          <div class="field">
+            <label>등록 구분</label>
+            <div class="choices" data-name="registrationType">
+              <button type="button" class="choice" data-value="신규등록">신규등록</button>
+              <button type="button" class="choice" data-value="재등록">재등록</button>
+              <button type="button" class="choice" data-value="추가등록">추가등록</button>
+            </div>
+          </div>
+          <div class="field">
+            <label>신청 회차</label>
+            <div class="choices" data-name="lessonCount">
+              <button type="button" class="choice" data-value="8">8회</button>
+              <button type="button" class="choice" data-value="16">16회</button>
+              <button type="button" class="choice" data-value="24">24회</button>
+              <button type="button" class="choice" data-value="32">32회</button>
+              <button type="button" class="choice" data-value="48">48회</button>
+              <button type="button" class="choice" data-value="직접 입력">직접 입력</button>
+            </div>
+            <div id="customLessonWrap" class="conditional-field">
+              <label for="customLessonCount">등록 회차 직접 입력</label>
+              <input id="customLessonCount" name="customLessonCount" type="number" inputmode="numeric" min="1" max="300" step="1" placeholder="예: 10">
+              <div class="small">상담에서 정한 횟수가 기본 패키지와 다르면 숫자로 입력하세요.</div>
+            </div>
+          </div>
+          <div class="nav"><button type="button" class="ghost" data-prev>이전</button><button type="button" class="next-btn" data-next>다음 심사</button></div>
+        </div>
+
+        <div class="page" data-page="3">
+          <h2>What is your purpose?</h2>
+          <div class="prompt-en">영어 여행의 목적을 신고하세요.</div>
+          <div class="field">
+            <label for="courseType">등록 과목</label>
+            <select id="courseType" name="courseType" required>
+              <option value="">상담받은 과목을 선택하세요</option>
+              <optgroup label="맞춤형 회화·스피킹">
+                <option>맞춤형 1:1 프라이빗 영어교육</option>
+                <option>사교영어·스몰톡 (RM 영어입담비법서)</option>
+                <option>여행영어</option>
+                <option>비즈니스 실무영어</option>
+                <option>아카데믹 사교영어 (TED·VOA)</option>
+                <option>영어토론·Economist</option>
+                <option>영어울렁증 회복</option>
+                <option>발음·억양교정</option>
+              </optgroup>
+              <optgroup label="커리어·전문 목적">
+                <option>영어면접 집중교육</option>
+                <option>영어발표·프레젠테이션</option>
+                <option>교수임용·영어강의 대비</option>
+                <option>스타트업 피칭·IR 영어</option>
+                <option>커피챗·네트워킹 영어</option>
+                <option>에세이·아카데믹 라이팅</option>
+                <option>유학면접·포트폴리오 쇼앤텔</option>
+                <option>RM 대학 패키지</option>
+              </optgroup>
+              <optgroup label="시험 대비">
+                <option>TOEIC</option>
+                <option>TOEIC Speaking</option>
+                <option>OPIc</option>
+                <option>TOEFL</option>
+                <option>IELTS</option>
+                <option>수능·내신 영어</option>
+              </optgroup>
+              <optgroup label="학생·진로 영어">
+                <option>영유아 영어</option>
+                <option>초등 영어</option>
+                <option>중등 영어</option>
+                <option>고등 영어</option>
+                <option>국제학교 대비</option>
+              </optgroup>
+              <optgroup label="수업 형태·집중 과정">
+                <option>온라인·오프라인 하이브리드 1:1</option>
+                <option>2:1 세미프라이빗 영어회화</option>
+                <option>1:1 튜터링 스프린트·집중관리</option>
+              </optgroup>
+              <optgroup label="문화·레저 영어">
+                <option>쿠킹 영어</option>
+                <option>와인 영어</option>
+                <option>미술·드로잉·유화 영어</option>
+                <option>골프 영어</option>
+                <option>서핑 영어</option>
+                <option>영어게임</option>
+              </optgroup>
+              <option value="직접 입력">기타·복합과목 직접 입력</option>
+            </select>
+            <div id="customCourseWrap" class="conditional-field">
+              <label for="courseTypeCustom">과목명 직접 입력</label>
+              <input id="courseTypeCustom" name="courseTypeCustom" placeholder="예: 비즈니스 영어 + 영어발표 복합과정">
+            </div>
+            <div class="small">라이언멤버스는 맞춤형 과정이므로 두 과목 이상을 조합했다면 직접 입력할 수 있습니다.</div>
+          </div>
+          <div class="field">
+            <label for="teacher">담당 강사 <span class="small">(선택)</span></label>
+            <input id="teacher" name="teacher" placeholder="예: Matthew">
+          </div>
+          <div class="field">
+            <label>학습 목표</label>
+            <div class="choices" data-name="learningGoal">
+              <button type="button" class="choice" data-value="해외여행에서 현지인과 대화">✈️ 해외여행과 현지인 대화</button>
+              <button type="button" class="choice" data-value="커리어와 비즈니스 성장">💼 커리어와 비즈니스</button>
+              <button type="button" class="choice" data-value="자신감 있는 스피킹">🎤 자신감 있는 스피킹</button>
+              <button type="button" class="choice" data-value="자녀 영어교육 지원">👨‍👩‍👧 자녀 영어교육</button>
+              <button type="button" class="choice" data-value="시험 목표 달성">🏆 시험 목표</button>
+            </div>
+          </div>
+          <div class="nav"><button type="button" class="ghost" data-prev>이전</button><button type="button" class="next-btn" data-next>비자 확인</button></div>
+        </div>
+
+        <div class="page" data-page="4">
+          <h2>Final visa inspection.</h2>
+          <div class="prompt-en">출발 허가 전 최종 확인입니다.</div>
+          <div id="summary" class="summary"></div>
+
+          <div class="daily-talk-consent">
+            <div class="daily-title">Ryan Daily Talk</div>
+            <label class="daily-talk-check" for="dailyTalkOptIn">
+              <input id="dailyTalkOptIn" name="dailyTalkOptIn" type="checkbox" value="true">
+              <span>영어여권 발급 후 라이언멤버스의 평일 영어 학습 콘텐츠를 카카오톡으로 받겠습니다. 광고성 정보 수신에 동의하며, 카카오톡 채널 차단을 통해 언제든 중단할 수 있습니다.</span>
+            </label>
+            <div class="daily-talk-note">선택 동의입니다. 체크하지 않아도 영어여권 등록은 정상 처리됩니다.</div>
+            <div id="dailyTrackSection" class="daily-track-section">
+              <div class="daily-track-heading">받을 Daily Talk를 선택하세요.</div>
+              <div id="dailyTrackRecommendation" class="daily-track-recommendation"></div>
+              <div class="daily-track-options" role="radiogroup" aria-label="Ryan Daily Talk 콘텐츠 선택">
+                <label class="daily-track-option" data-track-option="SMALL_TALK">
+                  <input type="radio" name="dailyTalkTrackChoice" value="SMALL_TALK" checked>
+                  <span class="daily-track-card">Daily Small Talk</span>
+                </label>
+                <label class="daily-track-option" data-track-option="BUSINESS">
+                  <input type="radio" name="dailyTalkTrackChoice" value="BUSINESS">
+                  <span class="daily-track-card">Daily Business Talk</span>
+                </label>
+                <label class="daily-track-option" data-track-option="BOTH">
+                  <input type="radio" name="dailyTalkTrackChoice" value="BOTH">
+                  <span class="daily-track-card">두 콘텐츠 모두</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="field consent">
+            <input id="privacy" type="checkbox" name="privacyConsent">
+            <label for="privacy" style="font-weight:600">등록 처리와 수업 안내를 위한 개인정보 수집·이용에 동의합니다.</label>
+          </div>
+          <div class="error" id="error" role="alert"></div>
+          <div id="runnerWarning" class="runner-warning">
+            지금은 접수 서버에 연결되지 않은 화면입니다. 라이언멤버스 영어여권 웹앱 주소로 다시 열어 주세요.
+          </div>
+          <div class="nav">
+            <button type="button" class="ghost" data-prev>수정하기</button>
+            <button type="submit" class="next-btn" id="submitBtn">출발 심사 요청</button>
+          </div>
+        </div>
+
+        <div class="page approved" data-page="5">
+          <div id="stamp" class="stamp">APPROVED<br>CLEARED FOR<br>DEPARTURE</div>
+          <h2 id="approvalTitle">영어로 여는 새로운 세계.</h2>
+          <div id="approvalText" class="approval-copy">
+            <p>당신은 용감한 여행자입니다.</p>
+            <p><strong>자, 이제 출발을 허가합니다.</strong></p>
+            <p><em>Welcome to a Bigger World.</em></p>
+          </div>
+          <p id="approvalMeta" class="approval-meta"></p>
+
+          <div class="kakao-channel-wrap">
+            <a id="kakaoChannelBtn" class="kakao-channel-btn" href="https://pf.kakao.com/_xkFxexfX/friend" target="_blank" rel="noopener noreferrer">라이언멤버스 카카오톡 채널 추가</a>
+            <div class="kakao-channel-note" id="kakaoChannelNote">채널을 추가하면 Ryan Daily Talk와 수업 안내를 카카오톡에서 안정적으로 받을 수 있습니다.</div>
+          </div>
+          <p class="small">카카오톡 채널을 차단하면 언제든 수신을 중단할 수 있습니다.</p>
+        </div>
+      </form>
+    </section>
+  </main>
+</div>
+
+<div id="rmKakaoModal" class="rm-kakao-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="rmKakaoModalTitle">
+  <div class="rm-kakao-modal">
+    <button type="button" class="rm-kakao-close" aria-label="닫기">×</button>
+    <h3 id="rmKakaoModalTitle">휴대폰으로 채널을 추가하세요</h3>
+    <p class="lead">PC 화면에서는 친구추가 버튼이 작게 보여 놓치기 쉽습니다. 아래 QR을 휴대폰으로 스캔하면 라이언멤버스 친구추가 화면으로 바로 이동합니다.</p>
+    <div class="rm-kakao-qr-wrap"><canvas id="rmKakaoQr" width="220" height="220"></canvas></div>
+    <div class="rm-kakao-steps">
+      1. 휴대폰 카메라로 QR 스캔<br>
+      2. 카카오톡 화면에서 <b>‘채널 추가’</b> 선택<br>
+      3. 영어여권 화면으로 돌아오기
+    </div>
+    <div class="rm-kakao-modal-actions">
+      <a class="rm-kakao-primary" id="rmKakaoOpenLink" href="https://pf.kakao.com/_xkFxexfX/friend" target="_blank" rel="noopener noreferrer">PC 카카오 페이지도 열기</a>
+      <button type="button" class="rm-kakao-secondary">나중에 추가하기</button>
+    </div>
+    <div class="rm-kakao-note">Ryan Daily Talk 수신동의를 했더라도 카카오톡 채널 추가가 완료되어야 메시지를 안정적으로 받을 수 있습니다.</div>
+  </div>
+</div>
+
+<noscript><p style="padding:24px;text-align:center">영어여권은 자바스크립트가 켜진 브라우저에서 열 수 있습니다.</p></noscript>
+
+<?!= include('QRCode') ?>
+<script>
+(function () {
+  'use strict';
+
+  var KAKAO_FRIEND_URL = 'https://pf.kakao.com/_xkFxexfX/friend';
+  var ALLOWED_TRACKS = ['SMALL_TALK', 'BUSINESS', 'BOTH'];
+  var TRACK_LABELS = {
+    SMALL_TALK: 'Daily Small Talk',
+    BUSINESS: 'Daily Business Talk',
+    BOTH: '두 콘텐츠 모두'
+  };
+
+  var state = {
+    page: 1,
+    data: {},
+    submitting: false,
+    submissionId: '',
+    submittedPhone: '',
+    submitted: false
+  };
+
+  var cover = document.getElementById('cover');
+  var book = document.getElementById('book');
+  var form = document.getElementById('passportForm');
+  var progress = document.getElementById('progress');
+  var errorBox = document.getElementById('error');
+  var submitBtn = document.getElementById('submitBtn');
+  var runnerWarning = document.getElementById('runnerWarning');
+
+  function getRunner() {
+    return (window.google && window.google.script && window.google.script.run) || null;
+  }
+
+  function hasRunner() {
+    var runner = getRunner();
+    return !!(runner && typeof runner.withSuccessHandler === 'function' && typeof runner.submitPassport === 'function');
+  }
+
+  document.getElementById('openBtn').addEventListener('click', function () {
+    cover.classList.add('open');
+    setTimeout(function () {
+      cover.style.display = 'none';
+      book.classList.add('visible');
+      var first = document.getElementById('studentName');
+      if (first) first.focus();
+    }, 520);
+  });
+
+  // ---- phone input: keep 010-XXXX-XXXX as the visitor types -----------------
+  var phoneInput = document.getElementById('phone');
+  phoneInput.addEventListener('input', function () {
+    var digits = phoneInput.value.replace(/[^0-9]/g, '').slice(0, 11);
+    var formatted = digits;
+    if (digits.length > 7) formatted = digits.slice(0, 3) + '-' + digits.slice(3, 7) + '-' + digits.slice(7);
+    else if (digits.length > 3) formatted = digits.slice(0, 3) + '-' + digits.slice(3);
+    phoneInput.value = formatted;
+  });
+
+  // ---- choice buttons -------------------------------------------------------
+  document.querySelectorAll('.choices').forEach(function (group) {
+    group.querySelectorAll('.choice').forEach(function (btn) {
+      btn.setAttribute('aria-pressed', btn.classList.contains('selected') ? 'true' : 'false');
+      btn.addEventListener('click', function () {
+        group.querySelectorAll('.choice').forEach(function (other) {
+          other.classList.remove('selected');
+          other.setAttribute('aria-pressed', 'false');
+        });
+        btn.classList.add('selected');
+        btn.setAttribute('aria-pressed', 'true');
+        state.data[group.dataset.name] = btn.dataset.value;
+        if (group.dataset.name === 'lessonCount') toggleCustomLesson(btn.dataset.value === '직접 입력');
+        if (group.dataset.name === 'lessonCount' || group.dataset.name === 'learningGoal') refreshTrackRecommendation();
+      });
+    });
+  });
+
+  var customLessonWrap = document.getElementById('customLessonWrap');
+  var customLessonInput = document.getElementById('customLessonCount');
+  function toggleCustomLesson(show) {
+    customLessonWrap.classList.toggle('visible', !!show);
+    if (!show) customLessonInput.value = '';
+  }
+  customLessonInput.addEventListener('input', refreshTrackRecommendation);
+
+  var courseSelect = document.getElementById('courseType');
+  var customCourseWrap = document.getElementById('customCourseWrap');
+  var customCourseInput = document.getElementById('courseTypeCustom');
+  courseSelect.addEventListener('change', function () {
+    var isCustom = courseSelect.value === '직접 입력';
+    customCourseWrap.classList.toggle('visible', isCustom);
+    if (!isCustom) customCourseInput.value = '';
+    refreshTrackRecommendation();
+  });
+  customCourseInput.addEventListener('input', refreshTrackRecommendation);
+
+  function resolvedLessonCount() {
+    if (state.data.lessonCount === '직접 입력') return customLessonInput.value.trim();
+    return state.data.lessonCount || '';
+  }
+
+  function resolvedCourseType() {
+    return courseSelect.value === '직접 입력' ? customCourseInput.value.trim() : courseSelect.value;
+  }
+
+  // ---- navigation -----------------------------------------------------------
+  document.querySelectorAll('[data-next]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      if (!validatePage(state.page)) return;
+      if (state.page === 3) renderSummary();
+      showPage(state.page + 1);
+    });
+  });
+  document.querySelectorAll('[data-prev]').forEach(function (btn) {
+    btn.addEventListener('click', function () { showPage(state.page - 1); });
+  });
+
+  function showPage(n) {
+    if (n < 1 || n > 5) return;
+    state.page = n;
+    document.querySelectorAll('.page').forEach(function (page) {
+      page.classList.toggle('active', Number(page.dataset.page) === n);
+    });
+    progress.textContent = n <= 4 ? n + ' / 4' : 'APPROVED';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (n === 5) applyCompletionCopy();
+  }
+
+  function setError(message) {
+    errorBox.textContent = message || '';
+    if (message) errorBox.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }
+
+  function validatePage(n) {
+    setError('');
+    if (n === 1) {
+      var name = document.getElementById('studentName').value.trim();
+      var digits = phoneInput.value.replace(/[^0-9]/g, '');
+      if (!name) { setError('학생명을 입력해 주세요.'); return false; }
+      if (!/^010\d{8}$/.test(digits)) { setError('휴대전화번호를 010으로 시작하는 11자리로 입력해 주세요.'); return false; }
+      return true;
+    }
+    if (n === 2) {
+      var count = resolvedLessonCount();
+      if (!state.data.registrationType || !count) { setError('등록 구분과 신청 회차를 입력해 주세요.'); return false; }
+      if (!/^\d+$/.test(count) || Number(count) < 1 || Number(count) > 300) {
+        setError('등록 회차는 1회부터 300회 사이의 숫자로 입력해 주세요.');
+        return false;
+      }
+      return true;
+    }
+    if (n === 3) {
+      if (!resolvedCourseType()) { setError('등록 과목을 입력해 주세요.'); return false; }
+      if (!state.data.learningGoal) { setError('학습 목표를 선택해 주세요.'); return false; }
+      return true;
+    }
+    return true;
+  }
+
+  // ---- Ryan Daily Talk (optional) ------------------------------------------
+  var optInCheckbox = document.getElementById('dailyTalkOptIn');
+  var trackSection = document.getElementById('dailyTrackSection');
+  var trackRecommendation = document.getElementById('dailyTrackRecommendation');
+
+  function classifyTrack(course) {
+    var text = String(course || '').toLowerCase().replace(/\s+/g, ' ');
+    var smallKeywords = ['일상회화', '여행영어', '여행 영어', '왕초보', '스몰톡', '스몰 톡', '사교영어', '영어입담', '발음', '억양', '울렁증', '쿠킹', '와인', '미술', '드로잉', '유화', '골프', '서핑', '게임', '커피챗', '네트워킹'];
+    var businessKeywords = ['비즈니스', 'business', '직장인', '영어면접', '면접', '발표', '프레젠테이션', 'presentation', '교수임용', '영어강의', '피칭', 'ir 영어', '스타트업', '에세이', '라이팅', '아카데믹', '유학면접', '포트폴리오'];
+    var hasSmall = smallKeywords.some(function (keyword) { return text.indexOf(keyword) !== -1; });
+    var hasBusiness = businessKeywords.some(function (keyword) { return text.indexOf(keyword) !== -1; });
+    if (hasSmall && hasBusiness) return 'BOTH';
+    if (hasBusiness) return 'BUSINESS';
+    return 'SMALL_TALK';
+  }
+
+  function selectedTrack() {
+    var checked = document.querySelector('input[name="dailyTalkTrackChoice"]:checked');
+    return checked ? checked.value : '';
+  }
+
+  function refreshTrackRecommendation() {
+    if (!optInCheckbox.checked) return;
+    var recommended = classifyTrack(resolvedCourseType());
+    trackRecommendation.textContent = '등록 과목 기준 추천: ' + (TRACK_LABELS[recommended] || recommended);
+    document.querySelectorAll('[data-track-option]').forEach(function (option) {
+      option.classList.toggle('recommended', option.dataset.trackOption === recommended);
+    });
+  }
+
+  optInCheckbox.checked = false;
+  optInCheckbox.addEventListener('change', function () {
+    trackSection.classList.toggle('visible', optInCheckbox.checked);
+    if (optInCheckbox.checked) {
+      refreshTrackRecommendation();
+      // Default to the recommendation only once; the visitor's later choice wins.
+      if (!document.querySelector('input[name="dailyTalkTrackChoice"][data-touched="true"]')) {
+        var recommended = classifyTrack(resolvedCourseType());
+        var radio = document.querySelector('input[name="dailyTalkTrackChoice"][value="' + recommended + '"]');
+        if (radio) radio.checked = true;
+      }
+    }
+    // The summary sits above this checkbox on page 4, so refresh it right away.
+    renderSummary();
+  });
+
+  document.querySelectorAll('input[name="dailyTalkTrackChoice"]').forEach(function (radio) {
+    radio.addEventListener('change', function () {
+      radio.dataset.touched = 'true';
+      document.querySelectorAll('input[name="dailyTalkTrackChoice"]').forEach(function (other) {
+        if (other !== radio) other.dataset.touched = 'true';
+      });
+      renderSummary();
+    });
+  });
+
+  // ---- summary --------------------------------------------------------------
+  function collect() {
+    var optIn = !!optInCheckbox.checked;
+    var chosen = optIn ? (selectedTrack() || classifyTrack(resolvedCourseType())) : '';
+    return {
+      studentName: document.getElementById('studentName').value.trim(),
+      phone: phoneInput.value.trim(),
+      registrationType: state.data.registrationType || '',
+      lessonCount: resolvedLessonCount(),
+      courseType: resolvedCourseType(),
+      teacher: document.getElementById('teacher').value.trim(),
+      learningGoal: state.data.learningGoal || '',
+      privacyConsent: !!document.getElementById('privacy').checked,
+      dailyTalkOptIn: optIn,
+      dailyTalkTrack: chosen,
+      userAgent: navigator.userAgent
+    };
+  }
+
+  function escapeHtml(value) {
+    return String(value === undefined || value === null ? '' : value).replace(/[&<>"']/g, function (char) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[char];
+    });
+  }
+
+  function renderSummary() {
+    var d = collect();
+    var rows = [
+      '<div><strong>학생명</strong>　' + escapeHtml(d.studentName) + '</div>',
+      '<div><strong>전화번호</strong>　' + escapeHtml(d.phone) + '</div>',
+      '<div><strong>등록</strong>　' + escapeHtml(d.registrationType) + ' · ' + escapeHtml(d.lessonCount) + '회</div>',
+      '<div><strong>등록 과목</strong>　' + escapeHtml(d.courseType) + '</div>',
+      '<div><strong>목표</strong>　' + escapeHtml(d.learningGoal) + '</div>'
+    ];
+    if (d.dailyTalkOptIn) {
+      rows.push('<div><strong>Ryan Daily Talk</strong>　' + escapeHtml(TRACK_LABELS[d.dailyTalkTrack] || d.dailyTalkTrack) + '</div>');
+    } else {
+      rows.push('<div><strong>Ryan Daily Talk</strong>　신청 안 함</div>');
+    }
+    document.getElementById('summary').innerHTML = rows.join('');
+    refreshTrackRecommendation();
+  }
+
+  // ---- submission -----------------------------------------------------------
+  form.addEventListener('submit', function (event) {
+    event.preventDefault();
+    if (state.submitting) return;
+
+    var payload = collect();
+    if (!payload.privacyConsent) { setError('개인정보 수집·이용 동의가 필요합니다.'); return; }
+    if (payload.dailyTalkOptIn && ALLOWED_TRACKS.indexOf(payload.dailyTalkTrack) === -1) {
+      setError('받을 Daily Talk를 선택해 주세요.');
+      return;
+    }
+    if (!hasRunner()) {
+      runnerWarning.classList.add('visible');
+      setError('접수 서버에 연결되지 않았습니다. 웹앱 주소로 다시 열어 주세요.');
+      return;
+    }
+
+    state.submitting = true;
+    submitBtn.disabled = true;
+    form.classList.add('loading');
+    setError('심사 중입니다…');
+
+    getRunner()
+      .withSuccessHandler(function (result) {
+        state.submitting = false;
+        form.classList.remove('loading');
+        submitBtn.disabled = false;
+        if (!result || result.ok !== true) {
+          setError((result && result.message) || '제출에 실패했습니다. 다시 시도해 주세요.');
+          return;
+        }
+        submissionSucceeded(payload, result);
+      })
+      .withFailureHandler(function (error) {
+        state.submitting = false;
+        form.classList.remove('loading');
+        submitBtn.disabled = false;
+        setError((error && error.message) || '제출에 실패했습니다. 다시 시도해 주세요.');
+      })
+      .submitPassport(payload);
+  });
+
+  function submissionSucceeded(payload, result) {
+    state.submitted = true;
+    state.submissionId = result.submissionId || '';
+    state.submittedPhone = payload.phone;
+
+    document.getElementById('approvalMeta').innerHTML =
+      '<strong>' + escapeHtml(result.studentName || payload.studentName) + '</strong> · ' +
+      escapeHtml(result.lessonCount || payload.lessonCount) + '회 · ' +
+      escapeHtml(result.learningGoal || payload.learningGoal) +
+      (payload.dailyTalkOptIn
+        ? ' · Ryan Daily Talk: ' + escapeHtml(result.dailyTalkTrackLabel || TRACK_LABELS[payload.dailyTalkTrack] || payload.dailyTalkTrack)
+        : '');
+
+    showPage(5);
+    setTimeout(function () {
+      var stamp = document.getElementById('stamp');
+      if (stamp) stamp.classList.add('hit');
+    }, 180);
+    if (navigator.vibrate) navigator.vibrate([40, 25, 80]);
+  }
+
+  function applyCompletionCopy() {
+    // The completion copy is fixed product copy; it is re-applied here so the
+    // screen never depends on a server string.
+    document.getElementById('approvalTitle').textContent = '영어로 여는 새로운 세계.';
+    document.getElementById('approvalText').innerHTML =
+      '<p>당신은 용감한 여행자입니다.</p>' +
+      '<p><strong>자, 이제 출발을 허가합니다.</strong></p>' +
+      '<p><em>Welcome to a Bigger World.</em></p>';
+  }
+
+  // ---- Kakao channel CTA ----------------------------------------------------
+  var kakaoBtn = document.getElementById('kakaoChannelBtn');
+  var kakaoNote = document.getElementById('kakaoChannelNote');
+  var modal = document.getElementById('rmKakaoModal');
+  var qrRendered = false;
+
+  function isMobile() {
+    return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
+      (window.matchMedia && window.matchMedia('(max-width: 767px)').matches);
+  }
+
+  function recordChannelClick() {
+    if (!state.submissionId && !state.submittedPhone) return;
+    var runner = getRunner();
+    if (!runner || typeof runner.markKakaoChannelClick !== 'function') return;
+    runner
+      .withSuccessHandler(function () {})
+      .withFailureHandler(function () {})
+      .markKakaoChannelClick(state.submissionId, state.submittedPhone);
+  }
+
+  function renderQr() {
+    if (qrRendered) return;
+    var canvas = document.getElementById('rmKakaoQr');
+    if (!canvas || typeof window.qrcode !== 'function') return;
+    try {
+      var qr = window.qrcode(0, 'H');
+      qr.addData(KAKAO_FRIEND_URL);
+      qr.make();
+      var count = qr.getModuleCount();
+      var scale = Math.floor(220 / count);
+      var offset = Math.floor((220 - count * scale) / 2);
+      var ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, 220, 220);
+      ctx.fillStyle = '#000000';
+      for (var row = 0; row < count; row += 1) {
+        for (var col = 0; col < count; col += 1) {
+          if (qr.isDark(row, col)) ctx.fillRect(offset + col * scale, offset + row * scale, scale, scale);
+        }
+      }
+      qrRendered = true;
+    } catch (error) {
+      // QR failure must not block the direct link that is already on screen.
+      canvas.style.display = 'none';
+    }
+  }
+
+  function openModal() {
+    modal.classList.add('visible');
+    renderQr();
+    var closeBtn = modal.querySelector('.rm-kakao-close');
+    if (closeBtn) closeBtn.focus();
+  }
+
+  function closeModal() {
+    modal.classList.remove('visible');
+    kakaoBtn.focus();
+  }
+
+  modal.querySelector('.rm-kakao-close').addEventListener('click', closeModal);
+  modal.querySelector('.rm-kakao-secondary').addEventListener('click', closeModal);
+  modal.addEventListener('click', function (event) { if (event.target === modal) closeModal(); });
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape' && modal.classList.contains('visible')) closeModal();
+  });
+
+  if (isMobile()) {
+    kakaoBtn.textContent = '카카오톡 앱에서 바로 채널 추가';
+    kakaoNote.textContent = '버튼을 누르면 카카오톡 채널 추가 화면이 바로 열립니다.';
+    kakaoBtn.addEventListener('click', function () { recordChannelClick(); });
+  } else {
+    kakaoBtn.textContent = '휴대폰으로 카카오톡 채널 추가';
+    kakaoNote.textContent = 'PC에서는 버튼을 누르면 큰 QR과 단계별 안내가 표시됩니다.';
+    kakaoBtn.setAttribute('target', '_blank');
+    kakaoBtn.addEventListener('click', function (event) {
+      event.preventDefault();
+      recordChannelClick();
+      openModal();
+    });
+    document.getElementById('rmKakaoOpenLink').addEventListener('click', recordChannelClick);
+  }
+
+  // A page opened outside Apps Script (file://, stale static copy) must not look
+  // like it can submit.
+  if (!hasRunner()) {
+    runnerWarning.classList.add('visible');
+    submitBtn.disabled = true;
+  } else {
+    // Load the non-secret runtime config once so the copy can never drift from
+    // the deployed consent version.
+    try {
+      getRunner().withSuccessHandler(function (config) {
+        if (config && config.kakaoFriendUrl) {
+          kakaoBtn.href = config.kakaoFriendUrl;
+          document.getElementById('rmKakaoOpenLink').href = config.kakaoFriendUrl;
+          KAKAO_FRIEND_URL = config.kakaoFriendUrl;
+        }
+      }).withFailureHandler(function () {}).getPublicConfig();
+    } catch (ignored) { /* the static defaults above are already correct */ }
+  }
+})();
+</script>
+</body>
+</html>

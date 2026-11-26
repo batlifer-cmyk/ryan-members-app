@@ -444,38 +444,45 @@ describe('buildContentPrompt', () => {
     assert.includes(RM_DAILY_TALK_TRACK_BRIEFS.SMALL_TALK, 'first-meeting social English');
   });
 
-  test('asks for a witty, everyday-humour answer instead of a textbook one', () => {
-    // The user's 2026-11-22 ask: witty and fun answers the students will like.
+  test('asks for a natural, everyday-humour answer instead of a textbook one', () => {
+    // The user's 2026-11-26 ask: the witty tone turned into forced metaphors
+    // ("my magic ingredient is eggs", "guard the first piece"), so the card
+    // must sound like a real person talking, with light everyday humour.
     const prompt = buildContentPrompt('SMALL_TALK', {});
-    assert.includes(prompt.system, 'Voice: the funny, easy-going friend at the meetup, never a textbook');
-    assert.includes(prompt.system, 'The humour comes from an honest, specific everyday');
-    assert.includes(prompt.system, 'it never opens with a neutral verdict');
-    assert.includes(prompt.system, 'The second sentence makes the twist concrete with ONE thing');
-    assert.includes(prompt.system, 'The wit lives in the idea, not in fancy words');
+    assert.includes(prompt.system, 'Voice: the easy-going coworker everyone likes talking to at a meetup');
+    assert.includes(prompt.system, 'The smile comes from a real, ordinary situation said the way people really say it');
+    assert.includes(prompt.system, 'I cook at home, but after work I keep it to five minutes');
+    assert.includes(prompt.system, 'I can finish a whole plate of jeon by myself');
+    assert.includes(prompt.system, 'Never write a forced or literary image');
+    assert.includes(prompt.system, 'no "my magic ingredient is eggs"');
+    assert.includes(prompt.system, 'no "I love jeon enough to guard the first piece"');
+    assert.includes(prompt.system, 'no "my hand moves before my English does"');
     assert.includes(prompt.system, 'textbook clichés and empty adjectives');
     assert.includes(prompt.system, 'sarcasm aimed at the person in front of you');
-    assert.includes(prompt.system, 'The Korean keeps the same smile');
-    assert.includes(prompt.user, 'Witty, not silly');
-    assert.includes(prompt.user, 'never a neutral verdict');
+    assert.includes(prompt.system, 'The Korean carries the same warmth');
+    assert.includes(prompt.user, 'Natural first, warm second');
+    assert.includes(prompt.user, 'never a neutral textbook verdict');
+    assert.includes(prompt.user, 'No metaphor, no exaggeration, no literary image, no personified object');
     assert.includes(prompt.user, '16 words or fewer per English sentence');
     assert.includes(prompt.user, 'A linking word the English puts first');
-    assert.includes(prompt.user, 'A light wink is');
     // Wit is still safe to say to a stranger at a first meeting.
     assert.includes(prompt.user, 'Funny never means rude');
     assert.includes(prompt.user, 'nothing that a stranger could take the wrong way');
     // The news card stays factual: the humour voice belongs to small talk only.
-    assert.excludes(buildContentPrompt('BUSINESS', {}).system, 'Voice: the funny, easy-going friend');
+    assert.excludes(buildContentPrompt('BUSINESS', {}).system, 'Voice: the easy-going coworker');
   });
 
-  test('keeps the funny line sayable in Korean, not a literal personification', () => {
-    // The user's 2026-11-22 ask: "My iced coffee gives up before I do" is not
-    // something a Korean learner can say, so the voice block bans that shape.
+  test('keeps the line sayable in spoken Korean, not a word-for-word translation', () => {
+    // The user's 2026-11-26 ask: "당신은 이 근처에 맛있는 전집을 아세요?" is written
+    // Korean, so the prompt has to ask for what a Korean actually says out loud.
     const prompt = buildContentPrompt('SMALL_TALK', {});
-    assert.includes(prompt.system, 'Avoid awkward literal personification that Korean cannot say plainly');
-    assert.includes(prompt.system, 'my iced coffee gives up before I do');
-    assert.includes(prompt.system, 'describe what it actually does');
-    assert.includes(prompt.system, 'an English speaker and a Korean learner both picture');
-    assert.excludes(buildContentPrompt('BUSINESS', {}).system, 'Avoid awkward literal personification');
+    assert.includes(prompt.system, 'never write Korean sentences Koreans do not speak out loud');
+    assert.includes(prompt.system, '당신은 이 근처에 맛있는 전집을 아세요?');
+    assert.includes(prompt.system, 'is spoken Korean');
+    assert.includes(prompt.user, 'no word-for-word Korean put into English');
+    assert.includes(prompt.user, 'The Korean is spoken Korean too');
+    assert.includes(prompt.user, 'never a written-style');
+    assert.excludes(buildContentPrompt('BUSINESS', {}).system, 'never write Korean sentences Koreans do not speak out loud');
   });
 
   test('lists the 영어입담비법서 questions in their volume · unit order', () => {
